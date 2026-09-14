@@ -1,0 +1,113 @@
+:root {
+  /* Surfaces — matched to the portfolio site's real ink stack. */
+  --void: #14121b;
+  --panel: #1e1a28;
+  --panel-raised: #262034;
+  --hairline: rgba(237, 228, 211, 0.22);
+
+  /* Parchment — the light surface used for book-style right columns
+     (e.g. the Class spread's Subclass side), matched to the portfolio. */
+  --parchment: #ede4d3;
+  --parchment-ink: #4a4032; /* body text on parchment — 8.0:1 vs parchment */
+  --parchment-ink-dim: #6b5a42; /* secondary text on parchment — 5.25:1 */
+
+  /* The only two accents in the system — Hope and Fear, the game's own
+     duality. Nothing else in the palette is saturated.
+
+     Contrast note: a single accent hex can't pass WCAG AA (4.5:1 for
+     normal text) as text on BOTH a dark surface and the light parchment
+     surface at once — so each accent gets a surface-specific text
+     variant, verified below, instead of reusing --hope/--fear directly
+     as text color. --hope/--fear/--*-dim stay reserved for fills, lines,
+     and borders, where the lighter WCAG bar for non-text UI (3:1) applies
+     and the base tones already clear it.
+       --hope-on-dark  (#e4b341 on #14121b)   -> 9.6:1  (AAA)
+       --hope-on-light (#6e561e on #ede4d3)   -> 5.5:1  (AA)
+       --fear-on-dark  (#a58ce8 on #14121b)   -> 6.6:1  (AA, near AAA)
+       base --fear (#8867d6) on #14121b       -> 4.4:1  (fails AA text —
+         this is exactly why --fear-on-dark exists instead of reusing it)
+  */
+  --hope: #e4b341;
+  --hope-dim: #8a6c2a;
+  --hope-on-dark: #e4b341;
+  --hope-on-light: #6e561e;
+  --fear: #8867d6;
+  --fear-dim: #4b3a7a;
+  --fear-on-dark: #a58ce8;
+
+  /* Text (on dark surfaces) */
+  --ink: #ede6d6;
+  --ink-dim: #c9c2b4;
+  --muted: #a89fb5;
+
+  /* Type */
+  --font-display: 'Fraunces', 'Iowan Old Style', serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Rhythm */
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1.25rem;
+  --space-4: 2rem;
+  --space-5: 3.25rem;
+  --radius-card: 18px;
+  --radius-sm: 8px;
+
+  /* Motion — one shared easing curve (matches the portfolio site's
+     --ease) so every interactive element — tabs, panels, fields —
+     moves at the same unhurried pace. --dur-field is field-specific;
+     --ease-field is now just an alias so existing component CSS
+     referencing it keeps working unchanged. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-field: 520ms;
+  --ease-field: var(--ease);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--hope);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

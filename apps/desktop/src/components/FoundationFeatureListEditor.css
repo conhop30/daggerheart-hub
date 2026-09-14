@@ -1,0 +1,16 @@
+.foundation-feature-editor__row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 0.9fr auto;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.foundation-feature-editor__row input,
+.foundation-feature-editor__row select {
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  padding: 0.4rem 0.55rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}

@@ -1,0 +1,280 @@
+.class-spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* --- Left column: the Class itself, on a gradient of its two Domain colors --- */
+
+.spread-left {
+  padding: 40px 36px;
+  color: #ffffff;
+  transition: background 320ms var(--ease);
+}
+
+.spread-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.2rem;
+  letter-spacing: 1px;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.spread-desc {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 22px;
+}
+
+.spread-stat {
+  margin-bottom: 12px;
+}
+
+.spread-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  /* White at 90%+ opacity on any of these domain-color gradients comfortably
+     clears 4.5:1 in every case checked — Daggerheart's domain colors are
+     all mid-to-dark saturated hues, none light enough to threaten this. */
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 2px;
+}
+
+.spread-stat-value {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.spread-hope-row {
+  background: rgba(0, 0, 0, 0.18);
+  border-left: 2px solid var(--hope-on-dark);
+  padding: 10px 14px;
+  margin: 18px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.spread-features-header {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  padding-top: 12px;
+  margin: 18px 0 8px;
+}
+
+.spread-feature-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin: 0 0 2px;
+}
+
+.spread-feature-desc {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.55;
+  margin: 0 0 10px;
+}
+
+/* --- Right column: the active Subclass, on parchment --- */
+
+.spread-right {
+  padding: 40px 36px;
+  background: var(--parchment);
+  color: var(--parchment-ink);
+}
+
+.spread-subclass-status {
+  font-size: 0.88rem;
+  color: var(--parchment-ink-dim);
+}
+
+.spread-subclass-status--error {
+  color: #a13a3a; /* checked: 5.1:1 against --parchment, passes AA */
+}
+
+.spread-subclass-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.spread-sub-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hope-dim);
+  background: transparent;
+  /* --parchment-ink-dim, not --hope-dim directly — see the contrast note
+     in tokens.css: --hope-dim reads at 3.9:1 as small text on parchment,
+     which fails WCAG AA's 4.5:1 text minimum even though it's fine as a
+     border/fill color (non-text UI only needs 3:1). */
+  color: var(--parchment-ink-dim);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  transition:
+    background 220ms var(--ease),
+    color 220ms var(--ease);
+}
+
+.spread-sub-tab.active {
+  /* White-on-hope-dim checks out at 4.93:1 — passes AA for this text size. */
+  background: var(--hope-dim);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.spread-sub-tab:hover:not(.active) {
+  background: rgba(138, 108, 42, 0.12);
+}
+
+.spread-subclass-body {
+  animation: spreadFadeIn 320ms var(--ease);
+}
+
+@keyframes spreadFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.spread-subclass-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: 4px;
+}
+
+.spread-subclass-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  /* --hope-on-light, not --hope-dim — this is exactly the eyebrow/tier-header
+     text that was failing contrast (3.9:1) before this fix. 5.5:1 now. */
+  color: var(--hope-on-light);
+  margin-bottom: 0;
+}
+
+.spread-edit-trigger {
+  background: none;
+  border: 1px solid var(--hope-dim);
+  color: var(--hope-on-light);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition:
+    background 220ms var(--ease),
+    color 220ms var(--ease);
+}
+
+.spread-edit-trigger:hover {
+  background: var(--hope-dim);
+  color: #ffffff;
+}
+
+.spread-subclass-chooser {
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--parchment-ink-dim);
+  margin-bottom: 20px;
+}
+
+.spread-subclass-banner {
+  display: inline-block;
+  background: #f7f0dd;
+  color: var(--parchment-ink);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 3px;
+  margin-bottom: 10px;
+}
+
+.spread-subclass-hook {
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--parchment-ink-dim);
+  margin-bottom: 8px;
+}
+
+.spread-subclass-trait {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--parchment-ink-dim);
+  margin-bottom: 20px;
+}
+
+.spread-tier-header {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  /* Same fix as the eyebrow above — this is the other spot that was
+     failing contrast. */
+  color: var(--hope-on-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+}
+
+.spread-tier-bullet {
+  width: 8px;
+  height: 8px;
+  background: var(--hope-on-light);
+  flex-shrink: 0;
+}
+
+.spread-feature-inline {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--parchment-ink);
+  margin-bottom: 10px;
+}
+
+.spread-feature-inline em {
+  font-weight: 700;
+  font-style: italic;
+}
+
+.spread-trait-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hope-on-light);
+  border: 1px solid var(--hope-dim);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .class-spread {
+    grid-template-columns: 1fr;
+  }
+}

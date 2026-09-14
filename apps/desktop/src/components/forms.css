@@ -1,0 +1,79 @@
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 520px;
+}
+
+.create-form__title {
+  font-size: 1.2rem;
+  margin-bottom: var(--space-1);
+}
+
+.create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.create-form input,
+.create-form textarea,
+.create-form select {
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.create-form__color input {
+  padding: 0.2rem;
+  height: 2.2rem;
+  width: 4rem;
+}
+
+.create-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.create-form__error {
+  color: var(--fear-on-dark);
+  font-size: 0.85rem;
+}
+
+.create-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.create-form__cancel {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  padding: 0.55rem 1rem;
+}
+
+.create-form__submit {
+  background: var(--hope);
+  border: none;
+  color: var(--void);
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+}
+
+.create-form__empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.create-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

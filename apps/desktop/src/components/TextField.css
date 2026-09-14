@@ -1,0 +1,77 @@
+.text-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.text-field__label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  /* Stays neutral always — never shifts toward Hope/Fear, even on focus.
+     It's a calm anchor while the field does the reacting. */
+  color: var(--muted);
+}
+
+.text-field__frame {
+  position: relative;
+  display: block;
+  /* The only resting border: a curved half-pill bevel on the left, nothing
+     on the other three sides. Background is fully transparent — the field
+     sits directly on whatever surface it's placed on, no boxed-in feel. */
+  background: transparent;
+  border-radius: 18px 0 0 18px;
+  border-left: 2px solid var(--hairline);
+  transition: border-left-color var(--dur-field) var(--ease-field);
+}
+
+.text-field__frame::before,
+.text-field__frame::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  height: 2px;
+  width: 0;
+  /* Rounded caps on both ends so the line reads as a soft stroke growing
+     outward, not a hard-edged bar being wiped in. */
+  border-radius: 999px;
+  transition: width var(--dur-field) var(--ease-field);
+}
+
+.text-field__frame::before {
+  top: -1px;
+  background: var(--hope);
+}
+
+.text-field__frame::after {
+  bottom: -1px;
+  background: var(--fear);
+}
+
+.text-field__frame:focus-within {
+  border-left-color: var(--hope);
+}
+
+.text-field__frame:focus-within::before,
+.text-field__frame:focus-within::after {
+  width: 100%;
+}
+
+.text-field__input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0.7rem 0.95rem;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.text-field__input::placeholder {
+  color: var(--muted);
+}
