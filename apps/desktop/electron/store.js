@@ -14,7 +14,21 @@ const { randomUUID } = require('node:crypto');
 const STORE_DIR = path.join(os.homedir(), '.daggerheart-hub');
 const STORE_PATH = path.join(STORE_DIR, 'data.json');
 const STORE_VERSION = 1;
-const COLLECTIONS = ['gameSets', 'domains', 'heroClasses', 'subclasses'];
+const COLLECTIONS = [
+  'gameSets',
+  'domains',
+  'heroClasses',
+  'subclasses',
+  'adversaries',
+  'environments',
+  'weapons',
+  'armors',
+  'loot',
+  'consumables',
+  'communities',
+  'ancestries',
+  'transformations',
+];
 
 let cache = null;
 // Serializes every mutation so two overlapping IPC calls can't interleave
@@ -23,7 +37,9 @@ let cache = null;
 let writeQueue = Promise.resolve();
 
 function emptyStore() {
-  return { version: STORE_VERSION, gameSets: [], domains: [], heroClasses: [], subclasses: [] };
+  const store = { version: STORE_VERSION };
+  for (const key of COLLECTIONS) store[key] = [];
+  return store;
 }
 
 // Turns apps/desktop/seed/core-content.json (the Core Set flavor text
@@ -320,6 +336,167 @@ function updateSubclass(id, patch) {
   });
 }
 
+// ---- Generic collections ----
+// Nine more content types (Adversary, Environment, Weapon, Armor, Loot,
+// Consumable, Community, Ancestry, Transformation) share the exact same
+// shape of rule as HeroClass/Domain/Subclass above: name required,
+// idempotent-by-name create, rename-collision silently skipped. Hand-writing
+// that CRUD block nine more times would just be copy-paste, so it's
+// factored out here — the per-type differences (which fields exist, extra
+// validation) are supplied as a buildRecord/validate pair.
+function makeCollection(key, { buildRecord, validate } = {}) {
+  function list() {
+    return getCache()[key];
+  }
+
+  function create(data) {
+    return mutate((store) => {
+      requireName(data);
+      const existing = findByNameIgnoreCase(store[key], data.name);
+      if (existing) return existing;
+      if (validate) validate(store, data);
+      const record = buildRecord(data);
+      store[key].push(record);
+      return record;
+    });
+  }
+
+  function update(id, patch) {
+    return mutate((store) => {
+      const existing = store[key].find((r) => r.id === id);
+      if (!existing) throw new Error(`No record with id ${id}`);
+      const merged = mergePatch(existing, patch);
+      if (validate) validate(store, merged);
+      applyRename(store[key], id, existing, patch, merged);
+      Object.assign(existing, merged);
+      return existing;
+    });
+  }
+
+  return { list, create, update };
+}
+
+const emptyFeatureTiers = () => ({ passives: [], actions: [], reactions: [] });
+
+const adversaries = makeCollection('adversaries', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    tier: data.tier ?? null,
+    description: data.description ?? null,
+    motivesAndTactics: data.motivesAndTactics ?? [],
+    difficulty: data.difficulty ?? null,
+    thresholds: data.thresholds ?? { major: null, severe: null },
+    hp: data.hp ?? null,
+    stress: data.stress ?? null,
+    attackModifier: data.attackModifier ?? null,
+    attackDescription: data.attackDescription ?? null,
+    attackRange: data.attackRange ?? null,
+    attackType: data.attackType ?? null,
+    experiences: data.experiences ?? [],
+    features: data.features ?? emptyFeatureTiers(),
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const environments = makeCollection('environments', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    tier: data.tier ?? null,
+    description: data.description ?? null,
+    impulses: data.impulses ?? [],
+    difficulty: data.difficulty ?? null,
+    potentialAdversaries: data.potentialAdversaries ?? [],
+    features: data.features ?? emptyFeatureTiers(),
+    gameSetId: data.gameSetId,
+  }),
+});
+
+// Burden locked to One-Handed when WeaponSlot = Secondary — enforced here,
+// not just as a UI default, per the spec.
+function validateWeapon(_store, data) {
+  if (data.weaponSlot === 'SECONDARY' && data.burden !== 'ONE_HANDED') {
+    throw new Error('A Secondary weapon must be One-Handed.');
+  }
+}
+
+const weapons = makeCollection('weapons', {
+  validate: validateWeapon,
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    weaponSlot: data.weaponSlot,
+    name: data.name,
+    tier: data.tier ?? null,
+    feature: data.feature ?? null,
+    burden: data.burden,
+    damage: data.damage ?? null,
+    trait: data.trait ?? null,
+    damageType: data.damageType ?? null,
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const armors = makeCollection('armors', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    tier: data.tier ?? null,
+    baseScore: data.baseScore ?? null,
+    thresholds: data.thresholds ?? { major: null, severe: null },
+    feature: data.feature ?? null,
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const loot = makeCollection('loot', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const consumables = makeCollection('consumables', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const communities = makeCollection('communities', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    features: data.features ?? [],
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const ancestries = makeCollection('ancestries', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    features: data.features ?? [],
+    gameSetId: data.gameSetId,
+  }),
+});
+
+const transformations = makeCollection('transformations', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    features: data.features ?? [],
+    gameSetId: data.gameSetId,
+  }),
+});
+
 // ---- Export / Import ----
 // Export hands back the whole store as-is. Import upserts by id, one
 // collection at a time — a record whose id already exists is overwritten
@@ -371,6 +548,33 @@ module.exports = {
   listSubclassesByParentClass,
   createSubclass,
   updateSubclass,
+  listAdversaries: adversaries.list,
+  createAdversary: adversaries.create,
+  updateAdversary: adversaries.update,
+  listEnvironments: environments.list,
+  createEnvironment: environments.create,
+  updateEnvironment: environments.update,
+  listWeapons: weapons.list,
+  createWeapon: weapons.create,
+  updateWeapon: weapons.update,
+  listArmors: armors.list,
+  createArmor: armors.create,
+  updateArmor: armors.update,
+  listLoot: loot.list,
+  createLoot: loot.create,
+  updateLoot: loot.update,
+  listConsumables: consumables.list,
+  createConsumable: consumables.create,
+  updateConsumable: consumables.update,
+  listCommunities: communities.list,
+  createCommunity: communities.create,
+  updateCommunity: communities.update,
+  listAncestries: ancestries.list,
+  createAncestry: ancestries.create,
+  updateAncestry: ancestries.update,
+  listTransformations: transformations.list,
+  createTransformation: transformations.create,
+  updateTransformation: transformations.update,
   exportSnapshot,
   importSnapshot,
 };

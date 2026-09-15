@@ -2,6 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { gameSetsApi, type GameSet } from '../api/gameSets';
 import { domainsApi, type Domain } from '../api/domains';
 import { heroClassesApi, type HeroClass } from '../api/heroClasses';
+import { adversariesApi } from '../api/adversaries';
+import { environmentsApi } from '../api/environments';
+import { weaponsApi } from '../api/weapons';
+import { armorsApi } from '../api/armors';
+import { lootApi } from '../api/loot';
+import { consumablesApi } from '../api/consumables';
+import { communitiesApi } from '../api/communities';
+import { ancestriesApi } from '../api/ancestries';
+import { transformationsApi } from '../api/transformations';
+import type { ContentKey } from '../api/contentKeys';
 import { backupApi } from '../api/backup';
 import CreatePanel from '../components/CreatePanel';
 import TileGrid from '../components/TileGrid';
@@ -12,10 +22,23 @@ interface HomePageProps {
   onNavigateToClasses: () => void;
 }
 
+const EMPTY_COUNTS: Record<ContentKey, number> = {
+  adversaries: 0,
+  environments: 0,
+  weapons: 0,
+  armors: 0,
+  loot: 0,
+  consumables: 0,
+  communities: 0,
+  ancestries: 0,
+  transformations: 0,
+};
+
 export default function HomePage({ onNavigateToClasses }: HomePageProps) {
   const [gameSets, setGameSets] = useState<GameSet[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [heroClasses, setHeroClasses] = useState<HeroClass[]>([]);
+  const [counts, setCounts] = useState<Record<ContentKey, number>>(EMPTY_COUNTS);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [backupStatus, setBackupStatus] = useState<string | null>(null);
@@ -28,15 +51,48 @@ export default function HomePage({ onNavigateToClasses }: HomePageProps) {
     setLoading(true);
     setLoadError(null);
     try {
-      const [sets, domainList, classList] = await Promise.all([
+      const [
+        sets,
+        domainList,
+        classList,
+        adversaries,
+        environments,
+        weapons,
+        armors,
+        loot,
+        consumables,
+        communities,
+        ancestries,
+        transformations,
+      ] = await Promise.all([
         gameSetsApi.list(),
         domainsApi.list(),
         heroClassesApi.list(),
+        adversariesApi.list(),
+        environmentsApi.list(),
+        weaponsApi.list(),
+        armorsApi.list(),
+        lootApi.list(),
+        consumablesApi.list(),
+        communitiesApi.list(),
+        ancestriesApi.list(),
+        transformationsApi.list(),
       ]);
       if (!mountedRef.current) return;
       setGameSets(sets);
       setDomains(domainList);
       setHeroClasses(classList);
+      setCounts({
+        adversaries: adversaries.length,
+        environments: environments.length,
+        weapons: weapons.length,
+        armors: armors.length,
+        loot: loot.length,
+        consumables: consumables.length,
+        communities: communities.length,
+        ancestries: ancestries.length,
+        transformations: transformations.length,
+      });
     } catch (err) {
       if (!mountedRef.current) return;
       setLoadError(err instanceof Error ? err.message : 'Could not load your data.');
@@ -52,6 +108,10 @@ export default function HomePage({ onNavigateToClasses }: HomePageProps) {
       mountedRef.current = false;
     };
   }, []);
+
+  function handleContentCreated(key: ContentKey) {
+    setCounts((prev) => ({ ...prev, [key]: prev[key] + 1 }));
+  }
 
   async function handleExport() {
     setBackupBusy(true);
@@ -111,11 +171,16 @@ export default function HomePage({ onNavigateToClasses }: HomePageProps) {
         heroClasses={heroClasses}
         onDomainCreated={(domain) => setDomains((prev) => upsertById(prev, domain))}
         onHeroClassCreated={(heroClass) => setHeroClasses((prev) => upsertById(prev, heroClass))}
+        onContentCreated={handleContentCreated}
       />
 
       <TileGrid
         heroClassCount={heroClasses.length}
         domainCount={domains.length}
+        adversaryEnvironmentCount={counts.adversaries + counts.environments}
+        heritageCount={counts.communities + counts.ancestries}
+        equipmentCount={counts.weapons + counts.armors + counts.loot + counts.consumables}
+        optionalMechanicsCount={counts.transformations}
         onSelectClasses={onNavigateToClasses}
       />
     </div>

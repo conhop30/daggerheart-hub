@@ -16,6 +16,14 @@
   margin-bottom: var(--space-1);
 }
 
+.feature-editor__row--single {
+  grid-template-columns: 1fr auto;
+}
+
+.feature-editor__row--experience {
+  grid-template-columns: 2fr 1fr auto;
+}
+
 .feature-editor__row input {
   background: var(--void);
   border: 1px solid var(--hairline);

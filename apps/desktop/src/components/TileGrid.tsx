@@ -4,6 +4,10 @@ import './TileGrid.css';
 interface TileGridProps {
   heroClassCount: number;
   domainCount: number;
+  adversaryEnvironmentCount: number;
+  heritageCount: number;
+  equipmentCount: number;
+  optionalMechanicsCount: number;
   onSelectClasses: () => void;
 }
 
@@ -15,8 +19,18 @@ interface Tile {
   note: string;
 }
 
-export default function TileGrid({ heroClassCount, domainCount, onSelectClasses }: TileGridProps) {
+export default function TileGrid({
+  heroClassCount,
+  domainCount,
+  adversaryEnvironmentCount,
+  heritageCount,
+  equipmentCount,
+  optionalMechanicsCount,
+  onSelectClasses,
+}: TileGridProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const noGalleryYet = 'The gallery view for this isn\u2019t wired up yet \u2014 next on the list.';
 
   const tiles: Tile[] = [
     {
@@ -30,36 +44,36 @@ export default function TileGrid({ heroClassCount, domainCount, onSelectClasses 
       id: 'adversaries-environments',
       title: 'Adversaries & Environments',
       description: 'Threats and scenes to drop into a session.',
-      status: 'not started',
-      note: 'Both modules are still empty package stubs on the backend.',
+      status: `${adversaryEnvironmentCount} built`,
+      note: noGalleryYet,
     },
     {
       id: 'domains',
       title: 'Domains',
       description: 'The domain decks Classes draw from.',
       status: `${domainCount} built`,
-      note: 'The gallery view for this isn\u2019t wired up yet \u2014 next on the list.',
+      note: noGalleryYet,
     },
     {
       id: 'heritage',
       title: 'Heritage',
       description: 'Communities and Ancestries.',
-      status: 'not started',
-      note: 'This module is still an empty package stub on the backend.',
+      status: `${heritageCount} built`,
+      note: noGalleryYet,
     },
     {
       id: 'equipment',
       title: 'Equipment',
       description: 'Weapons, Armor, Consumables, and Loot.',
-      status: 'not started',
-      note: 'This module is still an empty package stub on the backend.',
+      status: `${equipmentCount} built`,
+      note: noGalleryYet,
     },
     {
       id: 'optional-mechanics',
       title: 'Optional Mechanics',
       description: 'Transformation and mechanics like it.',
-      status: 'not started',
-      note: 'This module is still an empty package stub on the backend.',
+      status: `${optionalMechanicsCount} built`,
+      note: noGalleryYet,
     },
   ];
 

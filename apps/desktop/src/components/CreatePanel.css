@@ -82,7 +82,7 @@
   gap: var(--space-1);
 }
 
-/* Every stage (chip list, banner row, unavailable notice) fades and lifts
+/* Every stage (chip list, banner row) fades and lifts
    in on mount — the same entrance signature used everywhere else content
    swaps in place, so stepping through the Create flow never just "snaps". */
 .create-panel__stage {
@@ -122,11 +122,6 @@
 
 .create-panel__empty {
   color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.create-panel__unavailable {
-  color: var(--ink-dim);
   font-size: 0.9rem;
 }
 
