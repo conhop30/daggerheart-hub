@@ -9,7 +9,7 @@ import './ClassSpread.css';
 
 interface ClassSpreadProps {
   heroClass: HeroClass;
-  domainsById: Map<number, Domain>;
+  domainsById: Map<string, Domain>;
   gameSets: GameSet[];
 }
 
@@ -21,7 +21,7 @@ function formatTrait(trait: SpellcastTrait): string {
 
 export default function ClassSpread({ heroClass, domainsById, gameSets }: ClassSpreadProps) {
   const [subclasses, setSubclasses] = useState<Subclass[]>([]);
-  const [selectedSubclassId, setSelectedSubclassId] = useState<number | null>(null);
+  const [selectedSubclassId, setSelectedSubclassId] = useState<string | null>(null);
   const [editingSubclass, setEditingSubclass] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

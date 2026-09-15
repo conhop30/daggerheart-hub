@@ -1,34 +1,51 @@
-// Every module's API calls should go through this. Requests go to the
-// relative path `/api/...`, which Vite's dev server proxies to the Spring
-// Boot backend on :8787 (see vite.config.ts) — so there's one place to
-// change later if the backend ever moves from a local subprocess to a
-// hosted instance for the sync milestone, and the frontend never needs to
-// know the backend's port during local dev.
-const BASE_URL = '/api';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-
-  if (!response.ok) {
-    let detail = '';
-    try {
-      detail = await response.text();
-    } catch {
-      // response body already consumed or unreadable — fall back to status only
-    }
-    throw new Error(
-      `API request failed: ${response.status} ${response.statusText}${detail ? ` — ${detail}` : ''}`
-    );
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json() as Promise<T>;
+// Every module's API calls go through this. There's no backend anymore —
+// `window.daggerheart` is exposed by electron/preload.cjs and talks to the
+// local JSON store in electron/main.js over IPC, not HTTP. See
+// daggerheart-hub-spec.md Section 6 for why (React Native can't embed the
+// Spring Boot backend this used to call, so nothing embeds a backend now).
+export interface DaggerheartBridge {
+  list: (collection: string) => Promise<unknown[]>;
+  listSubclassesByParentClass: (parentClassId: string) => Promise<unknown[]>;
+  create: (collection: string, data: unknown) => Promise<unknown>;
+  update: (collection: string, id: string, patch: unknown) => Promise<unknown>;
+  exportData: () => Promise<{ canceled: boolean; filePath?: string }>;
+  importData: () => Promise<{ canceled: boolean; filePath?: string; importedCount?: number }>;
 }
 
-export const apiClient = { request };
+declare global {
+  interface Window {
+    daggerheart?: DaggerheartBridge;
+  }
+}
+
+function bridge(): DaggerheartBridge {
+  if (!window.daggerheart) {
+    throw new Error(
+      'This app needs to run inside the Electron shell, not a plain browser tab — use "npm run electron:dev".'
+    );
+  }
+  return window.daggerheart;
+}
+
+// Electron's ipcMain.handle wraps a thrown Error's message with boilerplate
+// like `Error invoking remote method 'store:create': Error: <message>` —
+// strip that so the UI shows the same clean message a caller wrote.
+async function unwrap<T>(promise: Promise<T>): Promise<T> {
+  try {
+    return await promise;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
+  }
+}
+
+export const apiClient = {
+  list: <T>(collection: string) => unwrap(bridge().list(collection)) as Promise<T[]>,
+  listSubclassesByParentClass: <T>(parentClassId: string) =>
+    unwrap(bridge().listSubclassesByParentClass(parentClassId)) as Promise<T[]>,
+  create: <T>(collection: string, data: unknown) => unwrap(bridge().create(collection, data)) as Promise<T>,
+  update: <T>(collection: string, id: string, patch: unknown) =>
+    unwrap(bridge().update(collection, id, patch)) as Promise<T>,
+  exportData: () => unwrap(bridge().exportData()),
+  importData: () => unwrap(bridge().importData()),
+};

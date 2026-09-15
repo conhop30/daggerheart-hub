@@ -9,77 +9,68 @@ under-explained.
 ## Layout
 
 ```
-server/           Spring Boot backend (Java 21, Spring Modulith, SQLite)
-apps/desktop/     Electron + React + TypeScript frontend
+apps/desktop/electron/  Electron main process — the local JSON data layer
+apps/desktop/seed/      Core Set flavor text (Domains, Classes), loaded on first run
+apps/desktop/src/       React + TypeScript frontend
 ```
+
+There used to be a `server/` (Spring Boot + SQLite). It's gone — no backend
+process exists anymore, on desktop or otherwise. See "Architecture" below.
+
+## Architecture
+
+This was originally built as Electron talking to a local Spring Boot backend
+over HTTP. That's been dropped in favor of a local-first model with no
+backend process at all, because a future mobile (React Native) client can't
+embed a JVM the way Electron could. See `daggerheart-hub-spec.md` Section 6
+for the full reasoning.
+
+**How it actually works now:** `apps/desktop/electron/main.js` owns a single
+JSON file on disk (`~/.daggerheart-hub/data.json`) as the entire database —
+`electron/store.js` has the CRUD + validation logic (the direct replacement
+for the deleted Spring services, same rules, ported from git history), and
+`electron/preload.js` exposes it to the renderer as `window.daggerheart` over
+IPC. `src/api/client.ts` calls that bridge instead of `fetch`. On first run,
+the store seeds itself from `apps/desktop/seed/core-content.json` (the Core
+Set's 9 Domains and 9 Classes).
+
+**Export/Import** (Home page) is the substitute for live sync: Export writes
+the whole store to a JSON file via a native save dialog; Import reads one
+back and upserts by id. No conflict resolution — last-imported-wins, by
+design, not as a placeholder for something smarter later.
 
 ## What's actually built vs. stubbed
 
-**Built, end to end:** the `gameset` module — entity, repository, service,
-controller, Flyway migration seeding Core and Hope and Fear, an
-`@ApplicationModuleTest`, and a frontend `App.tsx` that calls it as a live
-wiring check. This is the reference pattern — copy its shape for every
-other module.
+**Built:** the full local data layer (Electron main process, JSON store,
+preload bridge, validation, seeding) for GameSets, Domains, HeroClasses, and
+Subclasses; Export/Import; the Electron dev workflow (`npm run electron:dev`
+launches Vite and Electron together) and a base `electron-builder` config.
+On the UI side: Home page, the Create panel's full cascading chip/banner
+flow with working transitions, Class/Subclass creation and editing forms,
+and a Classes gallery with a Class/Subclass detail spread.
 
-**Stubbed:** every other module (`heroclass`, `subclass`, `domain`,
-`adversary`, `environment`, `equipment`, `heritage`, `optionalmechanics`)
-exists only as a `package-info.java` establishing its module boundary.
-No entities yet.
-
-**Not started:** the real home screen and Create-panel UI from the
-mockups (App.tsx is a placeholder), Electron packaging/jar-launching,
-electron-builder config, CI, and anything under "deliberately deferred"
-in the spec (Sheet, printable character sheet export).
+**Not built:** Adversary, Environment, Equipment, Heritage, and Optional
+Mechanics are still UI stubs — the Create panel says so when you pick one.
+`App.tsx`'s routing is an explicit placeholder (flagged in its own code
+comment) for the real single-page navigation the spec describes. No
+automated tests exist yet (Vitest/RTL/Playwright, per the spec).
 
 ## Running it
 
-This was scaffolded in an environment with no access to Maven Central or
-npm outside a fixed allowlist, so **none of this has actually been
-compiled or run yet.** Expect to fix at least a few dependency-version or
-typo issues on the first attempt — that's normal for a from-scratch
-scaffold, not a sign something is deeply wrong.
-
-Backend:
-```
-cd server
-mvn spring-boot:run
-```
-Should start on `localhost:8787` and create `~/.daggerheart-hub/data.db`
-on first run via the Flyway migration.
-
-Frontend:
 ```
 cd apps/desktop
 npm install
-npm run dev
+npm run electron:dev
 ```
-Opens on `localhost:5173`. With the backend running, it should list "Core"
-and "Hope and Fear" — that confirms the full chain (SQLite → Spring Boot →
-REST → React) is actually wired correctly.
+This starts the Vite dev server and opens the real Electron window against
+it — this is the actual app now, not a browser preview. A plain `npm run
+dev` in a browser tab still works for quick UI iteration, but any screen
+that touches data will show "This app needs to run inside the Electron
+shell," since `window.daggerheart` only exists inside Electron.
 
-Electron itself isn't wired to launch both automatically yet — for now,
-run the two commands above in separate terminals, then separately run
-`npm run electron:dev` to open a native window pointed at the dev server.
+Your data lives at `~/.daggerheart-hub/data.json` — delete it to reset to a
+fresh seeded state.
 
-## Adding the next module
-
-Using `gameset` as the template, for e.g. `heroclass`:
-1. Write the JPA entity (`HeroClass.java`) in `heroclass/`.
-2. Add a package-private `HeroClassRepository`.
-3. Add a `HeroClassService` — this is the only thing other modules should
-   ever call.
-4. Add a `HeroClassController` under `/api/hero-classes`.
-5. Add a Flyway migration (`V2__create_hero_class.sql` — next number after
-   the game_set migration).
-6. Add an `@ApplicationModuleTest` proving it works in isolation.
-7. Run `ModularityTests` — it should still pass; if it doesn't, something
-   reaches across a module boundary it shouldn't.
-
-## Known open items from the spec worth double-checking during setup
-
-- Flyway's SQLite support may need an extra community artifact depending
-  on the exact Flyway version resolved — check this first if migrations
-  fail to run.
-- Spring Modulith and Spring Boot Parent versions in `pom.xml` are
-  believed current but unverified — check for newer releases before
-  building.
+**Packaging a real installer** (`npm run electron:build`, via
+electron-builder) is configured in `package.json` but hasn't been run in
+this environment — try it before relying on it.

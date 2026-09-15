@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: var(--space-2);
   max-width: 520px;
+  animation: fadeInUp 280ms var(--ease);
 }
 
 .create-form__title {
@@ -27,6 +28,13 @@
   padding: 0.5rem 0.65rem;
   font-family: var(--font-body);
   font-size: 0.95rem;
+  transition: border-color 200ms var(--ease);
+}
+
+.create-form input:focus-visible,
+.create-form textarea:focus-visible,
+.create-form select:focus-visible {
+  border-color: var(--hope);
 }
 
 .create-form__color input {
@@ -58,6 +66,14 @@
   border: 1px solid var(--hairline);
   color: var(--muted);
   padding: 0.55rem 1rem;
+  transition:
+    border-color 200ms var(--ease),
+    color 200ms var(--ease);
+}
+
+.create-form__cancel:hover {
+  border-color: var(--muted);
+  color: var(--ink);
 }
 
 .create-form__submit {
@@ -66,6 +82,17 @@
   color: var(--void);
   font-weight: 600;
   padding: 0.55rem 1.25rem;
+  transition:
+    opacity 200ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+.create-form__submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.create-form__submit:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .create-form__empty {

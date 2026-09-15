@@ -21,10 +21,10 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
 
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [primaryDomainId, setPrimaryDomainId] = useState<number | ''>(
+  const [primaryDomainId, setPrimaryDomainId] = useState<string>(
     initial?.primaryDomainId ?? domains[0]?.id ?? ''
   );
-  const [secondaryDomainId, setSecondaryDomainId] = useState<number | ''>(
+  const [secondaryDomainId, setSecondaryDomainId] = useState<string>(
     initial?.secondaryDomainId ?? domains[1]?.id ?? ''
   );
   const [startingEvasion, setStartingEvasion] = useState(initial?.startingEvasion?.toString() ?? '');
@@ -32,7 +32,7 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
   const [classItems, setClassItems] = useState(initial?.classItems ?? '');
   const [hopeFeature, setHopeFeature] = useState(initial?.hopeFeature ?? '');
   const [classFeatures, setClassFeatures] = useState<Feature[]>(initial?.classFeatures ?? []);
-  const [gameSetId, setGameSetId] = useState<number | ''>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,7 +92,7 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
       <div className="create-form__row">
         <label>
           Primary Domain
-          <select value={primaryDomainId} onChange={(e) => setPrimaryDomainId(Number(e.target.value))}>
+          <select value={primaryDomainId} onChange={(e) => setPrimaryDomainId(e.target.value)}>
             {domains.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -102,7 +102,7 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
         </label>
         <label>
           Secondary Domain
-          <select value={secondaryDomainId} onChange={(e) => setSecondaryDomainId(Number(e.target.value))}>
+          <select value={secondaryDomainId} onChange={(e) => setSecondaryDomainId(e.target.value)}>
             {domains.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -132,7 +132,7 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
       <FeatureListEditor label="Class Features" features={classFeatures} onChange={setClassFeatures} />
       <label>
         Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(Number(e.target.value))}>
+        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
           {gameSets.map((gs) => (
             <option key={gs.id} value={gs.id}>
               {gs.name}

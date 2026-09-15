@@ -1,15 +1,10 @@
-# Java / Maven
-target/
-*.class
-
 # Node
 node_modules/
 dist/
 dist-electron/
+release/
 
-# Local SQLite data
-*.db
-*.db-journal
+# Local data store (per-device JSON, not shared via git — see README)
 .daggerheart-hub/
 
 # Editor / OS

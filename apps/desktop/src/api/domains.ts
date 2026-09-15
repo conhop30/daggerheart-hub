@@ -1,13 +1,12 @@
 import { apiClient } from './client';
 
-// Mirrors DomainResponse on the backend.
 export interface Domain {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   colorHex: string | null;
   iconPath: string | null;
-  gameSetId: number;
+  gameSetId: string;
 }
 
 export interface CreateDomainRequest {
@@ -15,15 +14,19 @@ export interface CreateDomainRequest {
   description?: string;
   colorHex?: string;
   iconPath?: string;
-  gameSetId: number;
+  gameSetId: string;
+}
+
+export interface UpdateDomainRequest {
+  name?: string;
+  description?: string;
+  colorHex?: string;
+  iconPath?: string;
+  gameSetId?: string;
 }
 
 export const domainsApi = {
-  list: () => apiClient.request<Domain[]>('/domains'),
-  get: (id: number) => apiClient.request<Domain>(`/domains/${id}`),
-  create: (body: CreateDomainRequest) =>
-    apiClient.request<Domain>('/domains', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
+  list: () => apiClient.list<Domain>('domains'),
+  create: (body: CreateDomainRequest) => apiClient.create<Domain>('domains', body),
+  update: (id: string, body: UpdateDomainRequest) => apiClient.update<Domain>('domains', id, body),
 };

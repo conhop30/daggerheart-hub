@@ -103,6 +103,21 @@ button {
   outline-offset: 2px;
 }
 
+/* Shared entrance animation for content that swaps in place (a new form
+   step, a newly-active tab body, etc.) — one motion signature reused
+   anywhere content replaces content, instead of each component inventing
+   its own. */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

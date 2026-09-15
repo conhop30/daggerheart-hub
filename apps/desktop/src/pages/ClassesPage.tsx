@@ -15,7 +15,7 @@ export default function ClassesPage({ onBack }: ClassesPageProps) {
   const [heroClasses, setHeroClasses] = useState<HeroClass[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [gameSets, setGameSets] = useState<GameSet[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [editingClass, setEditingClass] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

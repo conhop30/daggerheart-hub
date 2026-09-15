@@ -16,6 +16,11 @@
   padding: var(--space-3);
   color: var(--ink);
   text-align: left;
+  transition: background 200ms var(--ease);
+}
+
+.create-panel__toggle:hover {
+  background: var(--panel-raised);
 }
 
 .create-panel__toggle-label {
@@ -28,6 +33,31 @@
   font-size: 0.9rem;
 }
 
+/* Accordion: the panel body's height is measured (via ResizeObserver, see
+   CreatePanel.tsx) and animated explicitly, rather than relying on the
+   grid-template-rows 0fr/1fr trick — that trick only interpolates when the
+   *value* changes, so it animates open/close fine but silently snaps when
+   the content itself resizes (e.g. switching from the short chip row to a
+   tall form) because the row stays "1fr" throughout. An explicit pixel
+   height animates both cases through the same transition. `visibility` is
+   toggled in lockstep (delayed on close, instant on open) so the collapsed
+   content drops out of tab order and the accessibility tree without being
+   removed from the DOM mid-animation. */
+.create-panel__body-wrapper {
+  overflow: hidden;
+  visibility: hidden;
+  transition:
+    height 380ms var(--ease),
+    visibility 0s linear 380ms;
+}
+
+.create-panel__body-wrapper--open {
+  visibility: visible;
+  transition:
+    height 380ms var(--ease),
+    visibility 0s linear 0s;
+}
+
 .create-panel__body {
   padding: 0 var(--space-3) var(--space-3);
 }
@@ -38,6 +68,7 @@
   color: var(--muted);
   font-size: 0.85rem;
   padding: 0 0 var(--space-2);
+  transition: color 200ms var(--ease);
 }
 
 .create-panel__back:hover {
@@ -51,6 +82,13 @@
   gap: var(--space-1);
 }
 
+/* Every stage (chip list, banner row, unavailable notice) fades and lifts
+   in on mount — the same entrance signature used everywhere else content
+   swaps in place, so stepping through the Create flow never just "snaps". */
+.create-panel__stage {
+  animation: fadeInUp 280ms var(--ease);
+}
+
 .chip,
 .banner {
   background: var(--void);
@@ -58,11 +96,15 @@
   color: var(--ink);
   padding: 0.5rem 0.9rem;
   font-size: 0.9rem;
+  transition:
+    border-color 200ms var(--ease),
+    background 200ms var(--ease);
 }
 
 .chip:hover,
 .banner:hover {
   border-color: var(--hope);
+  background: var(--panel-raised);
 }
 
 .banner {

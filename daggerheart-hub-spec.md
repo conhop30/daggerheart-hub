@@ -1,6 +1,10 @@
 # Daggerheart homebrew hub — working spec
 
-Status: locked. All open items resolved — this is the baseline for scaffolding.
+Status: locked, except Section 6 (Architecture), amended 2026-09-14 — the
+original Spring Boot/hosted-server design was dropped in favor of a
+local-first, no-server model so the same content can run on desktop and a
+future mobile client without either depending on a backend process. Every
+other section is unaffected.
 
 ## 1. Vision
 
@@ -181,27 +185,25 @@ Intentionally set aside for now; it was creating friction against the rest of th
 
 ## 6. Architecture
 
+No backend process, on either target platform — a hosted or embedded server
+was dropped specifically because a future React Native mobile client can't
+embed one the way Electron could, and running two divergent data layers (one
+server-backed, one not) for the two platforms was worse than running neither.
 Layered, top to bottom:
-- **Presentation** — React + TypeScript, talks only to the API layer, never directly to modules or the database. Edit mode and Display mode are two rendering paths over the same data contract.
-- **Internal API layer** — Spring Boot, exposing a consistent contract (list/get/create/update/delete/validate) per module. Runs locally for now, packaged as an embedded jar that Electron launches as a background process; the frontend calls it over `localhost`. Designed so the same contract works unchanged if it's ever pointed at a hosted instance later.
-- **Module registry** — Spring Modulith. Each content type is its own module with enforced boundaries; modules declare what they need from each other and degrade gracefully if a dependency is absent, instead of crashing.
-- **Domain modules** — one per content type (Classes, Subclasses, Domains, Adversaries, Environments, Equipment, Heritage, Optional Mechanics), each owning its own schema, creator UI, and display renderer.
-- **Data layer** — SQLite via Spring Data JPA/Hibernate as the real datastore. Each module owns its own tables; cross-module access happens through repository interfaces, never raw cross-module joins.
+- **Presentation** — React + TypeScript, talks only to the data layer below, never touches file I/O directly. Edit mode and Display mode are two rendering paths over the same data contract.
+- **Data layer** — TypeScript, one module per content type (Classes, Subclasses, Domains, Adversaries, Environments, Equipment, Heritage, Optional Mechanics), each owning validation and CRUD-in-memory operations over its own slice of the store. This is where the business rules that used to live in Spring services now live (e.g. "a Class needs two distinct Domains," "a Subclass needs a valid ParentClass"), and it's shared code — the same module is imported by the desktop app today and would be imported by a future mobile client, so a rule only has to be written once.
+- **Local store** — a single JSON document per device holding every content type, keyed by client-generated UUIDs (not server-assigned auto-increment ids, since there's no server to assign them). On desktop, Electron's main process reads/writes this file on disk and exposes it to the renderer through a preload bridge, since the renderer can't touch the filesystem directly.
+- **Cross-device movement** — manual JSON export/import, not live sync. Exporting copies (all or part of) the local store to a file; importing merges that file into another device's store. This is a deliberate, simpler substitute for real-time sync, not a placeholder for it — see the milestone note below for what's different if that ever changes.
 
 **Testing**
-- JUnit 5 + Mockito for pure logic.
-- `@DataJpaTest` against real SQLite for repository/query correctness.
-- `@ApplicationModuleTest` (Spring Modulith) to prove modules survive in isolation — the direct test of "can this be unplugged."
-- `@SpringBootTest` + MockMvc for full-stack integration.
-- Migration tests (Flyway or Liquibase) against empty and populated databases.
-- Frontend: Vitest + React Testing Library, plus axe-core for automated contrast/accessibility checks.
-- Playwright driving the real packaged Electron build for end-to-end flows.
-- H2 in-memory reserved specifically for automated tests (the conventional Spring use), not for real persisted data.
+- Vitest for the data layer's validation and CRUD logic — this is the direct equivalent of the old `@ApplicationModuleTest` isolation proof: each content module's tests run against nothing but that module.
+- Vitest + React Testing Library for components, plus axe-core for automated contrast/accessibility checks.
+- Playwright driving the real packaged Electron build for end-to-end flows, including a full export-on-one-store/import-into-another round trip.
 - CI via GitHub Actions from day one.
 
-**Packaging:** electron-builder for the shell; `jpackage`/`jlink` to bundle the JRE so the installer is single-click with no separate Java install required.
+**Packaging:** electron-builder for the shell. No JRE bundling step — dropped along with the Java backend.
 
-**Deferred milestone — cross-device sync:** not being built now. When it happens: Spring Boot becomes a hosted service backed by Postgres as source of truth; desktop and a future React Native mobile client each keep a local SQLite cache and sync opportunistically, with conflict resolution via timestamp/version rather than requiring constant connectivity.
+**Possible future milestone — live sync:** not being built now, and no longer the assumed end state the way it was when a hosted Spring Boot service was planned. If real-time, always-merging sync across devices is ever wanted, it would need a hosted service to broker conflicts plus per-record version/updated-at metadata — the UUID-keyed local store this section describes is a reasonable foundation for that, but building it is a distinct, larger effort from JSON export/import and isn't assumed to happen.
 
 ## 7. Deliberately deferred, not forgotten
 

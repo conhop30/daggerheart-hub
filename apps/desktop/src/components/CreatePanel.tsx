@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { GameSet } from '../api/gameSets';
 import type { Domain } from '../api/domains';
@@ -22,7 +22,7 @@ type Stage =
   | { kind: 'subclass-banners' }
   | { kind: 'equipment-banners' }
   | { kind: 'form'; type: FlatType }
-  | { kind: 'subclass-form'; parentClassId: number; parentClassName: string }
+  | { kind: 'subclass-form'; parentClassId: string; parentClassName: string }
   | { kind: 'unavailable'; label: string; back: 'chips' | 'equipment-banners' };
 
 interface CreatePanelProps {
@@ -44,6 +44,24 @@ export default function CreatePanel({
 }: CreatePanelProps) {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'chips' });
+
+  // Tracks the content's natural height so opening/closing and switching
+  // between differently-sized stages (a short chip row vs. a tall form) can
+  // animate as a real height transition instead of a hard snap. Kept
+  // up to date even while closed, so the very first open already knows the
+  // right target height instead of animating from a stale one.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setContentHeight(entry.target.scrollHeight);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   function pickFlat(type: FlatType) {
     setStage(
@@ -72,8 +90,12 @@ export default function CreatePanel({
         </span>
       </button>
 
-      {open && (
-        <div className="create-panel__body">
+      <div
+        className={`create-panel__body-wrapper${open ? ' create-panel__body-wrapper--open' : ''}`}
+        style={{ height: open ? contentHeight : 0 }}
+        aria-hidden={!open}
+      >
+        <div className="create-panel__body" ref={contentRef}>
           {stage.kind !== 'chips' && (
             <button type="button" className="create-panel__back" onClick={() => setStage({ kind: 'chips' })}>
               &larr; Back
@@ -81,7 +103,7 @@ export default function CreatePanel({
           )}
 
           {stage.kind === 'chips' && (
-            <div className="create-panel__chips">
+            <div className="create-panel__chips create-panel__stage" key="chips">
               {FLAT_TYPES.map((type) => (
                 <button key={type} type="button" className="chip" onClick={() => pickFlat(type)}>
                   {type}
@@ -97,7 +119,7 @@ export default function CreatePanel({
           )}
 
           {stage.kind === 'subclass-banners' && (
-            <div className="create-panel__banners">
+            <div className="create-panel__banners create-panel__stage" key="subclass-banners">
               <p className="create-panel__prompt">Attach the Subclass to which Class?</p>
               {heroClasses.length === 0 && (
                 <p className="create-panel__empty">No Classes exist yet — create one first.</p>
@@ -116,7 +138,7 @@ export default function CreatePanel({
           )}
 
           {stage.kind === 'equipment-banners' && (
-            <div className="create-panel__banners">
+            <div className="create-panel__banners create-panel__stage" key="equipment-banners">
               {EQUIPMENT_BANNERS.map((banner) => (
                 <button
                   key={banner}
@@ -131,7 +153,7 @@ export default function CreatePanel({
           )}
 
           {stage.kind === 'unavailable' && (
-            <div className="create-panel__unavailable">
+            <div className="create-panel__unavailable create-panel__stage" key="unavailable">
               <p>
                 <strong>{stage.label}</strong> isn&rsquo;t built on the backend yet — that module is still an
                 empty package stub.
@@ -183,7 +205,7 @@ export default function CreatePanel({
             <p className="create-panel__loading">Loading Game Sets, Domains, and Classes&hellip;</p>
           )}
         </div>
-      )}
+      </div>
     </section>
   );
 }
@@ -204,7 +226,7 @@ function DomainForm({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [colorHex, setColorHex] = useState('#A97815');
-  const [gameSetId, setGameSetId] = useState<number | ''>(gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -240,7 +262,7 @@ function DomainForm({
       </label>
       <label>
         Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(Number(e.target.value))}>
+        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
           {gameSets.map((gs) => (
             <option key={gs.id} value={gs.id}>
               {gs.name}

@@ -15,7 +15,7 @@ import './forms.css';
 
 interface SubclassFormProps {
   gameSets: GameSet[];
-  parentClassId: number;
+  parentClassId: string;
   parentClassName: string;
   /** Pass an existing Subclass to edit it; omit to create a new one. */
   initial?: Subclass | null;
@@ -55,7 +55,7 @@ export default function SubclassForm({
     initial?.specializationFeatures ?? []
   );
   const [masteryFeatures, setMasteryFeatures] = useState<Feature[]>(initial?.masteryFeatures ?? []);
-  const [gameSetId, setGameSetId] = useState<number | ''>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,7 +114,7 @@ export default function SubclassForm({
       <FeatureListEditor label="Mastery Features" features={masteryFeatures} onChange={setMasteryFeatures} />
       <label>
         Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(Number(e.target.value))}>
+        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
           {gameSets.map((gs) => (
             <option key={gs.id} value={gs.id}>
               {gs.name}

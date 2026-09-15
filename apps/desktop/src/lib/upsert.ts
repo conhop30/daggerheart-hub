@@ -11,7 +11,7 @@
  *      up listed twice in the UI (with a duplicate React key) even though
  *      the database itself is correct.
  */
-export function upsertById<T extends { id: number }>(list: T[], item: T): T[] {
+export function upsertById<T extends { id: string }>(list: T[], item: T): T[] {
   const index = list.findIndex((existing) => existing.id === item.id);
   if (index === -1) {
     return [...list, item];
