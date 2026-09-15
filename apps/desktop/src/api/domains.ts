@@ -29,4 +29,5 @@ export const domainsApi = {
   list: () => apiClient.list<Domain>('domains'),
   create: (body: CreateDomainRequest) => apiClient.create<Domain>('domains', body),
   update: (id: string, body: UpdateDomainRequest) => apiClient.update<Domain>('domains', id, body),
+  remove: (id: string) => apiClient.remove('domains', id),
 };

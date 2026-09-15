@@ -36,4 +36,5 @@ export const weaponsApi = {
   list: () => apiClient.list<Weapon>('weapons'),
   create: (body: CreateWeaponRequest) => apiClient.create<Weapon>('weapons', body),
   update: (id: string, body: UpdateWeaponRequest) => apiClient.update<Weapon>('weapons', id, body),
+  remove: (id: string) => apiClient.remove('weapons', id),
 };

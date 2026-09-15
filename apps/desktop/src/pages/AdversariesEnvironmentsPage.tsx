@@ -1,14 +1,20 @@
+import { useState } from 'react';
 import { adversariesApi, type Adversary } from '../api/adversaries';
 import { environmentsApi, type Environment } from '../api/environments';
+import { gameSetsApi } from '../api/gameSets';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, ContentCardList, MetaChip, FeatureLines, StringLines } from '../components/ContentCard';
+import AdversaryForm from '../components/AdversaryForm';
+import EnvironmentForm from '../components/EnvironmentForm';
 import './BrowsePage.css';
 
-function AdversaryCard({ a }: { a: Adversary }) {
+function AdversaryCard({ a, onEdit, onDelete }: { a: Adversary; onEdit: () => void; onDelete: () => void }) {
   return (
     <ContentCard
       title={a.name}
+      onEdit={onEdit}
+      onDelete={onDelete}
       meta={
         <>
           <MetaChip label="Tier" value={a.tier} />
@@ -54,10 +60,12 @@ function AdversaryCard({ a }: { a: Adversary }) {
   );
 }
 
-function EnvironmentCard({ e }: { e: Environment }) {
+function EnvironmentCard({ e, onEdit, onDelete }: { e: Environment; onEdit: () => void; onDelete: () => void }) {
   return (
     <ContentCard
       title={e.name}
+      onEdit={onEdit}
+      onDelete={onDelete}
       meta={
         <>
           <MetaChip label="Tier" value={e.tier} />
@@ -78,6 +86,29 @@ function EnvironmentCard({ e }: { e: Environment }) {
 export default function AdversariesEnvironmentsPage() {
   const adversaries = useApiList(adversariesApi.list);
   const environments = useApiList(environmentsApi.list);
+  const gameSets = useApiList(gameSetsApi.list);
+  const [editingAdversaryId, setEditingAdversaryId] = useState<string | null>(null);
+  const [editingEnvironmentId, setEditingEnvironmentId] = useState<string | null>(null);
+
+  async function handleDeleteAdversary(a: Adversary) {
+    if (!window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
+    try {
+      await adversariesApi.remove(a.id);
+      adversaries.remove(a.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Adversary.');
+    }
+  }
+
+  async function handleDeleteEnvironment(e: Environment) {
+    if (!window.confirm(`Delete "${e.name}"? This can't be undone.`)) return;
+    try {
+      await environmentsApi.remove(e.id);
+      environments.remove(e.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Environment.');
+    }
+  }
 
   return (
     <div className="browse-page">
@@ -92,7 +123,25 @@ export default function AdversariesEnvironmentsPage() {
             items={adversaries.items}
             emptyMessage="No Adversaries yet — create one from Home first."
             getKey={(a) => a.id}
-            renderItem={(a) => <AdversaryCard a={a} />}
+            renderItem={(a) =>
+              editingAdversaryId === a.id ? (
+                <AdversaryForm
+                  gameSets={gameSets.items}
+                  initial={a}
+                  onSaved={(saved) => {
+                    adversaries.upsert(saved);
+                    setEditingAdversaryId(null);
+                  }}
+                  onCancel={() => setEditingAdversaryId(null)}
+                />
+              ) : (
+                <AdversaryCard
+                  a={a}
+                  onEdit={() => setEditingAdversaryId(a.id)}
+                  onDelete={() => handleDeleteAdversary(a)}
+                />
+              )
+            }
           />
         )}
       </div>
@@ -106,7 +155,25 @@ export default function AdversariesEnvironmentsPage() {
             items={environments.items}
             emptyMessage="No Environments yet — create one from Home first."
             getKey={(e) => e.id}
-            renderItem={(e) => <EnvironmentCard e={e} />}
+            renderItem={(e) =>
+              editingEnvironmentId === e.id ? (
+                <EnvironmentForm
+                  gameSets={gameSets.items}
+                  initial={e}
+                  onSaved={(saved) => {
+                    environments.upsert(saved);
+                    setEditingEnvironmentId(null);
+                  }}
+                  onCancel={() => setEditingEnvironmentId(null)}
+                />
+              ) : (
+                <EnvironmentCard
+                  e={e}
+                  onEdit={() => setEditingEnvironmentId(e.id)}
+                  onDelete={() => handleDeleteEnvironment(e)}
+                />
+              )
+            }
           />
         )}
       </div>

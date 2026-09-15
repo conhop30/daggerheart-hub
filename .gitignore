@@ -4,6 +4,12 @@ dist/
 dist-electron/
 release/
 
+# Test output
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
 # Local data store (per-device JSON, not shared via git — see README)
 .daggerheart-hub/
 

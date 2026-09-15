@@ -8,6 +8,7 @@ export interface DaggerheartBridge {
   listSubclassesByParentClass: (parentClassId: string) => Promise<unknown[]>;
   create: (collection: string, data: unknown) => Promise<unknown>;
   update: (collection: string, id: string, patch: unknown) => Promise<unknown>;
+  remove: (collection: string, id: string) => Promise<void>;
   exportData: () => Promise<{ canceled: boolean; filePath?: string }>;
   importData: () => Promise<{ canceled: boolean; filePath?: string; importedCount?: number }>;
 }
@@ -46,6 +47,7 @@ export const apiClient = {
   create: <T>(collection: string, data: unknown) => unwrap(bridge().create(collection, data)) as Promise<T>,
   update: <T>(collection: string, id: string, patch: unknown) =>
     unwrap(bridge().update(collection, id, patch)) as Promise<T>,
+  remove: (collection: string, id: string) => unwrap(bridge().remove(collection, id)),
   exportData: () => unwrap(bridge().exportData()),
   importData: () => unwrap(bridge().importData()),
 };

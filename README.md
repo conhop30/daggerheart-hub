@@ -43,24 +43,38 @@ design, not as a placeholder for something smarter later.
 
 **Built:** every content type in the spec — Class, Subclass, Domain,
 Adversary, Environment, Weapon (Primary/Secondary), Armor, Loot, Consumable,
-Community, Ancestry, Transformation — has a working create form reachable
-from the Home Create panel, backed by the real local data layer (validation
-included, e.g. a Secondary weapon can't be Two-Handed). Every content type
-also has a place to actually see what you made: a persistent top nav bar
-(`AppShell`) reaches Classes' full gallery/detail view or one of five
-simpler "browse" pages (Domains; Adversaries & Environments; Heritage;
-Equipment; Optional Mechanics) — minimal list/card views, not the fully
-designed galleries the spec describes, but real enough that nothing is
-write-only anymore. Export/Import, the Electron dev workflow, and a working
-`electron-builder` installer build (see the gotcha below) round it out.
+Community, Ancestry, Transformation — has working create, edit, and delete,
+backed by the real local data layer (validation included, e.g. a Secondary
+weapon can't be Two-Handed). Every content type also has a place to
+actually see what you made: a persistent top nav bar (`AppShell`) reaches
+Classes' full gallery/detail view or one of five simpler "browse" pages
+(Domains; Adversaries & Environments; Heritage; Equipment; Optional
+Mechanics) — minimal list/card views, not the fully designed galleries the
+spec describes, but real enough that nothing is write-only anymore.
+Export/Import, the Electron dev workflow, a working `electron-builder`
+installer build (see the gotcha below), and a real automated test suite
+round it out.
 
-**Not built:** editing and deleting only exist for Class and Subclass — the
-other ten content types are create-and-view only for now. Domain, Heritage,
-and Optional Mechanics don't have the fully designed galleries the spec
-describes (filters, sort, etc.) — just plain lists. No automated tests exist
-yet (Vitest/RTL/Playwright, per the spec, though Playwright was used
-ad hoc during development to verify each milestone against the real
-Electron app).
+Editing and deleting now work for all twelve content types (Class/Subclass
+had it already; the other ten got Edit/Delete buttons on their browse-page
+cards, backed by the same store validation as create). Deleting a Domain
+that a HeroClass still references is a known, deliberate gap — same
+limitation the original Spring services had — the UI degrades gracefully
+(falls back to a placeholder color) rather than crashing; see the comment
+on `removeDomain` in `electron/store.js`.
+
+There's also a real automated test suite now: `npm test` (Vitest) covers
+`electron/store.js`'s validation and CRUD rules directly — the idempotent-
+by-name creates, the rename-collision skip, the domain-pair and weapon-
+burden validation, export/import merge semantics, and first-run seeding —
+without touching your real `~/.daggerheart-hub`. `npm run test:e2e`
+(Playwright) drives the actual packaged-shape app (real Electron window,
+real IPC, a throwaway store directory per test) through navigation, a full
+create → edit → delete round trip, and export.
+
+**Not built:** Domain, Heritage, and Optional Mechanics don't have the
+fully designed galleries the spec describes (filters, sort, etc.) — just
+plain lists.
 
 ## Running it
 
@@ -77,6 +91,17 @@ shell," since `window.daggerheart` only exists inside Electron.
 
 Your data lives at `~/.daggerheart-hub/data.json` — delete it to reset to a
 fresh seeded state.
+
+## Testing
+
+```
+npm test          # Vitest — electron/store.js's rules, no Electron needed
+npm run test:e2e  # Playwright — drives the real Electron app end to end
+```
+Both are hermetic: `test` never touches `~/.daggerheart-hub` (each test gets
+a throwaway directory via the `DAGGERHEART_STORE_DIR` env var override), and
+`test:e2e` starts and stops its own Vite dev server automatically. Use `npm
+run test:watch` for Vitest's watch mode while iterating on `store.js`.
 
 ## Packaging a real installer
 

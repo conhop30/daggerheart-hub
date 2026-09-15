@@ -10,21 +10,25 @@ import './forms.css';
 
 interface EnvironmentFormProps {
   gameSets: GameSet[];
+  /** Pass an existing Environment to edit it; omit to create a new one. */
+  initial?: Environment | null;
   onSaved: (environment: Environment) => void;
   onCancel: () => void;
 }
 
-export default function EnvironmentForm({ gameSets, onSaved, onCancel }: EnvironmentFormProps) {
-  const [name, setName] = useState('');
-  const [tier, setTier] = useState('');
-  const [description, setDescription] = useState('');
-  const [impulses, setImpulses] = useState<string[]>([]);
-  const [difficulty, setDifficulty] = useState('');
-  const [potentialAdversaries, setPotentialAdversaries] = useState<string[]>([]);
-  const [passives, setPassives] = useState<Feature[]>([]);
-  const [actions, setActions] = useState<Feature[]>([]);
-  const [reactions, setReactions] = useState<Feature[]>([]);
-  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
+export default function EnvironmentForm({ gameSets, initial, onSaved, onCancel }: EnvironmentFormProps) {
+  const isEditing = initial != null;
+
+  const [name, setName] = useState(initial?.name ?? '');
+  const [tier, setTier] = useState(initial?.tier?.toString() ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [impulses, setImpulses] = useState<string[]>(initial?.impulses ?? []);
+  const [difficulty, setDifficulty] = useState(initial?.difficulty?.toString() ?? '');
+  const [potentialAdversaries, setPotentialAdversaries] = useState<string[]>(initial?.potentialAdversaries ?? []);
+  const [passives, setPassives] = useState<Feature[]>(initial?.features.passives ?? []);
+  const [actions, setActions] = useState<Feature[]>(initial?.features.actions ?? []);
+  const [reactions, setReactions] = useState<Feature[]>(initial?.features.reactions ?? []);
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,20 +40,23 @@ export default function EnvironmentForm({ gameSets, onSaved, onCancel }: Environ
     }
     setSubmitting(true);
     setError(null);
+    const body = {
+      name,
+      tier: tier ? Number(tier) : undefined,
+      description,
+      impulses,
+      difficulty: difficulty ? Number(difficulty) : undefined,
+      potentialAdversaries,
+      features: { passives, actions, reactions },
+      gameSetId,
+    };
     try {
-      const environment = await environmentsApi.create({
-        name,
-        tier: tier ? Number(tier) : undefined,
-        description,
-        impulses,
-        difficulty: difficulty ? Number(difficulty) : undefined,
-        potentialAdversaries,
-        features: { passives, actions, reactions },
-        gameSetId,
-      });
+      const environment = isEditing
+        ? await environmentsApi.update(initial!.id, body)
+        : await environmentsApi.create(body);
       onSaved(environment);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the Environment.');
+      setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the Environment.`);
     } finally {
       setSubmitting(false);
     }
@@ -57,7 +64,7 @@ export default function EnvironmentForm({ gameSets, onSaved, onCancel }: Environ
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New Environment</h3>
+      <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Environment'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <label>
         Description
@@ -93,7 +100,7 @@ export default function EnvironmentForm({ gameSets, onSaved, onCancel }: Environ
           Cancel
         </button>
         <button type="submit" className="create-form__submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Environment'}
+          {submitting ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Environment'}
         </button>
       </div>
     </form>

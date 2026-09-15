@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
 import type { GameSet } from '../api/gameSets';
 import type { Domain } from '../api/domains';
 import type { HeroClass } from '../api/heroClasses';
 import type { ContentKey } from '../api/contentKeys';
-import { domainsApi } from '../api/domains';
 import { adversariesApi } from '../api/adversaries';
 import { environmentsApi } from '../api/environments';
 import { weaponsApi, type WeaponSlot } from '../api/weapons';
@@ -14,9 +12,9 @@ import { consumablesApi } from '../api/consumables';
 import { communitiesApi } from '../api/communities';
 import { ancestriesApi } from '../api/ancestries';
 import { transformationsApi } from '../api/transformations';
-import TextField from './TextField';
 import ClassForm from './ClassForm';
 import SubclassForm from './SubclassForm';
+import DomainForm from './DomainForm';
 import AdversaryForm from './AdversaryForm';
 import EnvironmentForm from './EnvironmentForm';
 import WeaponForm from './WeaponForm';
@@ -194,7 +192,7 @@ export default function CreatePanel({
           {stage.kind === 'form' && stage.type === 'Domain' && (
             <DomainForm
               gameSets={gameSets}
-              onCreated={(domain) => {
+              onSaved={(domain) => {
                 onDomainCreated(domain);
                 reset();
               }}
@@ -242,6 +240,7 @@ export default function CreatePanel({
               submitLabel="Create Community"
               gameSets={gameSets}
               create={communitiesApi.create}
+              update={communitiesApi.update}
               onSaved={() => {
                 onContentCreated('communities');
                 reset();
@@ -256,6 +255,7 @@ export default function CreatePanel({
               submitLabel="Create Ancestry"
               gameSets={gameSets}
               create={ancestriesApi.create}
+              update={ancestriesApi.update}
               onSaved={() => {
                 onContentCreated('ancestries');
                 reset();
@@ -270,6 +270,7 @@ export default function CreatePanel({
               submitLabel="Create Transformation"
               gameSets={gameSets}
               create={transformationsApi.create}
+              update={transformationsApi.update}
               onSaved={() => {
                 onContentCreated('transformations');
                 reset();
@@ -317,6 +318,7 @@ export default function CreatePanel({
               submitLabel="Create Loot"
               gameSets={gameSets}
               create={lootApi.create}
+              update={lootApi.update}
               onSaved={() => {
                 onContentCreated('loot');
                 reset();
@@ -331,6 +333,7 @@ export default function CreatePanel({
               submitLabel="Create Consumable"
               gameSets={gameSets}
               create={consumablesApi.create}
+              update={consumablesApi.update}
               onSaved={() => {
                 onContentCreated('consumables');
                 reset();
@@ -345,78 +348,5 @@ export default function CreatePanel({
         </div>
       </div>
     </section>
-  );
-}
-
-// --- Domain form -----------------------------------------------------------
-// Stays local for now — Domain doesn't have an Edit flow yet, so there's no
-// second caller that would need this extracted the way Class/Subclass did.
-
-function DomainForm({
-  gameSets,
-  onCreated,
-  onCancel,
-}: {
-  gameSets: GameSet[];
-  onCreated: (domain: Domain) => void;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [colorHex, setColorHex] = useState('#A97815');
-  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!gameSetId) {
-      setError('Choose a Game Set.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const domain = await domainsApi.create({ name, description, colorHex, gameSetId });
-      onCreated(domain);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the Domain.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New Domain</h3>
-      <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
-      <label className="create-form__color">
-        Color
-        <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)} />
-      </label>
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {error && <p className="create-form__error">{error}</p>}
-      <div className="create-form__actions">
-        <button type="button" onClick={onCancel} className="create-form__cancel">
-          Cancel
-        </button>
-        <button type="submit" className="create-form__submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Domain'}
-        </button>
-      </div>
-    </form>
   );
 }

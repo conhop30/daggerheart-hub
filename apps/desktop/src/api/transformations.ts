@@ -23,4 +23,5 @@ export const transformationsApi = {
   create: (body: CreateTransformationRequest) => apiClient.create<Transformation>('transformations', body),
   update: (id: string, body: UpdateTransformationRequest) =>
     apiClient.update<Transformation>('transformations', id, body),
+  remove: (id: string) => apiClient.remove('transformations', id),
 };

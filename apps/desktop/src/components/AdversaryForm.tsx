@@ -13,6 +13,8 @@ import './forms.css';
 
 interface AdversaryFormProps {
   gameSets: GameSet[];
+  /** Pass an existing Adversary to edit it; omit to create a new one. */
+  initial?: Adversary | null;
   onSaved: (adversary: Adversary) => void;
   onCancel: () => void;
 }
@@ -20,24 +22,26 @@ interface AdversaryFormProps {
 const ATTACK_RANGES: AttackRange[] = ['MELEE', 'VERY_CLOSE', 'CLOSE', 'FAR', 'VERY_FAR', 'OUT_OF_RANGE'];
 const ATTACK_TYPES: AttackType[] = ['PHYSICAL', 'MAGICAL', 'DIRECT_PHYSICAL', 'DIRECT_MAGICAL'];
 
-export default function AdversaryForm({ gameSets, onSaved, onCancel }: AdversaryFormProps) {
-  const [name, setName] = useState('');
-  const [tier, setTier] = useState('');
-  const [description, setDescription] = useState('');
-  const [motivesAndTactics, setMotivesAndTactics] = useState<string[]>([]);
-  const [difficulty, setDifficulty] = useState('');
-  const [thresholds, setThresholds] = useState<Thresholds>({ major: null, severe: null });
-  const [hp, setHp] = useState('');
-  const [stress, setStress] = useState('');
-  const [attackModifier, setAttackModifier] = useState('');
-  const [attackDescription, setAttackDescription] = useState('');
-  const [attackRange, setAttackRange] = useState<AttackRange | ''>('');
-  const [attackType, setAttackType] = useState<AttackType | ''>('');
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [passives, setPassives] = useState<Feature[]>([]);
-  const [actions, setActions] = useState<Feature[]>([]);
-  const [reactions, setReactions] = useState<Feature[]>([]);
-  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
+export default function AdversaryForm({ gameSets, initial, onSaved, onCancel }: AdversaryFormProps) {
+  const isEditing = initial != null;
+
+  const [name, setName] = useState(initial?.name ?? '');
+  const [tier, setTier] = useState(initial?.tier?.toString() ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [motivesAndTactics, setMotivesAndTactics] = useState<string[]>(initial?.motivesAndTactics ?? []);
+  const [difficulty, setDifficulty] = useState(initial?.difficulty?.toString() ?? '');
+  const [thresholds, setThresholds] = useState<Thresholds>(initial?.thresholds ?? { major: null, severe: null });
+  const [hp, setHp] = useState(initial?.hp?.toString() ?? '');
+  const [stress, setStress] = useState(initial?.stress?.toString() ?? '');
+  const [attackModifier, setAttackModifier] = useState(initial?.attackModifier?.toString() ?? '');
+  const [attackDescription, setAttackDescription] = useState(initial?.attackDescription ?? '');
+  const [attackRange, setAttackRange] = useState<AttackRange | ''>(initial?.attackRange ?? '');
+  const [attackType, setAttackType] = useState<AttackType | ''>(initial?.attackType ?? '');
+  const [experiences, setExperiences] = useState<Experience[]>(initial?.experiences ?? []);
+  const [passives, setPassives] = useState<Feature[]>(initial?.features.passives ?? []);
+  const [actions, setActions] = useState<Feature[]>(initial?.features.actions ?? []);
+  const [reactions, setReactions] = useState<Feature[]>(initial?.features.reactions ?? []);
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,27 +53,28 @@ export default function AdversaryForm({ gameSets, onSaved, onCancel }: Adversary
     }
     setSubmitting(true);
     setError(null);
+    const body = {
+      name,
+      tier: tier ? Number(tier) : undefined,
+      description,
+      motivesAndTactics,
+      difficulty: difficulty ? Number(difficulty) : undefined,
+      thresholds,
+      hp: hp ? Number(hp) : undefined,
+      stress: stress ? Number(stress) : undefined,
+      attackModifier: attackModifier ? Number(attackModifier) : undefined,
+      attackDescription,
+      attackRange: attackRange || null,
+      attackType: attackType || null,
+      experiences,
+      features: { passives, actions, reactions },
+      gameSetId,
+    };
     try {
-      const adversary = await adversariesApi.create({
-        name,
-        tier: tier ? Number(tier) : undefined,
-        description,
-        motivesAndTactics,
-        difficulty: difficulty ? Number(difficulty) : undefined,
-        thresholds,
-        hp: hp ? Number(hp) : undefined,
-        stress: stress ? Number(stress) : undefined,
-        attackModifier: attackModifier ? Number(attackModifier) : undefined,
-        attackDescription,
-        attackRange: attackRange || null,
-        attackType: attackType || null,
-        experiences,
-        features: { passives, actions, reactions },
-        gameSetId,
-      });
+      const adversary = isEditing ? await adversariesApi.update(initial!.id, body) : await adversariesApi.create(body);
       onSaved(adversary);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the Adversary.');
+      setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the Adversary.`);
     } finally {
       setSubmitting(false);
     }
@@ -77,7 +82,7 @@ export default function AdversaryForm({ gameSets, onSaved, onCancel }: Adversary
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New Adversary</h3>
+      <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Adversary'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <label>
         Description
@@ -147,7 +152,7 @@ export default function AdversaryForm({ gameSets, onSaved, onCancel }: Adversary
           Cancel
         </button>
         <button type="submit" className="create-form__submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Adversary'}
+          {submitting ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Adversary'}
         </button>
       </div>
     </form>

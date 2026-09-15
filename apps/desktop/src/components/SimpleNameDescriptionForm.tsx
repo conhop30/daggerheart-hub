@@ -4,28 +4,42 @@ import type { GameSet } from '../api/gameSets';
 import TextField from './TextField';
 import './forms.css';
 
-interface SimpleNameDescriptionFormProps<T> {
+interface NameDescriptionRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  gameSetId: string;
+}
+
+interface SimpleNameDescriptionFormProps<T extends NameDescriptionRecord> {
   title: string;
   submitLabel: string;
   gameSets: GameSet[];
+  /** Pass an existing record to edit it; omit to create a new one. */
+  initial?: T | null;
   create: (body: { name: string; description?: string; gameSetId: string }) => Promise<T>;
+  update: (id: string, body: { name?: string; description?: string; gameSetId?: string }) => Promise<T>;
   onSaved: (item: T) => void;
   onCancel: () => void;
 }
 
 // Shared by Loot and Consumable — both are just Name + Description + Set,
 // no other fields, so a bespoke form per type would be pure duplication.
-export default function SimpleNameDescriptionForm<T>({
+export default function SimpleNameDescriptionForm<T extends NameDescriptionRecord>({
   title,
   submitLabel,
   gameSets,
+  initial,
   create,
+  update,
   onSaved,
   onCancel,
 }: SimpleNameDescriptionFormProps<T>) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
+  const isEditing = initial != null;
+
+  const [name, setName] = useState(initial?.name ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,11 +51,12 @@ export default function SimpleNameDescriptionForm<T>({
     }
     setSubmitting(true);
     setError(null);
+    const body = { name, description, gameSetId };
     try {
-      const item = await create({ name, description, gameSetId });
+      const item = isEditing ? await update(initial!.id, body) : await create(body);
       onSaved(item);
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Could not create the ${title}.`);
+      setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the ${title}.`);
     } finally {
       setSubmitting(false);
     }
@@ -49,7 +64,7 @@ export default function SimpleNameDescriptionForm<T>({
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New {title}</h3>
+      <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : `New ${title}`}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <label>
         Description
@@ -71,7 +86,7 @@ export default function SimpleNameDescriptionForm<T>({
           Cancel
         </button>
         <button type="submit" className="create-form__submit" disabled={submitting}>
-          {submitting ? 'Creating…' : submitLabel}
+          {submitting ? 'Saving…' : isEditing ? 'Save Changes' : submitLabel}
         </button>
       </div>
     </form>

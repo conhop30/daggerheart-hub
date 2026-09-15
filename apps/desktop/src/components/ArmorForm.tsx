@@ -8,17 +8,21 @@ import './forms.css';
 
 interface ArmorFormProps {
   gameSets: GameSet[];
+  /** Pass an existing Armor to edit it; omit to create a new one. */
+  initial?: Armor | null;
   onSaved: (armor: Armor) => void;
   onCancel: () => void;
 }
 
-export default function ArmorForm({ gameSets, onSaved, onCancel }: ArmorFormProps) {
-  const [name, setName] = useState('');
-  const [tier, setTier] = useState('');
-  const [baseScore, setBaseScore] = useState('');
-  const [thresholds, setThresholds] = useState<Thresholds>({ major: null, severe: null });
-  const [feature, setFeature] = useState('');
-  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
+export default function ArmorForm({ gameSets, initial, onSaved, onCancel }: ArmorFormProps) {
+  const isEditing = initial != null;
+
+  const [name, setName] = useState(initial?.name ?? '');
+  const [tier, setTier] = useState(initial?.tier?.toString() ?? '');
+  const [baseScore, setBaseScore] = useState(initial?.baseScore?.toString() ?? '');
+  const [thresholds, setThresholds] = useState<Thresholds>(initial?.thresholds ?? { major: null, severe: null });
+  const [feature, setFeature] = useState(initial?.feature ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,18 +34,19 @@ export default function ArmorForm({ gameSets, onSaved, onCancel }: ArmorFormProp
     }
     setSubmitting(true);
     setError(null);
+    const body = {
+      name,
+      tier: tier ? Number(tier) : undefined,
+      baseScore: baseScore ? Number(baseScore) : undefined,
+      thresholds,
+      feature,
+      gameSetId,
+    };
     try {
-      const armor = await armorsApi.create({
-        name,
-        tier: tier ? Number(tier) : undefined,
-        baseScore: baseScore ? Number(baseScore) : undefined,
-        thresholds,
-        feature,
-        gameSetId,
-      });
+      const armor = isEditing ? await armorsApi.update(initial!.id, body) : await armorsApi.create(body);
       onSaved(armor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the Armor.');
+      setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the Armor.`);
     } finally {
       setSubmitting(false);
     }
@@ -49,7 +54,7 @@ export default function ArmorForm({ gameSets, onSaved, onCancel }: ArmorFormProp
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New Armor</h3>
+      <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Armor'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <div className="create-form__row">
         <TextField label="Tier" type="number" value={tier} onChange={setTier} min={1} />
@@ -76,7 +81,7 @@ export default function ArmorForm({ gameSets, onSaved, onCancel }: ArmorFormProp
           Cancel
         </button>
         <button type="submit" className="create-form__submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Armor'}
+          {submitting ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Armor'}
         </button>
       </div>
     </form>

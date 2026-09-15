@@ -11,8 +11,16 @@ const path = require('node:path');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
 
-const STORE_DIR = path.join(os.homedir(), '.daggerheart-hub');
-const STORE_PATH = path.join(STORE_DIR, 'data.json');
+// Read lazily (not frozen into a top-level const) so tests can point this
+// at a throwaway directory via DAGGERHEART_STORE_DIR without needing to
+// mock fs/os — real usage never sets the env var, so this always resolves
+// to the normal ~/.daggerheart-hub either way.
+function getStoreDir() {
+  return process.env.DAGGERHEART_STORE_DIR || path.join(os.homedir(), '.daggerheart-hub');
+}
+function getStorePath() {
+  return path.join(getStoreDir(), 'data.json');
+}
 const STORE_VERSION = 1;
 const COLLECTIONS = [
   'gameSets',
@@ -88,17 +96,17 @@ function buildSeedStore() {
 }
 
 function writeStoreToDisk(store) {
-  fs.mkdirSync(STORE_DIR, { recursive: true });
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
+  fs.mkdirSync(getStoreDir(), { recursive: true });
+  fs.writeFileSync(getStorePath(), JSON.stringify(store, null, 2), 'utf-8');
 }
 
 function readStoreFromDisk() {
-  if (!fs.existsSync(STORE_PATH)) {
+  if (!fs.existsSync(getStorePath())) {
     const seeded = buildSeedStore();
     writeStoreToDisk(seeded);
     return seeded;
   }
-  return JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8'));
+  return JSON.parse(fs.readFileSync(getStorePath(), 'utf-8'));
 }
 
 function getCache() {
@@ -222,6 +230,20 @@ function updateDomain(id, patch) {
     applyRename(store.domains, id, existing, patch, merged);
     Object.assign(existing, merged);
     return existing;
+  });
+}
+
+// KNOWN LIMITATION, same as the original DomainService.delete: this does
+// not check whether any HeroClass still references this Domain's id.
+// Existing UI already renders that case gracefully (ClassSpread falls back
+// to a placeholder color when a domain lookup misses), so a dangling
+// reference degrades instead of crashing — revisit if that stops being
+// true.
+function removeDomain(id) {
+  return mutate((store) => {
+    const index = store.domains.findIndex((d) => d.id === id);
+    if (index === -1) throw new Error(`No domain with id ${id}`);
+    store.domains.splice(index, 1);
   });
 }
 
@@ -373,7 +395,15 @@ function makeCollection(key, { buildRecord, validate } = {}) {
     });
   }
 
-  return { list, create, update };
+  function remove(id) {
+    return mutate((store) => {
+      const index = store[key].findIndex((r) => r.id === id);
+      if (index === -1) throw new Error(`No record with id ${id}`);
+      store[key].splice(index, 1);
+    });
+  }
+
+  return { list, create, update, remove };
 }
 
 const emptyFeatureTiers = () => ({ passives: [], actions: [], reactions: [] });
@@ -534,13 +564,25 @@ function importSnapshot(incoming) {
   });
 }
 
+// Test-only hooks. Real usage never calls these — the module is loaded
+// exactly once per process, so `cache` staying populated for the process's
+// lifetime is exactly the desired behavior there. Tests need a fresh read
+// every time DAGGERHEART_STORE_DIR points somewhere new, which this forces.
+function __resetCacheForTests() {
+  cache = null;
+  writeQueue = Promise.resolve();
+}
+
 module.exports = {
+  emptyStore,
+  __resetCacheForTests,
   listGameSets,
   createGameSet,
   updateGameSet,
   listDomains,
   createDomain,
   updateDomain,
+  removeDomain,
   listHeroClasses,
   createHeroClass,
   updateHeroClass,
@@ -551,30 +593,39 @@ module.exports = {
   listAdversaries: adversaries.list,
   createAdversary: adversaries.create,
   updateAdversary: adversaries.update,
+  removeAdversary: adversaries.remove,
   listEnvironments: environments.list,
   createEnvironment: environments.create,
   updateEnvironment: environments.update,
+  removeEnvironment: environments.remove,
   listWeapons: weapons.list,
   createWeapon: weapons.create,
   updateWeapon: weapons.update,
+  removeWeapon: weapons.remove,
   listArmors: armors.list,
   createArmor: armors.create,
   updateArmor: armors.update,
+  removeArmor: armors.remove,
   listLoot: loot.list,
   createLoot: loot.create,
   updateLoot: loot.update,
+  removeLoot: loot.remove,
   listConsumables: consumables.list,
   createConsumable: consumables.create,
   updateConsumable: consumables.update,
+  removeConsumable: consumables.remove,
   listCommunities: communities.list,
   createCommunity: communities.create,
   updateCommunity: communities.update,
+  removeCommunity: communities.remove,
   listAncestries: ancestries.list,
   createAncestry: ancestries.create,
   updateAncestry: ancestries.update,
+  removeAncestry: ancestries.remove,
   listTransformations: transformations.list,
   createTransformation: transformations.create,
   updateTransformation: transformations.update,
+  removeTransformation: transformations.remove,
   exportSnapshot,
   importSnapshot,
 };

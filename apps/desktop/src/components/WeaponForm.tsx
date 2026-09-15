@@ -9,6 +9,8 @@ import './forms.css';
 interface WeaponFormProps {
   gameSets: GameSet[];
   weaponSlot: WeaponSlot;
+  /** Pass an existing Weapon to edit it; omit to create a new one. */
+  initial?: Weapon | null;
   onSaved: (weapon: Weapon) => void;
   onCancel: () => void;
 }
@@ -16,17 +18,19 @@ interface WeaponFormProps {
 const TRAITS: WeaponTrait[] = ['AGILITY', 'PRESENCE', 'INSTINCT', 'KNOWLEDGE', 'FINESSE', 'STRENGTH'];
 const DAMAGE_TYPES: DamageType[] = ['PHYSICAL', 'MAGICAL'];
 
-export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: WeaponFormProps) {
-  const [name, setName] = useState('');
-  const [tier, setTier] = useState('');
-  const [feature, setFeature] = useState('');
+export default function WeaponForm({ gameSets, weaponSlot, initial, onSaved, onCancel }: WeaponFormProps) {
+  const isEditing = initial != null;
+
+  const [name, setName] = useState(initial?.name ?? '');
+  const [tier, setTier] = useState(initial?.tier?.toString() ?? '');
+  const [feature, setFeature] = useState(initial?.feature ?? '');
   // Locked to One-Handed for Secondary — matches the store-level enforcement
   // in electron/store.js's validateWeapon, not just this default.
-  const [burden, setBurden] = useState<Burden>('ONE_HANDED');
-  const [damage, setDamage] = useState('');
-  const [trait, setTrait] = useState<WeaponTrait | ''>('');
-  const [damageType, setDamageType] = useState<DamageType | ''>('');
-  const [gameSetId, setGameSetId] = useState<string>(gameSets[0]?.id ?? '');
+  const [burden, setBurden] = useState<Burden>(initial?.burden ?? 'ONE_HANDED');
+  const [damage, setDamage] = useState(initial?.damage ?? '');
+  const [trait, setTrait] = useState<WeaponTrait | ''>(initial?.trait ?? '');
+  const [damageType, setDamageType] = useState<DamageType | ''>(initial?.damageType ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,21 +44,22 @@ export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: 
     }
     setSubmitting(true);
     setError(null);
+    const body = {
+      weaponSlot,
+      name,
+      tier: tier ? Number(tier) : undefined,
+      feature,
+      burden: isSecondary ? ('ONE_HANDED' as const) : burden,
+      damage,
+      trait: trait || null,
+      damageType: damageType || null,
+      gameSetId,
+    };
     try {
-      const weapon = await weaponsApi.create({
-        weaponSlot,
-        name,
-        tier: tier ? Number(tier) : undefined,
-        feature,
-        burden: isSecondary ? 'ONE_HANDED' : burden,
-        damage,
-        trait: trait || null,
-        damageType: damageType || null,
-        gameSetId,
-      });
+      const weapon = isEditing ? await weaponsApi.update(initial!.id, body) : await weaponsApi.create(body);
       onSaved(weapon);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the Weapon.');
+      setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the Weapon.`);
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +67,9 @@ export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: 
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New {titleCaseEnum(weaponSlot)} Weapon</h3>
+      <h3 className="create-form__title">
+        {isEditing ? `Edit ${initial!.name}` : `New ${titleCaseEnum(weaponSlot)} Weapon`}
+      </h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <div className="create-form__row">
         <TextField label="Tier" type="number" value={tier} onChange={setTier} min={1} />
@@ -124,7 +131,7 @@ export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: 
           Cancel
         </button>
         <button type="submit" className="create-form__submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Weapon'}
+          {submitting ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Weapon'}
         </button>
       </div>
     </form>

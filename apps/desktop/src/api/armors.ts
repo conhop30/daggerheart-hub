@@ -26,4 +26,5 @@ export const armorsApi = {
   list: () => apiClient.list<Armor>('armors'),
   create: (body: CreateArmorRequest) => apiClient.create<Armor>('armors', body),
   update: (id: string, body: UpdateArmorRequest) => apiClient.update<Armor>('armors', id, body),
+  remove: (id: string) => apiClient.remove('armors', id),
 };

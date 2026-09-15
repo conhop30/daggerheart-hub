@@ -22,4 +22,5 @@ export const communitiesApi = {
   list: () => apiClient.list<Community>('communities'),
   create: (body: CreateCommunityRequest) => apiClient.create<Community>('communities', body),
   update: (id: string, body: UpdateCommunityRequest) => apiClient.update<Community>('communities', id, body),
+  remove: (id: string) => apiClient.remove('communities', id),
 };

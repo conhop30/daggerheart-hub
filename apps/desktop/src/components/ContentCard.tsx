@@ -7,6 +7,8 @@ interface ContentCardProps {
   accent?: string | null;
   /** A row of small stat chips (Tier, Difficulty, etc). */
   meta?: ReactNode;
+  onEdit?: () => void;
+  onDelete?: () => void;
   children?: ReactNode;
 }
 
@@ -14,12 +16,28 @@ interface ContentCardProps {
 // uses — deliberately plain (no images, no filters) since the point of
 // this pass is closing the write-only gap, not building the fully designed
 // galleries the spec describes for later.
-export function ContentCard({ title, accent, meta, children }: ContentCardProps) {
+export function ContentCard({ title, accent, meta, onEdit, onDelete, children }: ContentCardProps) {
   return (
     <div className="content-card">
       {accent && <span className="content-card__swatch" style={{ background: accent }} aria-hidden="true" />}
       <div className="content-card__body">
-        <h3 className="content-card__title">{title}</h3>
+        <div className="content-card__header">
+          <h3 className="content-card__title">{title}</h3>
+          {(onEdit || onDelete) && (
+            <div className="content-card__actions">
+              {onEdit && (
+                <button type="button" className="content-card__action" onClick={onEdit}>
+                  Edit
+                </button>
+              )}
+              {onDelete && (
+                <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         {meta && <div className="content-card__meta">{meta}</div>}
         {children}
       </div>

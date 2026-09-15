@@ -19,4 +19,5 @@ export const consumablesApi = {
   list: () => apiClient.list<Consumable>('consumables'),
   create: (body: CreateConsumableRequest) => apiClient.create<Consumable>('consumables', body),
   update: (id: string, body: UpdateConsumableRequest) => apiClient.update<Consumable>('consumables', id, body),
+  remove: (id: string) => apiClient.remove('consumables', id),
 };

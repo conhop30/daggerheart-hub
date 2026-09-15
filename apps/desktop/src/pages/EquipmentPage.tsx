@@ -1,16 +1,23 @@
+import { useState } from 'react';
 import { weaponsApi, type Weapon } from '../api/weapons';
 import { armorsApi, type Armor } from '../api/armors';
 import { lootApi, type Loot } from '../api/loot';
 import { consumablesApi, type Consumable } from '../api/consumables';
+import { gameSetsApi } from '../api/gameSets';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, ContentCardList, MetaChip } from '../components/ContentCard';
+import WeaponForm from '../components/WeaponForm';
+import ArmorForm from '../components/ArmorForm';
+import SimpleNameDescriptionForm from '../components/SimpleNameDescriptionForm';
 import './BrowsePage.css';
 
-function WeaponCard({ w }: { w: Weapon }) {
+function WeaponCard({ w, onEdit, onDelete }: { w: Weapon; onEdit: () => void; onDelete: () => void }) {
   return (
     <ContentCard
       title={w.name}
+      onEdit={onEdit}
+      onDelete={onDelete}
       meta={
         <>
           <MetaChip label="Slot" value={titleCaseEnum(w.weaponSlot)} />
@@ -27,10 +34,12 @@ function WeaponCard({ w }: { w: Weapon }) {
   );
 }
 
-function ArmorCard({ a }: { a: Armor }) {
+function ArmorCard({ a, onEdit, onDelete }: { a: Armor; onEdit: () => void; onDelete: () => void }) {
   return (
     <ContentCard
       title={a.name}
+      onEdit={onEdit}
+      onDelete={onDelete}
       meta={
         <>
           <MetaChip label="Tier" value={a.tier} />
@@ -47,9 +56,19 @@ function ArmorCard({ a }: { a: Armor }) {
   );
 }
 
-function NameDescriptionCard({ item }: { item: Loot | Consumable }) {
+function NameDescriptionCard({
+  item,
+  onEdit,
+  onDelete,
+}: {
+  item: Loot | Consumable;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <ContentCard title={item.name}>{item.description && <p className="content-card__description">{item.description}</p>}</ContentCard>
+    <ContentCard title={item.name} onEdit={onEdit} onDelete={onDelete}>
+      {item.description && <p className="content-card__description">{item.description}</p>}
+    </ContentCard>
   );
 }
 
@@ -58,6 +77,52 @@ export default function EquipmentPage() {
   const armors = useApiList(armorsApi.list);
   const loot = useApiList(lootApi.list);
   const consumables = useApiList(consumablesApi.list);
+  const gameSets = useApiList(gameSetsApi.list);
+
+  const [editingWeaponId, setEditingWeaponId] = useState<string | null>(null);
+  const [editingArmorId, setEditingArmorId] = useState<string | null>(null);
+  const [editingLootId, setEditingLootId] = useState<string | null>(null);
+  const [editingConsumableId, setEditingConsumableId] = useState<string | null>(null);
+
+  async function handleDeleteWeapon(w: Weapon) {
+    if (!window.confirm(`Delete "${w.name}"? This can't be undone.`)) return;
+    try {
+      await weaponsApi.remove(w.id);
+      weapons.remove(w.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Weapon.');
+    }
+  }
+
+  async function handleDeleteArmor(a: Armor) {
+    if (!window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
+    try {
+      await armorsApi.remove(a.id);
+      armors.remove(a.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Armor.');
+    }
+  }
+
+  async function handleDeleteLoot(l: Loot) {
+    if (!window.confirm(`Delete "${l.name}"? This can't be undone.`)) return;
+    try {
+      await lootApi.remove(l.id);
+      loot.remove(l.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Loot.');
+    }
+  }
+
+  async function handleDeleteConsumable(c: Consumable) {
+    if (!window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
+    try {
+      await consumablesApi.remove(c.id);
+      consumables.remove(c.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable.');
+    }
+  }
 
   return (
     <div className="browse-page">
@@ -72,7 +137,22 @@ export default function EquipmentPage() {
             items={weapons.items}
             emptyMessage="No Weapons yet — create one from Home first."
             getKey={(w) => w.id}
-            renderItem={(w) => <WeaponCard w={w} />}
+            renderItem={(w) =>
+              editingWeaponId === w.id ? (
+                <WeaponForm
+                  gameSets={gameSets.items}
+                  weaponSlot={w.weaponSlot}
+                  initial={w}
+                  onSaved={(saved) => {
+                    weapons.upsert(saved);
+                    setEditingWeaponId(null);
+                  }}
+                  onCancel={() => setEditingWeaponId(null)}
+                />
+              ) : (
+                <WeaponCard w={w} onEdit={() => setEditingWeaponId(w.id)} onDelete={() => handleDeleteWeapon(w)} />
+              )
+            }
           />
         )}
       </div>
@@ -86,7 +166,21 @@ export default function EquipmentPage() {
             items={armors.items}
             emptyMessage="No Armor yet — create one from Home first."
             getKey={(a) => a.id}
-            renderItem={(a) => <ArmorCard a={a} />}
+            renderItem={(a) =>
+              editingArmorId === a.id ? (
+                <ArmorForm
+                  gameSets={gameSets.items}
+                  initial={a}
+                  onSaved={(saved) => {
+                    armors.upsert(saved);
+                    setEditingArmorId(null);
+                  }}
+                  onCancel={() => setEditingArmorId(null)}
+                />
+              ) : (
+                <ArmorCard a={a} onEdit={() => setEditingArmorId(a.id)} onDelete={() => handleDeleteArmor(a)} />
+              )
+            }
           />
         )}
       </div>
@@ -100,7 +194,25 @@ export default function EquipmentPage() {
             items={loot.items}
             emptyMessage="No Loot yet — create one from Home first."
             getKey={(l) => l.id}
-            renderItem={(l) => <NameDescriptionCard item={l} />}
+            renderItem={(l) =>
+              editingLootId === l.id ? (
+                <SimpleNameDescriptionForm
+                  title="Loot"
+                  submitLabel="Create Loot"
+                  gameSets={gameSets.items}
+                  initial={l}
+                  create={lootApi.create}
+                  update={lootApi.update}
+                  onSaved={(saved) => {
+                    loot.upsert(saved);
+                    setEditingLootId(null);
+                  }}
+                  onCancel={() => setEditingLootId(null)}
+                />
+              ) : (
+                <NameDescriptionCard item={l} onEdit={() => setEditingLootId(l.id)} onDelete={() => handleDeleteLoot(l)} />
+              )
+            }
           />
         )}
       </div>
@@ -114,7 +226,29 @@ export default function EquipmentPage() {
             items={consumables.items}
             emptyMessage="No Consumables yet — create one from Home first."
             getKey={(c) => c.id}
-            renderItem={(c) => <NameDescriptionCard item={c} />}
+            renderItem={(c) =>
+              editingConsumableId === c.id ? (
+                <SimpleNameDescriptionForm
+                  title="Consumable"
+                  submitLabel="Create Consumable"
+                  gameSets={gameSets.items}
+                  initial={c}
+                  create={consumablesApi.create}
+                  update={consumablesApi.update}
+                  onSaved={(saved) => {
+                    consumables.upsert(saved);
+                    setEditingConsumableId(null);
+                  }}
+                  onCancel={() => setEditingConsumableId(null)}
+                />
+              ) : (
+                <NameDescriptionCard
+                  item={c}
+                  onEdit={() => setEditingConsumableId(c.id)}
+                  onDelete={() => handleDeleteConsumable(c)}
+                />
+              )
+            }
           />
         )}
       </div>

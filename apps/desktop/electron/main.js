@@ -72,6 +72,23 @@ const UPDATE = {
   ancestries: store.updateAncestry,
   transformations: store.updateTransformation,
 };
+// No GameSet/HeroClass/Subclass here — deleting those has real referential-
+// integrity questions (a Class with existing Subclasses, a GameSet with
+// everything referencing it) that haven't been designed yet. The other ten
+// content types have no incoming references except Domain (handled, see
+// removeDomain's comment in store.js) or none at all.
+const REMOVE = {
+  domains: store.removeDomain,
+  adversaries: store.removeAdversary,
+  environments: store.removeEnvironment,
+  weapons: store.removeWeapon,
+  armors: store.removeArmor,
+  loot: store.removeLoot,
+  consumables: store.removeConsumable,
+  communities: store.removeCommunity,
+  ancestries: store.removeAncestry,
+  transformations: store.removeTransformation,
+};
 
 function lookup(map, collection) {
   const fn = map[collection];
@@ -85,6 +102,7 @@ ipcMain.handle('store:listSubclassesByParentClass', (_event, parentClassId) =>
 );
 ipcMain.handle('store:create', (_event, collection, data) => lookup(CREATE, collection)(data));
 ipcMain.handle('store:update', (_event, collection, id, patch) => lookup(UPDATE, collection)(id, patch));
+ipcMain.handle('store:remove', (_event, collection, id) => lookup(REMOVE, collection)(id));
 
 ipcMain.handle('store:export', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);

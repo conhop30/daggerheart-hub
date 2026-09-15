@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { upsertById } from './upsert';
 
 // Every browse page below needs one to four of these — same loading/error/
 // unmount-guard boilerplate each time, so it's a hook instead of copy-paste.
-export function useApiList<T>(fetcher: () => Promise<T[]>) {
+// Also hands back upsert/remove so a successful edit or delete can update
+// the on-screen list immediately instead of a full refetch.
+export function useApiList<T extends { id: string }>(fetcher: () => Promise<T[]>) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,5 +34,13 @@ export function useApiList<T>(fetcher: () => Promise<T[]>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { items, loading, error };
+  function upsert(item: T) {
+    setItems((prev) => upsertById(prev, item));
+  }
+
+  function remove(id: string) {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  return { items, loading, error, upsert, remove };
 }

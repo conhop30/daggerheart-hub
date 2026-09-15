@@ -19,4 +19,5 @@ export const lootApi = {
   list: () => apiClient.list<Loot>('loot'),
   create: (body: CreateLootRequest) => apiClient.create<Loot>('loot', body),
   update: (id: string, body: UpdateLootRequest) => apiClient.update<Loot>('loot', id, body),
+  remove: (id: string) => apiClient.remove('loot', id),
 };

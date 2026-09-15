@@ -30,4 +30,5 @@ export const environmentsApi = {
   list: () => apiClient.list<Environment>('environments'),
   create: (body: CreateEnvironmentRequest) => apiClient.create<Environment>('environments', body),
   update: (id: string, body: UpdateEnvironmentRequest) => apiClient.update<Environment>('environments', id, body),
+  remove: (id: string) => apiClient.remove('environments', id),
 };

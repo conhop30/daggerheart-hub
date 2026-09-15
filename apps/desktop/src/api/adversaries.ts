@@ -55,4 +55,5 @@ export const adversariesApi = {
   list: () => apiClient.list<Adversary>('adversaries'),
   create: (body: CreateAdversaryRequest) => apiClient.create<Adversary>('adversaries', body),
   update: (id: string, body: UpdateAdversaryRequest) => apiClient.update<Adversary>('adversaries', id, body),
+  remove: (id: string) => apiClient.remove('adversaries', id),
 };

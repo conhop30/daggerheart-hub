@@ -22,4 +22,5 @@ export const ancestriesApi = {
   list: () => apiClient.list<Ancestry>('ancestries'),
   create: (body: CreateAncestryRequest) => apiClient.create<Ancestry>('ancestries', body),
   update: (id: string, body: UpdateAncestryRequest) => apiClient.update<Ancestry>('ancestries', id, body),
+  remove: (id: string) => apiClient.remove('ancestries', id),
 };
