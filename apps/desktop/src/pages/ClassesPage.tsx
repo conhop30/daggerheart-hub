@@ -7,11 +7,7 @@ import ClassForm from '../components/ClassForm';
 import { upsertById } from '../lib/upsert';
 import './ClassesPage.css';
 
-interface ClassesPageProps {
-  onBack: () => void;
-}
-
-export default function ClassesPage({ onBack }: ClassesPageProps) {
+export default function ClassesPage() {
   const [heroClasses, setHeroClasses] = useState<HeroClass[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [gameSets, setGameSets] = useState<GameSet[]>([]);
@@ -53,10 +49,6 @@ export default function ClassesPage({ onBack }: ClassesPageProps) {
 
   return (
     <div className="classes-page">
-      <button type="button" className="classes-page__back" onClick={onBack}>
-        &larr; Back to Home
-      </button>
-
       <h1 className="classes-page__title">Classes</h1>
 
       {loading && <p className="classes-page__status">Loading Classes&hellip;</p>}

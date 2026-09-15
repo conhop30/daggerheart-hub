@@ -15,11 +15,12 @@ import type { ContentKey } from '../api/contentKeys';
 import { backupApi } from '../api/backup';
 import CreatePanel from '../components/CreatePanel';
 import TileGrid from '../components/TileGrid';
+import type { View } from '../components/AppShell';
 import { upsertById } from '../lib/upsert';
 import './HomePage.css';
 
 interface HomePageProps {
-  onNavigateToClasses: () => void;
+  onNavigate: (view: View) => void;
 }
 
 const EMPTY_COUNTS: Record<ContentKey, number> = {
@@ -34,7 +35,7 @@ const EMPTY_COUNTS: Record<ContentKey, number> = {
   transformations: 0,
 };
 
-export default function HomePage({ onNavigateToClasses }: HomePageProps) {
+export default function HomePage({ onNavigate }: HomePageProps) {
   const [gameSets, setGameSets] = useState<GameSet[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [heroClasses, setHeroClasses] = useState<HeroClass[]>([]);
@@ -181,7 +182,7 @@ export default function HomePage({ onNavigateToClasses }: HomePageProps) {
         heritageCount={counts.communities + counts.ancestries}
         equipmentCount={counts.weapons + counts.armors + counts.loot + counts.consumables}
         optionalMechanicsCount={counts.transformations}
-        onSelectClasses={onNavigateToClasses}
+        onNavigate={onNavigate}
       />
     </div>
   );

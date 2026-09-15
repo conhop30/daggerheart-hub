@@ -8,6 +8,7 @@ import StringListEditor from './StringListEditor';
 import ExperienceListEditor, { type Experience } from './ExperienceListEditor';
 import ThresholdsInput, { type Thresholds } from './ThresholdsInput';
 import TextField from './TextField';
+import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
 interface AdversaryFormProps {
@@ -18,13 +19,6 @@ interface AdversaryFormProps {
 
 const ATTACK_RANGES: AttackRange[] = ['MELEE', 'VERY_CLOSE', 'CLOSE', 'FAR', 'VERY_FAR', 'OUT_OF_RANGE'];
 const ATTACK_TYPES: AttackType[] = ['PHYSICAL', 'MAGICAL', 'DIRECT_PHYSICAL', 'DIRECT_MAGICAL'];
-
-function titleCase(value: string): string {
-  return value
-    .split('_')
-    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-    .join(' ');
-}
 
 export default function AdversaryForm({ gameSets, onSaved, onCancel }: AdversaryFormProps) {
   const [name, setName] = useState('');
@@ -112,7 +106,7 @@ export default function AdversaryForm({ gameSets, onSaved, onCancel }: Adversary
             <option value="">Not yet chosen</option>
             {ATTACK_RANGES.map((range) => (
               <option key={range} value={range}>
-                {titleCase(range)}
+                {titleCaseEnum(range)}
               </option>
             ))}
           </select>
@@ -124,7 +118,7 @@ export default function AdversaryForm({ gameSets, onSaved, onCancel }: Adversary
           <option value="">Not yet chosen</option>
           {ATTACK_TYPES.map((type) => (
             <option key={type} value={type}>
-              {titleCase(type)}
+              {titleCaseEnum(type)}
             </option>
           ))}
         </select>

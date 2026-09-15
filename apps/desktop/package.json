@@ -2,6 +2,8 @@
   "name": "daggerheart-hub-desktop",
   "private": true,
   "version": "0.1.0",
+  "description": "A local hub for creating Daggerheart homebrew content — Classes, Domains, Adversaries, Equipment, and more.",
+  "author": "Connor Hopkins",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {

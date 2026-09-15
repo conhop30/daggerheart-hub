@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { GameSet } from '../api/gameSets';
 import { weaponsApi, type Burden, type DamageType, type Weapon, type WeaponSlot, type WeaponTrait } from '../api/weapons';
 import TextField from './TextField';
+import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
 interface WeaponFormProps {
@@ -14,10 +15,6 @@ interface WeaponFormProps {
 
 const TRAITS: WeaponTrait[] = ['AGILITY', 'PRESENCE', 'INSTINCT', 'KNOWLEDGE', 'FINESSE', 'STRENGTH'];
 const DAMAGE_TYPES: DamageType[] = ['PHYSICAL', 'MAGICAL'];
-
-function titleCase(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase();
-}
 
 export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: WeaponFormProps) {
   const [name, setName] = useState('');
@@ -65,7 +62,7 @@ export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: 
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <h3 className="create-form__title">New {titleCase(weaponSlot)} Weapon</h3>
+      <h3 className="create-form__title">New {titleCaseEnum(weaponSlot)} Weapon</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <div className="create-form__row">
         <TextField label="Tier" type="number" value={tier} onChange={setTier} min={1} />
@@ -94,7 +91,7 @@ export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: 
             <option value="">Not yet chosen</option>
             {TRAITS.map((t) => (
               <option key={t} value={t}>
-                {titleCase(t)}
+                {titleCaseEnum(t)}
               </option>
             ))}
           </select>
@@ -106,7 +103,7 @@ export default function WeaponForm({ gameSets, weaponSlot, onSaved, onCancel }: 
           <option value="">Not yet chosen</option>
           {DAMAGE_TYPES.map((type) => (
             <option key={type} value={type}>
-              {titleCase(type)}
+              {titleCaseEnum(type)}
             </option>
           ))}
         </select>

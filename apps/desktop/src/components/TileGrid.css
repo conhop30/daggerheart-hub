@@ -46,14 +46,6 @@
   font-size: 0.9rem;
 }
 
-.tile__note {
-  margin: var(--space-1) 0 0;
-  padding-top: var(--space-1);
-  border-top: 1px solid var(--hairline);
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 @media (max-width: 720px) {
   .tile-grid {
     grid-template-columns: 1fr;

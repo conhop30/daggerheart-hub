@@ -41,19 +41,26 @@ design, not as a placeholder for something smarter later.
 
 ## What's actually built vs. stubbed
 
-**Built:** the full local data layer (Electron main process, JSON store,
-preload bridge, validation, seeding) for GameSets, Domains, HeroClasses, and
-Subclasses; Export/Import; the Electron dev workflow (`npm run electron:dev`
-launches Vite and Electron together) and a base `electron-builder` config.
-On the UI side: Home page, the Create panel's full cascading chip/banner
-flow with working transitions, Class/Subclass creation and editing forms,
-and a Classes gallery with a Class/Subclass detail spread.
+**Built:** every content type in the spec — Class, Subclass, Domain,
+Adversary, Environment, Weapon (Primary/Secondary), Armor, Loot, Consumable,
+Community, Ancestry, Transformation — has a working create form reachable
+from the Home Create panel, backed by the real local data layer (validation
+included, e.g. a Secondary weapon can't be Two-Handed). Every content type
+also has a place to actually see what you made: a persistent top nav bar
+(`AppShell`) reaches Classes' full gallery/detail view or one of five
+simpler "browse" pages (Domains; Adversaries & Environments; Heritage;
+Equipment; Optional Mechanics) — minimal list/card views, not the fully
+designed galleries the spec describes, but real enough that nothing is
+write-only anymore. Export/Import, the Electron dev workflow, and a working
+`electron-builder` installer build (see the gotcha below) round it out.
 
-**Not built:** Adversary, Environment, Equipment, Heritage, and Optional
-Mechanics are still UI stubs — the Create panel says so when you pick one.
-`App.tsx`'s routing is an explicit placeholder (flagged in its own code
-comment) for the real single-page navigation the spec describes. No
-automated tests exist yet (Vitest/RTL/Playwright, per the spec).
+**Not built:** editing and deleting only exist for Class and Subclass — the
+other ten content types are create-and-view only for now. Domain, Heritage,
+and Optional Mechanics don't have the fully designed galleries the spec
+describes (filters, sort, etc.) — just plain lists. No automated tests exist
+yet (Vitest/RTL/Playwright, per the spec, though Playwright was used
+ad hoc during development to verify each milestone against the real
+Electron app).
 
 ## Running it
 
@@ -71,6 +78,30 @@ shell," since `window.daggerheart` only exists inside Electron.
 Your data lives at `~/.daggerheart-hub/data.json` — delete it to reset to a
 fresh seeded state.
 
-**Packaging a real installer** (`npm run electron:build`, via
-electron-builder) is configured in `package.json` but hasn't been run in
-this environment — try it before relying on it.
+## Packaging a real installer
+
+`npm run electron:build` (via `electron-builder`) has been run for real and
+produces a working, launchable NSIS installer — confirmed by installing the
+unpacked build and driving it end to end (data loads, navigation works, no
+console errors). Two things worth knowing before you run it yourself:
+
+- **Vite's default absolute asset paths (`/assets/...`) break the packaged
+  app.** The built app loads `dist/index.html` over `file://`, where a
+  leading `/` resolves to the filesystem root, not the `dist/` folder — the
+  window opens but silently stays blank because the script tag 404s. Fixed
+  already, via `base: './'` in `vite.config.ts` — flagging it in case that
+  line ever looks removable, because removing it un-fixes exactly this.
+- **Building from inside a OneDrive-synced folder fails with `EPERM:
+  operation not permitted, rename ... win-unpacked.tmp -> win-unpacked`.**
+  This repo lives under `OneDrive\Documents`, and OneDrive's sync agent
+  locks the freshly-extracted Electron files before electron-builder can
+  rename them into place. It's not a code or config problem — the same
+  build succeeds immediately when the output directory is outside the
+  synced folder. Workaround: point the build somewhere not synced, e.g.
+  `npx electron-builder --config.directories.output=C:/some/local/path`, or
+  pause OneDrive sync for the duration of the build.
+
+Not yet done: a real application icon (the default Electron icon is used —
+`electron-builder` warns about this but it isn't fatal), and code signing
+with a real certificate (the build self-signs with a local test cert, which
+is why Windows will still show an "unknown publisher" warning on install).
