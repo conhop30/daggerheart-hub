@@ -8,6 +8,7 @@ const COLLECTIONS = [
   'domains',
   'heroClasses',
   'subclasses',
+  'cards',
   'adversaries',
   'environments',
   'weapons',
@@ -71,15 +72,49 @@ test.describe('Electron app', () => {
     await win.click('button:has-text("Create Domain")');
 
     await win.click('.app-shell__nav-link:has-text("Domains")');
-    await expect(win.locator('.content-card', { hasText: 'E2E Domain' })).toBeVisible();
+    const banner = win.locator('.domain-banner:not(.domain-banner--hollow)', { hasText: 'E2E Domain' });
+    await expect(banner).toBeVisible();
 
-    await win.locator('.content-card', { hasText: 'E2E Domain' }).getByRole('button', { name: 'Edit' }).click();
+    await banner.getByRole('button', { name: 'Edit' }).click();
     await win.fill('.create-form input[type="text"]', 'E2E Domain Renamed');
     await win.click('button:has-text("Save Changes")');
-    await expect(win.locator('.content-card', { hasText: 'E2E Domain Renamed' })).toBeVisible();
+    const renamed = win.locator('.domain-banner:not(.domain-banner--hollow)', { hasText: 'E2E Domain Renamed' });
+    await expect(renamed).toBeVisible();
 
-    await win.locator('.content-card', { hasText: 'E2E Domain Renamed' }).getByRole('button', { name: 'Delete' }).click();
-    await expect(win.locator('.content-card', { hasText: 'E2E Domain Renamed' })).toHaveCount(0);
+    await renamed.getByRole('button', { name: 'Delete' }).click();
+    await expect(renamed).toHaveCount(0);
+  });
+
+  test('open a Domain, create a Card in it, then edit and delete it', async () => {
+    await win.click('.app-shell__nav-link:has-text("Domains")');
+    await win.locator('.domain-banner', { hasText: 'Arcana' }).locator('.domain-banner__hit').click();
+    await expect(win.locator('.domain-detail__title')).toHaveText('Arcana');
+
+    await win.click('.domain-card-grid__create');
+    await win.fill('.create-form input[type="text"]', 'Rune Ward');
+    await win.click('button:has-text("Create Card")');
+    await expect(win.locator('.content-card', { hasText: 'Rune Ward' })).toBeVisible();
+
+    await win.locator('.content-card', { hasText: 'Rune Ward' }).getByRole('button', { name: 'Edit' }).click();
+    await win.fill('.create-form input[type="text"]', 'Rune Ward Renamed');
+    await win.click('button:has-text("Save Changes")');
+    await expect(win.locator('.content-card', { hasText: 'Rune Ward Renamed' })).toBeVisible();
+
+    await win.locator('.content-card', { hasText: 'Rune Ward Renamed' }).getByRole('button', { name: 'Delete' }).click();
+    await expect(win.locator('.content-card', { hasText: 'Rune Ward Renamed' })).toHaveCount(0);
+  });
+
+  test('selecting a Class filters the Domain grid to its two Domains', async () => {
+    await win.click('.app-shell__nav-link:has-text("Domains")');
+    const realBanners = win.locator('.domain-banner:not(.domain-banner--hollow)');
+    await expect(realBanners).toHaveCount(9);
+
+    await win.click('.domains-page__filter:has-text("Wizard")');
+    await expect(realBanners).toHaveCount(2);
+    await expect(win.locator('.domain-banner__title')).toHaveText(['Codex', 'Splendor']);
+
+    await win.click('.domains-page__filter:text-is("All Classes")');
+    await expect(realBanners).toHaveCount(9);
   });
 
   test('a Secondary weapon cannot be created as Two-Handed', async () => {
@@ -93,7 +128,7 @@ test.describe('Electron app', () => {
 
   test('a custom Game Set created from one form is immediately available in another', async () => {
     await win.click('.app-shell__nav-link:has-text("Domains")');
-    await win.click('.browse-page__add-button:has-text("New Domain")');
+    await win.click('.domain-banner--hollow');
     await win.selectOption('.create-form select', '__new__');
     await win.fill('.game-set-select__new-row input', 'Hope and Fear');
     await win.click('.game-set-select__new-row button:has-text("Add")');

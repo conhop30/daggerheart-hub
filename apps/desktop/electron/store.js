@@ -27,6 +27,7 @@ const COLLECTIONS = [
   'domains',
   'heroClasses',
   'subclasses',
+  'cards',
   'adversaries',
   'environments',
   'weapons',
@@ -106,7 +107,15 @@ function readStoreFromDisk() {
     writeStoreToDisk(seeded);
     return seeded;
   }
-  return JSON.parse(fs.readFileSync(getStorePath(), 'utf-8'));
+  const store = JSON.parse(fs.readFileSync(getStorePath(), 'utf-8'));
+  // Forward-compat: a store written before some collection existed (e.g. an
+  // install from before Cards were added) won't have that key at all.
+  // Backfill it as empty rather than letting every list()/create() on it
+  // crash on a missing array.
+  for (const key of COLLECTIONS) {
+    if (!Array.isArray(store[key])) store[key] = [];
+  }
+  return store;
 }
 
 function getCache() {
@@ -406,6 +415,49 @@ function makeCollection(key, { buildRecord, validate } = {}) {
   return { list, create, update, remove };
 }
 
+// ---- Cards ----
+// One per Domain Card (Name, Type, Level, RecallCost, ...). Domain is
+// required and validated the same way validateDomainPair checks its ids;
+// unlike Domain's own fields, Type is a closed enum so it's checked too.
+
+const CARD_TYPES = ['SPELL', 'GRIMOIRE', 'ABILITY'];
+
+function validateCard(store, data) {
+  if (!store.domains.some((d) => d.id === data.domainId)) {
+    throw new Error(`No domain with id ${data.domainId}`);
+  }
+  if (!CARD_TYPES.includes(data.type)) {
+    throw new Error(`Card type must be one of ${CARD_TYPES.join(', ')}`);
+  }
+}
+
+const cards = makeCollection('cards', {
+  validate: validateCard,
+  buildRecord: (data) => {
+    // DomainIcon is deliberately denormalized onto Card (see spec) so a
+    // future Card-only gallery doesn't need to join back to Domain — auto-
+    // fill it from the parent Domain on create rather than asking the user
+    // to re-enter something already on record.
+    const domain = getCache().domains.find((d) => d.id === data.domainId);
+    return {
+      id: randomUUID(),
+      name: data.name,
+      type: data.type,
+      level: data.level ?? null,
+      recallCost: data.recallCost ?? null,
+      description: data.description ?? null,
+      imagePath: data.imagePath ?? null,
+      domainIcon: data.domainIcon ?? domain?.iconPath ?? null,
+      domainId: data.domainId,
+      gameSetId: data.gameSetId,
+    };
+  },
+});
+
+function listCardsByDomain(domainId) {
+  return getCache().cards.filter((c) => c.domainId === domainId);
+}
+
 const emptyFeatureTiers = () => ({ passives: [], actions: [], reactions: [] });
 
 const adversaries = makeCollection('adversaries', {
@@ -590,6 +642,11 @@ module.exports = {
   listSubclassesByParentClass,
   createSubclass,
   updateSubclass,
+  listCards: cards.list,
+  createCard: cards.create,
+  updateCard: cards.update,
+  removeCard: cards.remove,
+  listCardsByDomain,
   listAdversaries: adversaries.list,
   createAdversary: adversaries.create,
   updateAdversary: adversaries.update,

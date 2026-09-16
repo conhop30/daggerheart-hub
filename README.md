@@ -87,9 +87,20 @@ Three more things landed from direct UI feedback after using the app:
   page actually holds (e.g. Equipment gets separate "+ New Primary" / "+ New
   Secondary" weapon buttons) — not just the Home Create panel.
 
-**Not built:** Domain, Heritage, and Optional Mechanics don't have the
-fully designed galleries the spec describes (filters, sort, etc.) — just
-plain lists.
+**Domains are a real gallery, not a flat list.** Each Domain renders as a
+color-swatched banner; clicking one opens that Domain's own card-builder
+view — a grid of every `Card` belonging to it (Name, Type [Spell/Grimoire/
+Ability], Level, Recall Cost, Description, optional art), with a hollow
+"+ New Card" tile to add more. A Class-filter row above the banner grid
+narrows it down to just the two Domains a selected Class draws from. A
+matching hollow "+ Create Domain" banner creates a custom Domain inline
+without leaving the gallery. `Card` is a full content type end-to-end
+(`electron/store.js`'s `cards` collection, `listCardsByDomain`, IPC, and
+`src/api/cards.ts`) — it just wasn't exposed anywhere in the UI until now.
+
+**Not built:** Heritage and Optional Mechanics still don't have the fully
+designed galleries the spec describes (filters, sort, etc.) — just plain
+lists.
 
 ## Running it
 

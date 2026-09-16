@@ -33,6 +33,7 @@ const LIST = {
   domains: store.listDomains,
   heroClasses: store.listHeroClasses,
   subclasses: store.listSubclasses,
+  cards: store.listCards,
   adversaries: store.listAdversaries,
   environments: store.listEnvironments,
   weapons: store.listWeapons,
@@ -48,6 +49,7 @@ const CREATE = {
   domains: store.createDomain,
   heroClasses: store.createHeroClass,
   subclasses: store.createSubclass,
+  cards: store.createCard,
   adversaries: store.createAdversary,
   environments: store.createEnvironment,
   weapons: store.createWeapon,
@@ -63,6 +65,7 @@ const UPDATE = {
   domains: store.updateDomain,
   heroClasses: store.updateHeroClass,
   subclasses: store.updateSubclass,
+  cards: store.updateCard,
   adversaries: store.updateAdversary,
   environments: store.updateEnvironment,
   weapons: store.updateWeapon,
@@ -80,6 +83,7 @@ const UPDATE = {
 // removeDomain's comment in store.js) or none at all.
 const REMOVE = {
   domains: store.removeDomain,
+  cards: store.removeCard,
   adversaries: store.removeAdversary,
   environments: store.removeEnvironment,
   weapons: store.removeWeapon,
@@ -101,6 +105,7 @@ ipcMain.handle('store:list', (_event, collection) => lookup(LIST, collection)())
 ipcMain.handle('store:listSubclassesByParentClass', (_event, parentClassId) =>
   store.listSubclassesByParentClass(parentClassId)
 );
+ipcMain.handle('store:listCardsByDomain', (_event, domainId) => store.listCardsByDomain(domainId));
 ipcMain.handle('store:create', (_event, collection, data) => lookup(CREATE, collection)(data));
 ipcMain.handle('store:update', (_event, collection, id, patch) => lookup(UPDATE, collection)(id, patch));
 ipcMain.handle('store:remove', (_event, collection, id) => lookup(REMOVE, collection)(id));

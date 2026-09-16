@@ -130,6 +130,59 @@ describe('Subclass', () => {
   });
 });
 
+describe('Card', () => {
+  it('rejects a domainId that does not exist', async () => {
+    await expect(
+      store.createCard({ name: 'Rune Ward', type: 'SPELL', domainId: 'missing', gameSetId: 'gs-1' })
+    ).rejects.toThrow('No domain with id');
+  });
+
+  it('rejects a type outside the enum', async () => {
+    const d = await store.createDomain({ name: 'Arcana', gameSetId: 'gs-1' });
+    await expect(
+      store.createCard({ name: 'Rune Ward', type: 'CANTRIP', domainId: d.id, gameSetId: 'gs-1' })
+    ).rejects.toThrow('Card type must be one of');
+  });
+
+  it('auto-fills domainIcon from the parent Domain when omitted', async () => {
+    const d = await store.createDomain({ name: 'Arcana', iconPath: '/icons/arcana.png', gameSetId: 'gs-1' });
+    const card = await store.createCard({ name: 'Rune Ward', type: 'SPELL', domainId: d.id, gameSetId: 'gs-1' });
+    expect(card.domainIcon).toBe('/icons/arcana.png');
+  });
+
+  it('an explicit domainIcon is kept as given, not overwritten', async () => {
+    const d = await store.createDomain({ name: 'Arcana', iconPath: '/icons/arcana.png', gameSetId: 'gs-1' });
+    const card = await store.createCard({
+      name: 'Rune Ward',
+      type: 'SPELL',
+      domainId: d.id,
+      domainIcon: '/icons/custom.png',
+      gameSetId: 'gs-1',
+    });
+    expect(card.domainIcon).toBe('/icons/custom.png');
+  });
+
+  it('listCardsByDomain only returns matching cards', async () => {
+    const arcana = await store.createDomain({ name: 'Arcana', gameSetId: 'gs-1' });
+    const blade = await store.createDomain({ name: 'Blade', gameSetId: 'gs-1' });
+    await store.createCard({ name: 'Rune Ward', type: 'SPELL', domainId: arcana.id, gameSetId: 'gs-1' });
+    await store.createCard({ name: 'Whirlwind', type: 'ABILITY', domainId: blade.id, gameSetId: 'gs-1' });
+
+    const arcanaCards = store.listCardsByDomain(arcana.id);
+    expect(arcanaCards).toHaveLength(1);
+    expect(arcanaCards[0].name).toBe('Rune Ward');
+  });
+
+  it('update and remove follow the same makeCollection rules as every other type', async () => {
+    const d = await store.createDomain({ name: 'Arcana', gameSetId: 'gs-1' });
+    const card = await store.createCard({ name: 'Rune Ward', type: 'SPELL', level: 1, domainId: d.id, gameSetId: 'gs-1' });
+    const updated = await store.updateCard(card.id, { level: 3 });
+    expect(updated.level).toBe(3);
+    await store.removeCard(card.id);
+    expect(store.listCards()).toHaveLength(0);
+  });
+});
+
 describe('Weapon', () => {
   it('rejects a Secondary weapon with Two-Handed burden', async () => {
     await expect(
@@ -200,6 +253,22 @@ describe('Export / Import', () => {
     const domains = store.listDomains();
     expect(domains).toHaveLength(2);
     expect(domains.find((d) => d.id === existing.id).name).toBe('Arcana Renamed');
+  });
+});
+
+describe('forward-compat store migration', () => {
+  it('backfills a collection missing from an on-disk store (e.g. an install from before Cards existed)', async () => {
+    const oldStore = store.emptyStore();
+    delete oldStore.cards;
+    fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify(oldStore));
+    store.__resetCacheForTests();
+
+    expect(store.listCards()).toEqual([]);
+    // The read fixed the in-memory cache; write it back out and confirm the
+    // key is actually persisted, not just papered over in memory.
+    await store.createGameSet({ name: 'Forces a write' });
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+    expect(Array.isArray(onDisk.cards)).toBe(true);
   });
 });
 
