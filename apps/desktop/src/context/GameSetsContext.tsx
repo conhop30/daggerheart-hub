@@ -27,6 +27,12 @@ export function GameSetsProvider({ children }: { children: ReactNode }) {
       .then((sets) => {
         if (!cancelled) setGameSets(sets);
       })
+      .catch(() => {
+        // Swallowed on purpose: this fires in a plain browser tab (no
+        // Electron), where every other loader in the app shows its own
+        // "needs to run inside Electron" message already — this context
+        // just falls back to an empty list rather than duplicating that.
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
