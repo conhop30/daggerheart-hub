@@ -11,17 +11,43 @@
 
 .feature-editor__row {
   display: grid;
-  grid-template-columns: 1fr 2fr auto;
+  grid-template-columns: auto 1fr 2fr auto;
+  align-items: center;
   gap: var(--space-1);
   margin-bottom: var(--space-1);
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  transition: border-color 150ms var(--ease);
 }
 
 .feature-editor__row--single {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
 }
 
 .feature-editor__row--experience {
-  grid-template-columns: 2fr 1fr auto;
+  grid-template-columns: auto 2fr 1fr auto;
+}
+
+.feature-editor__row.is-drag-over {
+  border-top-color: var(--hope);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.4rem 0.2rem;
+  user-select: none;
+  touch-action: none;
+}
+
+.drag-handle:hover {
+  color: var(--ink);
+}
+
+.drag-handle--dragging {
+  opacity: 0.4;
 }
 
 .feature-editor__row input {

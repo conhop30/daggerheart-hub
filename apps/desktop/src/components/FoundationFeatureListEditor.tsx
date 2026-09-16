@@ -1,4 +1,5 @@
 import type { FoundationFeature, SpellcastTrait } from '../api/subclasses';
+import { useDragReorder } from '../lib/useDragReorder';
 import './FeatureListEditor.css';
 import './FoundationFeatureListEditor.css';
 
@@ -23,6 +24,8 @@ const TRAIT_OPTIONS: SpellcastTrait[] = [
 // shape as FeatureListEditor, so this reuses its CSS and just adds a third
 // column for the override select.
 export default function FoundationFeatureListEditor({ features, onChange }: FoundationFeatureListEditorProps) {
+  const { getHandleProps, getRowClassName } = useDragReorder(features, onChange);
+
   function update(index: number, field: keyof FoundationFeature, value: string) {
     const next = features.slice();
     if (field === 'spellcastTrait') {
@@ -45,7 +48,8 @@ export default function FoundationFeatureListEditor({ features, onChange }: Foun
     <div className="feature-editor">
       <div className="feature-editor__label">Foundation Features</div>
       {features.map((feature, index) => (
-        <div className="foundation-feature-editor__row" key={index}>
+        <div className={`foundation-feature-editor__row${getRowClassName(index)}`} key={index}>
+          <span {...getHandleProps(index)}>⠿</span>
           <input
             type="text"
             placeholder="Name"

@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import { adversariesApi, type Adversary, type AttackRange, type AttackType } from '../api/adversaries';
 import type { Feature } from '../api/heroClasses';
 import FeatureListEditor from './FeatureListEditor';
 import StringListEditor from './StringListEditor';
 import ExperienceListEditor, { type Experience } from './ExperienceListEditor';
 import ThresholdsInput, { type Thresholds } from './ThresholdsInput';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
 interface AdversaryFormProps {
-  gameSets: GameSet[];
   /** Pass an existing Adversary to edit it; omit to create a new one. */
   initial?: Adversary | null;
   onSaved: (adversary: Adversary) => void;
@@ -22,7 +21,7 @@ interface AdversaryFormProps {
 const ATTACK_RANGES: AttackRange[] = ['MELEE', 'VERY_CLOSE', 'CLOSE', 'FAR', 'VERY_FAR', 'OUT_OF_RANGE'];
 const ATTACK_TYPES: AttackType[] = ['PHYSICAL', 'MAGICAL', 'DIRECT_PHYSICAL', 'DIRECT_MAGICAL'];
 
-export default function AdversaryForm({ gameSets, initial, onSaved, onCancel }: AdversaryFormProps) {
+export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -41,7 +40,7 @@ export default function AdversaryForm({ gameSets, initial, onSaved, onCancel }: 
   const [passives, setPassives] = useState<Feature[]>(initial?.features.passives ?? []);
   const [actions, setActions] = useState<Feature[]>(initial?.features.actions ?? []);
   const [reactions, setReactions] = useState<Feature[]>(initial?.features.reactions ?? []);
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,16 +135,7 @@ export default function AdversaryForm({ gameSets, initial, onSaved, onCancel }: 
       <FeatureListEditor label="Passives" features={passives} onChange={setPassives} />
       <FeatureListEditor label="Actions" features={actions} onChange={setActions} />
       <FeatureListEditor label="Reactions" features={reactions} onChange={setReactions} />
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

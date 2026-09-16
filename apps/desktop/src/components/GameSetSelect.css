@@ -1,0 +1,35 @@
+.game-set-select__new-row {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.game-set-select__new-row input {
+  flex: 1;
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.game-set-select__new-row button {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  padding: 0.5rem 0.85rem;
+  white-space: nowrap;
+  transition:
+    border-color 200ms var(--ease),
+    color 200ms var(--ease);
+}
+
+.game-set-select__new-row button:hover:not(:disabled) {
+  border-color: var(--hope);
+  color: var(--ink);
+}
+
+.game-set-select__new-row button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -1,20 +1,19 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import { armorsApi, type Armor } from '../api/armors';
 import ThresholdsInput, { type Thresholds } from './ThresholdsInput';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import './forms.css';
 
 interface ArmorFormProps {
-  gameSets: GameSet[];
   /** Pass an existing Armor to edit it; omit to create a new one. */
   initial?: Armor | null;
   onSaved: (armor: Armor) => void;
   onCancel: () => void;
 }
 
-export default function ArmorForm({ gameSets, initial, onSaved, onCancel }: ArmorFormProps) {
+export default function ArmorForm({ initial, onSaved, onCancel }: ArmorFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -22,7 +21,7 @@ export default function ArmorForm({ gameSets, initial, onSaved, onCancel }: Armo
   const [baseScore, setBaseScore] = useState(initial?.baseScore?.toString() ?? '');
   const [thresholds, setThresholds] = useState<Thresholds>(initial?.thresholds ?? { major: null, severe: null });
   const [feature, setFeature] = useState(initial?.feature ?? '');
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,16 +64,7 @@ export default function ArmorForm({ gameSets, initial, onSaved, onCancel }: Armo
         Feature
         <textarea value={feature} onChange={(e) => setFeature(e.target.value)} rows={2} />
       </label>
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

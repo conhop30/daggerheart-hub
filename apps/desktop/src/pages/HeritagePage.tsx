@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { communitiesApi, type Community } from '../api/communities';
 import { ancestriesApi, type Ancestry } from '../api/ancestries';
-import { gameSetsApi } from '../api/gameSets';
 import { useApiList } from '../lib/useApiList';
 import { ContentCard, ContentCardList, FeatureLines } from '../components/ContentCard';
 import NamedFeatureForm from '../components/NamedFeatureForm';
@@ -27,9 +26,10 @@ function NamedFeatureCard({
 export default function HeritagePage() {
   const communities = useApiList(communitiesApi.list);
   const ancestries = useApiList(ancestriesApi.list);
-  const gameSets = useApiList(gameSetsApi.list);
   const [editingCommunityId, setEditingCommunityId] = useState<string | null>(null);
   const [editingAncestryId, setEditingAncestryId] = useState<string | null>(null);
+  const [creatingCommunity, setCreatingCommunity] = useState(false);
+  const [creatingAncestry, setCreatingAncestry] = useState(false);
 
   async function handleDeleteCommunity(c: Community) {
     if (!window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
@@ -56,20 +56,39 @@ export default function HeritagePage() {
       <h1 className="browse-page__title">Heritage</h1>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Communities</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Communities</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingCommunity(true)}>
+            + New Community
+          </button>
+        </div>
+        {creatingCommunity && (
+          <div className="browse-page__inline-form">
+            <NamedFeatureForm
+              title="Community"
+              submitLabel="Create Community"
+              create={communitiesApi.create}
+              update={communitiesApi.update}
+              onSaved={(saved) => {
+                communities.upsert(saved);
+                setCreatingCommunity(false);
+              }}
+              onCancel={() => setCreatingCommunity(false)}
+            />
+          </div>
+        )}
         {communities.loading && <p className="browse-page__status">Loading Communities&hellip;</p>}
         {communities.error && <p className="browse-page__status browse-page__status--error">{communities.error}</p>}
         {!communities.loading && !communities.error && (
           <ContentCardList
             items={communities.items}
-            emptyMessage="No Communities yet — create one from Home first."
+            emptyMessage="No Communities yet — click + New Community above to create one."
             getKey={(c) => c.id}
             renderItem={(c) =>
               editingCommunityId === c.id ? (
                 <NamedFeatureForm
                   title="Community"
                   submitLabel="Create Community"
-                  gameSets={gameSets.items}
                   initial={c}
                   create={communitiesApi.create}
                   update={communitiesApi.update}
@@ -92,20 +111,39 @@ export default function HeritagePage() {
       </div>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Ancestries</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Ancestries</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingAncestry(true)}>
+            + New Ancestry
+          </button>
+        </div>
+        {creatingAncestry && (
+          <div className="browse-page__inline-form">
+            <NamedFeatureForm
+              title="Ancestry"
+              submitLabel="Create Ancestry"
+              create={ancestriesApi.create}
+              update={ancestriesApi.update}
+              onSaved={(saved) => {
+                ancestries.upsert(saved);
+                setCreatingAncestry(false);
+              }}
+              onCancel={() => setCreatingAncestry(false)}
+            />
+          </div>
+        )}
         {ancestries.loading && <p className="browse-page__status">Loading Ancestries&hellip;</p>}
         {ancestries.error && <p className="browse-page__status browse-page__status--error">{ancestries.error}</p>}
         {!ancestries.loading && !ancestries.error && (
           <ContentCardList
             items={ancestries.items}
-            emptyMessage="No Ancestries yet — create one from Home first."
+            emptyMessage="No Ancestries yet — click + New Ancestry above to create one."
             getKey={(a) => a.id}
             renderItem={(a) =>
               editingAncestryId === a.id ? (
                 <NamedFeatureForm
                   title="Ancestry"
                   submitLabel="Create Ancestry"
-                  gameSets={gameSets.items}
                   initial={a}
                   create={ancestriesApi.create}
                   update={ancestriesApi.update}

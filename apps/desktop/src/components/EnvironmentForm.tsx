@@ -1,22 +1,21 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import { environmentsApi, type Environment } from '../api/environments';
 import type { Feature } from '../api/heroClasses';
 import FeatureListEditor from './FeatureListEditor';
 import StringListEditor from './StringListEditor';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import './forms.css';
 
 interface EnvironmentFormProps {
-  gameSets: GameSet[];
   /** Pass an existing Environment to edit it; omit to create a new one. */
   initial?: Environment | null;
   onSaved: (environment: Environment) => void;
   onCancel: () => void;
 }
 
-export default function EnvironmentForm({ gameSets, initial, onSaved, onCancel }: EnvironmentFormProps) {
+export default function EnvironmentForm({ initial, onSaved, onCancel }: EnvironmentFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -28,7 +27,7 @@ export default function EnvironmentForm({ gameSets, initial, onSaved, onCancel }
   const [passives, setPassives] = useState<Feature[]>(initial?.features.passives ?? []);
   const [actions, setActions] = useState<Feature[]>(initial?.features.actions ?? []);
   const [reactions, setReactions] = useState<Feature[]>(initial?.features.reactions ?? []);
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,16 +83,7 @@ export default function EnvironmentForm({ gameSets, initial, onSaved, onCancel }
       <FeatureListEditor label="Passives" features={passives} onChange={setPassives} />
       <FeatureListEditor label="Actions" features={actions} onChange={setActions} />
       <FeatureListEditor label="Reactions" features={reactions} onChange={setReactions} />
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

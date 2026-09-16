@@ -1,25 +1,24 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import { domainsApi, type Domain } from '../api/domains';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import './forms.css';
 
 interface DomainFormProps {
-  gameSets: GameSet[];
   /** Pass an existing Domain to edit it; omit to create a new one. */
   initial?: Domain | null;
   onSaved: (domain: Domain) => void;
   onCancel: () => void;
 }
 
-export default function DomainForm({ gameSets, initial, onSaved, onCancel }: DomainFormProps) {
+export default function DomainForm({ initial, onSaved, onCancel }: DomainFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [colorHex, setColorHex] = useState(initial?.colorHex ?? '#A97815');
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,16 +53,7 @@ export default function DomainForm({ gameSets, initial, onSaved, onCancel }: Dom
         Color
         <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)} />
       </label>
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

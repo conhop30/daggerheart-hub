@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import { weaponsApi, type Burden, type DamageType, type Weapon, type WeaponSlot, type WeaponTrait } from '../api/weapons';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
 interface WeaponFormProps {
-  gameSets: GameSet[];
   weaponSlot: WeaponSlot;
   /** Pass an existing Weapon to edit it; omit to create a new one. */
   initial?: Weapon | null;
@@ -18,7 +17,7 @@ interface WeaponFormProps {
 const TRAITS: WeaponTrait[] = ['AGILITY', 'PRESENCE', 'INSTINCT', 'KNOWLEDGE', 'FINESSE', 'STRENGTH'];
 const DAMAGE_TYPES: DamageType[] = ['PHYSICAL', 'MAGICAL'];
 
-export default function WeaponForm({ gameSets, weaponSlot, initial, onSaved, onCancel }: WeaponFormProps) {
+export default function WeaponForm({ weaponSlot, initial, onSaved, onCancel }: WeaponFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -30,7 +29,7 @@ export default function WeaponForm({ gameSets, weaponSlot, initial, onSaved, onC
   const [damage, setDamage] = useState(initial?.damage ?? '');
   const [trait, setTrait] = useState<WeaponTrait | ''>(initial?.trait ?? '');
   const [damageType, setDamageType] = useState<DamageType | ''>(initial?.damageType ?? '');
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,16 +114,7 @@ export default function WeaponForm({ gameSets, weaponSlot, initial, onSaved, onC
           ))}
         </select>
       </label>
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

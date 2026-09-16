@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import type { GameSet } from '../api/gameSets';
 import type { Domain } from '../api/domains';
 import type { HeroClass } from '../api/heroClasses';
 import type { ContentKey } from '../api/contentKeys';
@@ -41,7 +40,6 @@ type Stage =
 
 interface CreatePanelProps {
   loading: boolean;
-  gameSets: GameSet[];
   domains: Domain[];
   heroClasses: HeroClass[];
   onDomainCreated: (domain: Domain) => void;
@@ -51,7 +49,6 @@ interface CreatePanelProps {
 
 export default function CreatePanel({
   loading,
-  gameSets,
   domains,
   heroClasses,
   onDomainCreated,
@@ -191,7 +188,6 @@ export default function CreatePanel({
 
           {stage.kind === 'form' && stage.type === 'Domain' && (
             <DomainForm
-              gameSets={gameSets}
               onSaved={(domain) => {
                 onDomainCreated(domain);
                 reset();
@@ -202,7 +198,6 @@ export default function CreatePanel({
 
           {stage.kind === 'form' && stage.type === 'Class' && (
             <ClassForm
-              gameSets={gameSets}
               domains={domains}
               onSaved={(heroClass) => {
                 onHeroClassCreated(heroClass);
@@ -214,7 +209,6 @@ export default function CreatePanel({
 
           {stage.kind === 'form' && stage.type === 'Adversary' && (
             <AdversaryForm
-              gameSets={gameSets}
               onSaved={() => {
                 onContentCreated('adversaries');
                 reset();
@@ -225,7 +219,6 @@ export default function CreatePanel({
 
           {stage.kind === 'form' && stage.type === 'Environment' && (
             <EnvironmentForm
-              gameSets={gameSets}
               onSaved={() => {
                 onContentCreated('environments');
                 reset();
@@ -238,7 +231,6 @@ export default function CreatePanel({
             <NamedFeatureForm
               title="Community"
               submitLabel="Create Community"
-              gameSets={gameSets}
               create={communitiesApi.create}
               update={communitiesApi.update}
               onSaved={() => {
@@ -253,7 +245,6 @@ export default function CreatePanel({
             <NamedFeatureForm
               title="Ancestry"
               submitLabel="Create Ancestry"
-              gameSets={gameSets}
               create={ancestriesApi.create}
               update={ancestriesApi.update}
               onSaved={() => {
@@ -268,7 +259,6 @@ export default function CreatePanel({
             <NamedFeatureForm
               title="Transformation"
               submitLabel="Create Transformation"
-              gameSets={gameSets}
               create={transformationsApi.create}
               update={transformationsApi.update}
               onSaved={() => {
@@ -281,7 +271,6 @@ export default function CreatePanel({
 
           {stage.kind === 'subclass-form' && (
             <SubclassForm
-              gameSets={gameSets}
               parentClassId={stage.parentClassId}
               parentClassName={stage.parentClassName}
               onSaved={reset}
@@ -291,7 +280,6 @@ export default function CreatePanel({
 
           {stage.kind === 'weapon-form' && (
             <WeaponForm
-              gameSets={gameSets}
               weaponSlot={stage.weaponSlot}
               onSaved={() => {
                 onContentCreated('weapons');
@@ -303,7 +291,6 @@ export default function CreatePanel({
 
           {stage.kind === 'armor-form' && (
             <ArmorForm
-              gameSets={gameSets}
               onSaved={() => {
                 onContentCreated('armors');
                 reset();
@@ -316,7 +303,6 @@ export default function CreatePanel({
             <SimpleNameDescriptionForm
               title="Loot"
               submitLabel="Create Loot"
-              gameSets={gameSets}
               create={lootApi.create}
               update={lootApi.update}
               onSaved={() => {
@@ -331,7 +317,6 @@ export default function CreatePanel({
             <SimpleNameDescriptionForm
               title="Consumable"
               submitLabel="Create Consumable"
-              gameSets={gameSets}
               create={consumablesApi.create}
               update={consumablesApi.update}
               onSaved={() => {

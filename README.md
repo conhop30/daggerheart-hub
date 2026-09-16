@@ -72,6 +72,21 @@ without touching your real `~/.daggerheart-hub`. `npm run test:e2e`
 real IPC, a throwaway store directory per test) through navigation, a full
 create → edit → delete round trip, and export.
 
+Three more things landed from direct UI feedback after using the app:
+- **Game Sets are no longer stuck at "Core."** Every Game Set dropdown
+  (`GameSetSelect`, shared by every form) offers "+ New Set…" inline —
+  create one on the spot without leaving the form you're in. Backed by a
+  `GameSetsProvider` React context loaded once at the app root, so a Set
+  created from any form is immediately available in every other form
+  without needing a callback threaded through two dozen call sites.
+- **Feature lists are drag-to-reorder.** Class Features, Specialization/
+  Mastery/Foundation Features, Passives/Actions/Reactions, and the free-text
+  lists (Motives and Tactics, Impulses, Experiences) all got a drag handle
+  via a shared `useDragReorder` hook — plain HTML5 drag-and-drop, no library.
+- **Every browse page has its own Create button(s)**, scoped to what that
+  page actually holds (e.g. Equipment gets separate "+ New Primary" / "+ New
+  Secondary" weapon buttons) — not just the Home Create panel.
+
 **Not built:** Domain, Heritage, and Optional Mechanics don't have the
 fully designed galleries the spec describes (filters, sort, etc.) — just
 plain lists.

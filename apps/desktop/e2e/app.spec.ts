@@ -90,6 +90,48 @@ test('a Secondary weapon cannot be created as Two-Handed', async () => {
   await expect(burdenSelect).toHaveValue('ONE_HANDED');
 });
 
+test('a custom Game Set created from one form is immediately available in another', async () => {
+  await win.click('.app-shell__nav-link:has-text("Domains")');
+  await win.click('.browse-page__add-button:has-text("New Domain")');
+  await win.selectOption('.create-form select', '__new__');
+  await win.fill('.game-set-select__new-row input', 'Hope and Fear');
+  await win.click('.game-set-select__new-row button:has-text("Add")');
+  await expect(win.locator('.create-form select option', { hasText: 'Hope and Fear' })).toHaveCount(1);
+
+  // The new Set should now be selectable from a completely different form,
+  // proving GameSetsProvider's context (not just this form's local state)
+  // picked it up.
+  await win.click('.create-form button:has-text("Cancel")');
+  await win.click('.app-shell__brand');
+  await win.click('.create-panel__toggle');
+  await win.click('.chip:text-is("Adversary")');
+  await expect(win.locator('.create-form select', { hasText: 'Hope and Fear' })).toHaveCount(1);
+});
+
+test('drag-reordering a feature list actually changes the order', async () => {
+  await win.click('.create-panel__toggle');
+  await win.click('.chip:text-is("Class")');
+  const addFeature = win.locator('.feature-editor__add');
+  await addFeature.click();
+  await addFeature.click();
+  const nameInputs = win.locator('.feature-editor__row input[placeholder="Name"]');
+  await nameInputs.nth(0).fill('First');
+  await nameInputs.nth(1).fill('Second');
+
+  const handles = win.locator('.feature-editor .drag-handle');
+  const firstBox = await handles.nth(0).boundingBox();
+  const secondBox = await handles.nth(1).boundingBox();
+  if (!firstBox || !secondBox) throw new Error('drag handle not visible');
+  await win.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(secondBox.x + secondBox.width / 2, secondBox.y + secondBox.height / 2, { steps: 10 });
+  await win.dispatchEvent('.feature-editor .drag-handle >> nth=1', 'dragenter');
+  await win.mouse.up();
+
+  await expect(nameInputs.nth(0)).toHaveValue('Second');
+  await expect(nameInputs.nth(1)).toHaveValue('First');
+});
+
 test('export produces a valid snapshot with every collection present', async () => {
   const exportPath = path.join(tempDir, 'export.json');
   await app.evaluate(

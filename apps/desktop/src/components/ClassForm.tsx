@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import type { Domain } from '../api/domains';
 import { heroClassesApi, type Feature, type HeroClass } from '../api/heroClasses';
 import FeatureListEditor from './FeatureListEditor';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import './forms.css';
 
 interface ClassFormProps {
-  gameSets: GameSet[];
   domains: Domain[];
   /** Pass an existing HeroClass to edit it; omit to create a new one. */
   initial?: HeroClass | null;
@@ -16,7 +15,7 @@ interface ClassFormProps {
   onCancel: () => void;
 }
 
-export default function ClassForm({ gameSets, domains, initial, onSaved, onCancel }: ClassFormProps) {
+export default function ClassForm({ domains, initial, onSaved, onCancel }: ClassFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -32,7 +31,7 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
   const [classItems, setClassItems] = useState(initial?.classItems ?? '');
   const [hopeFeature, setHopeFeature] = useState(initial?.hopeFeature ?? '');
   const [classFeatures, setClassFeatures] = useState<Feature[]>(initial?.classFeatures ?? []);
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,16 +129,7 @@ export default function ClassForm({ gameSets, domains, initial, onSaved, onCance
         <textarea value={hopeFeature} onChange={(e) => setHopeFeature(e.target.value)} rows={2} />
       </label>
       <FeatureListEditor label="Class Features" features={classFeatures} onChange={setClassFeatures} />
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

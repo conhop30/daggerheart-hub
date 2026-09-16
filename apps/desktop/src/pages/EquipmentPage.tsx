@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { weaponsApi, type Weapon } from '../api/weapons';
+import { weaponsApi, type Weapon, type WeaponSlot } from '../api/weapons';
 import { armorsApi, type Armor } from '../api/armors';
 import { lootApi, type Loot } from '../api/loot';
 import { consumablesApi, type Consumable } from '../api/consumables';
-import { gameSetsApi } from '../api/gameSets';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, ContentCardList, MetaChip } from '../components/ContentCard';
@@ -77,12 +76,15 @@ export default function EquipmentPage() {
   const armors = useApiList(armorsApi.list);
   const loot = useApiList(lootApi.list);
   const consumables = useApiList(consumablesApi.list);
-  const gameSets = useApiList(gameSetsApi.list);
 
   const [editingWeaponId, setEditingWeaponId] = useState<string | null>(null);
   const [editingArmorId, setEditingArmorId] = useState<string | null>(null);
   const [editingLootId, setEditingLootId] = useState<string | null>(null);
   const [editingConsumableId, setEditingConsumableId] = useState<string | null>(null);
+  const [creatingWeaponSlot, setCreatingWeaponSlot] = useState<WeaponSlot | null>(null);
+  const [creatingArmor, setCreatingArmor] = useState(false);
+  const [creatingLoot, setCreatingLoot] = useState(false);
+  const [creatingConsumable, setCreatingConsumable] = useState(false);
 
   async function handleDeleteWeapon(w: Weapon) {
     if (!window.confirm(`Delete "${w.name}"? This can't be undone.`)) return;
@@ -129,18 +131,39 @@ export default function EquipmentPage() {
       <h1 className="browse-page__title">Equipment</h1>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Weapons</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Weapons</h2>
+          <div className="browse-page__section-actions">
+            <button type="button" className="browse-page__add-button" onClick={() => setCreatingWeaponSlot('PRIMARY')}>
+              + New Primary
+            </button>
+            <button type="button" className="browse-page__add-button" onClick={() => setCreatingWeaponSlot('SECONDARY')}>
+              + New Secondary
+            </button>
+          </div>
+        </div>
+        {creatingWeaponSlot && (
+          <div className="browse-page__inline-form">
+            <WeaponForm
+              weaponSlot={creatingWeaponSlot}
+              onSaved={(saved) => {
+                weapons.upsert(saved);
+                setCreatingWeaponSlot(null);
+              }}
+              onCancel={() => setCreatingWeaponSlot(null)}
+            />
+          </div>
+        )}
         {weapons.loading && <p className="browse-page__status">Loading Weapons&hellip;</p>}
         {weapons.error && <p className="browse-page__status browse-page__status--error">{weapons.error}</p>}
         {!weapons.loading && !weapons.error && (
           <ContentCardList
             items={weapons.items}
-            emptyMessage="No Weapons yet — create one from Home first."
+            emptyMessage="No Weapons yet — click + New Primary or + New Secondary above to create one."
             getKey={(w) => w.id}
             renderItem={(w) =>
               editingWeaponId === w.id ? (
                 <WeaponForm
-                  gameSets={gameSets.items}
                   weaponSlot={w.weaponSlot}
                   initial={w}
                   onSaved={(saved) => {
@@ -158,18 +181,33 @@ export default function EquipmentPage() {
       </div>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Armor</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Armor</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingArmor(true)}>
+            + New Armor
+          </button>
+        </div>
+        {creatingArmor && (
+          <div className="browse-page__inline-form">
+            <ArmorForm
+              onSaved={(saved) => {
+                armors.upsert(saved);
+                setCreatingArmor(false);
+              }}
+              onCancel={() => setCreatingArmor(false)}
+            />
+          </div>
+        )}
         {armors.loading && <p className="browse-page__status">Loading Armor&hellip;</p>}
         {armors.error && <p className="browse-page__status browse-page__status--error">{armors.error}</p>}
         {!armors.loading && !armors.error && (
           <ContentCardList
             items={armors.items}
-            emptyMessage="No Armor yet — create one from Home first."
+            emptyMessage="No Armor yet — click + New Armor above to create one."
             getKey={(a) => a.id}
             renderItem={(a) =>
               editingArmorId === a.id ? (
                 <ArmorForm
-                  gameSets={gameSets.items}
                   initial={a}
                   onSaved={(saved) => {
                     armors.upsert(saved);
@@ -186,20 +224,39 @@ export default function EquipmentPage() {
       </div>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Loot</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Loot</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingLoot(true)}>
+            + New Loot
+          </button>
+        </div>
+        {creatingLoot && (
+          <div className="browse-page__inline-form">
+            <SimpleNameDescriptionForm
+              title="Loot"
+              submitLabel="Create Loot"
+              create={lootApi.create}
+              update={lootApi.update}
+              onSaved={(saved) => {
+                loot.upsert(saved);
+                setCreatingLoot(false);
+              }}
+              onCancel={() => setCreatingLoot(false)}
+            />
+          </div>
+        )}
         {loot.loading && <p className="browse-page__status">Loading Loot&hellip;</p>}
         {loot.error && <p className="browse-page__status browse-page__status--error">{loot.error}</p>}
         {!loot.loading && !loot.error && (
           <ContentCardList
             items={loot.items}
-            emptyMessage="No Loot yet — create one from Home first."
+            emptyMessage="No Loot yet — click + New Loot above to create one."
             getKey={(l) => l.id}
             renderItem={(l) =>
               editingLootId === l.id ? (
                 <SimpleNameDescriptionForm
                   title="Loot"
                   submitLabel="Create Loot"
-                  gameSets={gameSets.items}
                   initial={l}
                   create={lootApi.create}
                   update={lootApi.update}
@@ -218,20 +275,39 @@ export default function EquipmentPage() {
       </div>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Consumables</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Consumables</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingConsumable(true)}>
+            + New Consumable
+          </button>
+        </div>
+        {creatingConsumable && (
+          <div className="browse-page__inline-form">
+            <SimpleNameDescriptionForm
+              title="Consumable"
+              submitLabel="Create Consumable"
+              create={consumablesApi.create}
+              update={consumablesApi.update}
+              onSaved={(saved) => {
+                consumables.upsert(saved);
+                setCreatingConsumable(false);
+              }}
+              onCancel={() => setCreatingConsumable(false)}
+            />
+          </div>
+        )}
         {consumables.loading && <p className="browse-page__status">Loading Consumables&hellip;</p>}
         {consumables.error && <p className="browse-page__status browse-page__status--error">{consumables.error}</p>}
         {!consumables.loading && !consumables.error && (
           <ContentCardList
             items={consumables.items}
-            emptyMessage="No Consumables yet — create one from Home first."
+            emptyMessage="No Consumables yet — click + New Consumable above to create one."
             getKey={(c) => c.id}
             renderItem={(c) =>
               editingConsumableId === c.id ? (
                 <SimpleNameDescriptionForm
                   title="Consumable"
                   submitLabel="Create Consumable"
-                  gameSets={gameSets.items}
                   initial={c}
                   create={consumablesApi.create}
                   update={consumablesApi.update}

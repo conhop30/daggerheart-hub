@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import './forms.css';
 
@@ -14,7 +14,6 @@ interface NameDescriptionRecord {
 interface SimpleNameDescriptionFormProps<T extends NameDescriptionRecord> {
   title: string;
   submitLabel: string;
-  gameSets: GameSet[];
   /** Pass an existing record to edit it; omit to create a new one. */
   initial?: T | null;
   create: (body: { name: string; description?: string; gameSetId: string }) => Promise<T>;
@@ -28,7 +27,6 @@ interface SimpleNameDescriptionFormProps<T extends NameDescriptionRecord> {
 export default function SimpleNameDescriptionForm<T extends NameDescriptionRecord>({
   title,
   submitLabel,
-  gameSets,
   initial,
   create,
   update,
@@ -39,7 +37,7 @@ export default function SimpleNameDescriptionForm<T extends NameDescriptionRecor
 
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,16 +68,7 @@ export default function SimpleNameDescriptionForm<T extends NameDescriptionRecor
         Description
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
       </label>
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

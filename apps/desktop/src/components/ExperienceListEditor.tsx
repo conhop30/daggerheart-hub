@@ -1,3 +1,4 @@
+import { useDragReorder } from '../lib/useDragReorder';
 import './FeatureListEditor.css';
 
 export interface Experience {
@@ -13,6 +14,8 @@ interface ExperienceListEditorProps {
 // Adversary.Experiences: Dict(Name -> Modifier: Int) — the one feature-list
 // shape that pairs a name with a number instead of a description.
 export default function ExperienceListEditor({ experiences, onChange }: ExperienceListEditorProps) {
+  const { getHandleProps, getRowClassName } = useDragReorder(experiences, onChange);
+
   function update(index: number, field: keyof Experience, value: string) {
     const next = experiences.slice();
     next[index] = {
@@ -34,7 +37,8 @@ export default function ExperienceListEditor({ experiences, onChange }: Experien
     <div className="feature-editor">
       <div className="feature-editor__label">Experiences</div>
       {experiences.map((experience, index) => (
-        <div className="feature-editor__row feature-editor__row--experience" key={index}>
+        <div className={`feature-editor__row feature-editor__row--experience${getRowClassName(index)}`} key={index}>
+          <span {...getHandleProps(index)}>⠿</span>
           <input
             type="text"
             placeholder="Name"

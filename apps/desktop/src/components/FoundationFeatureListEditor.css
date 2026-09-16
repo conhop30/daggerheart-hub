@@ -1,8 +1,16 @@
 .foundation-feature-editor__row {
   display: grid;
-  grid-template-columns: 1fr 2fr 0.9fr auto;
+  grid-template-columns: auto 1fr 2fr 0.9fr auto;
+  align-items: center;
   gap: var(--space-1);
   margin-bottom: var(--space-1);
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  transition: border-color 150ms var(--ease);
+}
+
+.foundation-feature-editor__row.is-drag-over {
+  border-top-color: var(--hope);
 }
 
 .foundation-feature-editor__row input,

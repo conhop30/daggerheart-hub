@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import type { GameSet } from '../api/gameSets';
 import type { Domain } from '../api/domains';
 import type { HeroClass } from '../api/heroClasses';
 import { subclassesApi, type Subclass, type SpellcastTrait } from '../api/subclasses';
@@ -10,7 +9,6 @@ import './ClassSpread.css';
 interface ClassSpreadProps {
   heroClass: HeroClass;
   domainsById: Map<string, Domain>;
-  gameSets: GameSet[];
 }
 
 // Title-cases a SpellcastTrait enum value for display (e.g. "STRENGTH" -> "Strength").
@@ -19,7 +17,7 @@ function formatTrait(trait: SpellcastTrait): string {
   return trait.charAt(0) + trait.slice(1).toLowerCase();
 }
 
-export default function ClassSpread({ heroClass, domainsById, gameSets }: ClassSpreadProps) {
+export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps) {
   const [subclasses, setSubclasses] = useState<Subclass[]>([]);
   const [selectedSubclassId, setSelectedSubclassId] = useState<string | null>(null);
   const [editingSubclass, setEditingSubclass] = useState(false);
@@ -130,7 +128,6 @@ export default function ClassSpread({ heroClass, domainsById, gameSets }: ClassS
 
         {!loading && !error && editingSubclass && selectedSubclass && (
           <SubclassForm
-            gameSets={gameSets}
             parentClassId={heroClass.id}
             parentClassName={heroClass.name}
             initial={selectedSubclass}

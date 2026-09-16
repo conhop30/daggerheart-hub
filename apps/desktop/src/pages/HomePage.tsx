@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { gameSetsApi, type GameSet } from '../api/gameSets';
 import { domainsApi, type Domain } from '../api/domains';
 import { heroClassesApi, type HeroClass } from '../api/heroClasses';
 import { adversariesApi } from '../api/adversaries';
@@ -36,7 +35,6 @@ const EMPTY_COUNTS: Record<ContentKey, number> = {
 };
 
 export default function HomePage({ onNavigate }: HomePageProps) {
-  const [gameSets, setGameSets] = useState<GameSet[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [heroClasses, setHeroClasses] = useState<HeroClass[]>([]);
   const [counts, setCounts] = useState<Record<ContentKey, number>>(EMPTY_COUNTS);
@@ -53,7 +51,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     setLoadError(null);
     try {
       const [
-        sets,
         domainList,
         classList,
         adversaries,
@@ -66,7 +63,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         ancestries,
         transformations,
       ] = await Promise.all([
-        gameSetsApi.list(),
         domainsApi.list(),
         heroClassesApi.list(),
         adversariesApi.list(),
@@ -80,7 +76,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         transformationsApi.list(),
       ]);
       if (!mountedRef.current) return;
-      setGameSets(sets);
       setDomains(domainList);
       setHeroClasses(classList);
       setCounts({
@@ -167,7 +162,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
       <CreatePanel
         loading={loading}
-        gameSets={gameSets}
         domains={domains}
         heroClasses={heroClasses}
         onDomainCreated={(domain) => setDomains((prev) => upsertById(prev, domain))}

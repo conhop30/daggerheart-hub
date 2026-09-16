@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { GameSet } from '../api/gameSets';
 import type { Feature } from '../api/heroClasses';
 import {
   subclassesApi,
@@ -10,11 +9,11 @@ import {
 } from '../api/subclasses';
 import FeatureListEditor from './FeatureListEditor';
 import FoundationFeatureListEditor from './FoundationFeatureListEditor';
+import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
 import './forms.css';
 
 interface SubclassFormProps {
-  gameSets: GameSet[];
   parentClassId: string;
   parentClassName: string;
   /** Pass an existing Subclass to edit it; omit to create a new one. */
@@ -34,7 +33,6 @@ const SPELLCAST_TRAITS: SpellcastTrait[] = [
 ];
 
 export default function SubclassForm({
-  gameSets,
   parentClassId,
   parentClassName,
   initial,
@@ -55,7 +53,7 @@ export default function SubclassForm({
     initial?.specializationFeatures ?? []
   );
   const [masteryFeatures, setMasteryFeatures] = useState<Feature[]>(initial?.masteryFeatures ?? []);
-  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? gameSets[0]?.id ?? '');
+  const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,16 +110,7 @@ export default function SubclassForm({
         onChange={setSpecializationFeatures}
       />
       <FeatureListEditor label="Mastery Features" features={masteryFeatures} onChange={setMasteryFeatures} />
-      <label>
-        Game Set
-        <select value={gameSetId} onChange={(e) => setGameSetId(e.target.value)}>
-          {gameSets.map((gs) => (
-            <option key={gs.id} value={gs.id}>
-              {gs.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

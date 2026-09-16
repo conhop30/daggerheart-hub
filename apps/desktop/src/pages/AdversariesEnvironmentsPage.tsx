@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { adversariesApi, type Adversary } from '../api/adversaries';
 import { environmentsApi, type Environment } from '../api/environments';
-import { gameSetsApi } from '../api/gameSets';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, ContentCardList, MetaChip, FeatureLines, StringLines } from '../components/ContentCard';
@@ -86,9 +85,10 @@ function EnvironmentCard({ e, onEdit, onDelete }: { e: Environment; onEdit: () =
 export default function AdversariesEnvironmentsPage() {
   const adversaries = useApiList(adversariesApi.list);
   const environments = useApiList(environmentsApi.list);
-  const gameSets = useApiList(gameSetsApi.list);
   const [editingAdversaryId, setEditingAdversaryId] = useState<string | null>(null);
   const [editingEnvironmentId, setEditingEnvironmentId] = useState<string | null>(null);
+  const [creatingAdversary, setCreatingAdversary] = useState(false);
+  const [creatingEnvironment, setCreatingEnvironment] = useState(false);
 
   async function handleDeleteAdversary(a: Adversary) {
     if (!window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
@@ -115,18 +115,33 @@ export default function AdversariesEnvironmentsPage() {
       <h1 className="browse-page__title">Adversaries &amp; Environments</h1>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Adversaries</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Adversaries</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingAdversary(true)}>
+            + New Adversary
+          </button>
+        </div>
+        {creatingAdversary && (
+          <div className="browse-page__inline-form">
+            <AdversaryForm
+              onSaved={(saved) => {
+                adversaries.upsert(saved);
+                setCreatingAdversary(false);
+              }}
+              onCancel={() => setCreatingAdversary(false)}
+            />
+          </div>
+        )}
         {adversaries.loading && <p className="browse-page__status">Loading Adversaries&hellip;</p>}
         {adversaries.error && <p className="browse-page__status browse-page__status--error">{adversaries.error}</p>}
         {!adversaries.loading && !adversaries.error && (
           <ContentCardList
             items={adversaries.items}
-            emptyMessage="No Adversaries yet — create one from Home first."
+            emptyMessage="No Adversaries yet — click + New Adversary above to create one."
             getKey={(a) => a.id}
             renderItem={(a) =>
               editingAdversaryId === a.id ? (
                 <AdversaryForm
-                  gameSets={gameSets.items}
                   initial={a}
                   onSaved={(saved) => {
                     adversaries.upsert(saved);
@@ -147,18 +162,33 @@ export default function AdversariesEnvironmentsPage() {
       </div>
 
       <div className="browse-page__section">
-        <h2 className="browse-page__section-title">Environments</h2>
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Environments</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingEnvironment(true)}>
+            + New Environment
+          </button>
+        </div>
+        {creatingEnvironment && (
+          <div className="browse-page__inline-form">
+            <EnvironmentForm
+              onSaved={(saved) => {
+                environments.upsert(saved);
+                setCreatingEnvironment(false);
+              }}
+              onCancel={() => setCreatingEnvironment(false)}
+            />
+          </div>
+        )}
         {environments.loading && <p className="browse-page__status">Loading Environments&hellip;</p>}
         {environments.error && <p className="browse-page__status browse-page__status--error">{environments.error}</p>}
         {!environments.loading && !environments.error && (
           <ContentCardList
             items={environments.items}
-            emptyMessage="No Environments yet — create one from Home first."
+            emptyMessage="No Environments yet — click + New Environment above to create one."
             getKey={(e) => e.id}
             renderItem={(e) =>
               editingEnvironmentId === e.id ? (
                 <EnvironmentForm
-                  gameSets={gameSets.items}
                   initial={e}
                   onSaved={(saved) => {
                     environments.upsert(saved);

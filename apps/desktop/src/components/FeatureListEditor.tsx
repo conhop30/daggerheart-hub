@@ -1,4 +1,5 @@
 import type { Feature } from '../api/heroClasses';
+import { useDragReorder } from '../lib/useDragReorder';
 import './FeatureListEditor.css';
 
 interface FeatureListEditorProps {
@@ -12,6 +13,8 @@ interface FeatureListEditorProps {
 // have an extra per-feature spellcast-trait override and use their own
 // editor rather than this one.
 export default function FeatureListEditor({ label, features, onChange }: FeatureListEditorProps) {
+  const { getHandleProps, getRowClassName } = useDragReorder(features, onChange);
+
   function update(index: number, field: keyof Feature, value: string) {
     const next = features.slice();
     next[index] = { ...next[index], [field]: value };
@@ -30,7 +33,8 @@ export default function FeatureListEditor({ label, features, onChange }: Feature
     <div className="feature-editor">
       <div className="feature-editor__label">{label}</div>
       {features.map((feature, index) => (
-        <div className="feature-editor__row" key={index}>
+        <div className={`feature-editor__row${getRowClassName(index)}`} key={index}>
+          <span {...getHandleProps(index)}>⠿</span>
           <input
             type="text"
             placeholder="Name"
