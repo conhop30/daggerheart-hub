@@ -23,7 +23,8 @@ function createWindow() {
   if (app.isPackaged) {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   } else {
-    win.loadURL('http://localhost:5173');
+    // Must match vite.config.ts's server.port exactly.
+    win.loadURL('http://localhost:5183');
   }
 }
 

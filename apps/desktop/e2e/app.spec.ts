@@ -167,7 +167,7 @@ test.describe('Plain browser tab (no Electron)', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
-    await page.goto('http://localhost:5173');
+    await page.goto('http://localhost:5183');
     await page.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
 
     const rootHtml = await page.evaluate(() => document.getElementById('root')?.innerHTML ?? '');
