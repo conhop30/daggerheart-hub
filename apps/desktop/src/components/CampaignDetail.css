@@ -1,0 +1,76 @@
+.campaign-detail {
+  animation: fadeInUp 280ms var(--ease);
+}
+
+.campaign-detail__back {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  padding: 0;
+  margin-bottom: var(--space-3);
+  transition: color 200ms var(--ease);
+}
+
+.campaign-detail__back:hover {
+  color: var(--ink);
+}
+
+.campaign-detail__hero {
+  position: relative;
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.6);
+}
+
+.campaign-detail__title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.campaign-detail__notes {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 640px;
+}
+
+.campaign-detail__hero-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.campaign-detail__hero-action {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 11px;
+  border-radius: 999px;
+}
+
+.campaign-detail__hero-action:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.campaign-detail__hero-action--danger:hover {
+  border-color: var(--fear-on-dark, #c66);
+}
+
+.campaign-detail__edit-panel {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}

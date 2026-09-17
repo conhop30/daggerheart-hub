@@ -37,6 +37,8 @@ const COLLECTIONS = [
   'communities',
   'ancestries',
   'transformations',
+  'campaigns',
+  'partyMembers',
 ];
 
 let cache = null;
@@ -579,6 +581,68 @@ const transformations = makeCollection('transformations', {
   }),
 });
 
+// ---- Campaigns ----
+// The container for the Session Builder feature: a standing Party (the
+// PartyMember roster below) and, later, the Sessions run against it.
+// Unlike most collections, deleting a Campaign cascades to its children —
+// they have no other reachable gallery/list the way e.g. Card does off of
+// Domain, so an orphaned PartyMember would be permanently stuck with no UI
+// path to it. removeSession (once Sessions exist) will cascade the same way
+// to SessionAdversaries/SessionEnvironments.
+
+const campaigns = makeCollection('campaigns', {
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    notes: data.notes ?? null,
+    colorHex: data.colorHex ?? null,
+  }),
+});
+
+function removeCampaign(id) {
+  return mutate((store) => {
+    const index = store.campaigns.findIndex((c) => c.id === id);
+    if (index === -1) throw new Error(`No campaign with id ${id}`);
+    store.campaigns.splice(index, 1);
+    store.partyMembers = store.partyMembers.filter((p) => p.campaignId !== id);
+  });
+}
+
+// ---- Party Members ----
+// A standing roster per Campaign, reused across every Session run against
+// it. Deliberately lightweight: name + notes plus a fully freeform
+// trackables list (label/current/max) rather than a fixed HP/Stress/Hope
+// schema, so a table can track whatever it wants without the store caring
+// what "HP" means.
+//
+// Known limitation shared with Card/Subclass: makeCollection's
+// idempotent-by-name create() checks name uniqueness across the WHOLE
+// collection, not scoped to campaignId (same as Card isn't scoped to
+// domainId) — two different Campaigns can't each have a same-named PC
+// without the second create() silently returning the first Campaign's
+// record. Consistent with existing behavior elsewhere; not a new gap.
+
+function validatePartyMember(store, data) {
+  if (!store.campaigns.some((c) => c.id === data.campaignId)) {
+    throw new Error(`No campaign with id ${data.campaignId}`);
+  }
+}
+
+const partyMembers = makeCollection('partyMembers', {
+  validate: validatePartyMember,
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    campaignId: data.campaignId,
+    notes: data.notes ?? null,
+    trackables: data.trackables ?? [],
+  }),
+});
+
+function listPartyMembersByCampaign(campaignId) {
+  return getCache().partyMembers.filter((p) => p.campaignId === campaignId);
+}
+
 // ---- Export / Import ----
 // Export hands back the whole store as-is. Import upserts by id, one
 // collection at a time — a record whose id already exists is overwritten
@@ -683,6 +747,15 @@ module.exports = {
   createTransformation: transformations.create,
   updateTransformation: transformations.update,
   removeTransformation: transformations.remove,
+  listCampaigns: campaigns.list,
+  createCampaign: campaigns.create,
+  updateCampaign: campaigns.update,
+  removeCampaign,
+  listPartyMembers: partyMembers.list,
+  createPartyMember: partyMembers.create,
+  updatePartyMember: partyMembers.update,
+  removePartyMember: partyMembers.remove,
+  listPartyMembersByCampaign,
   exportSnapshot,
   importSnapshot,
 };

@@ -1,0 +1,54 @@
+.party-roster__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.party-roster__title {
+  font-size: 1.3rem;
+  margin-bottom: 0;
+}
+
+.party-roster__add {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--hope);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+  transition: border-color 200ms var(--ease);
+}
+
+.party-roster__add:hover {
+  border-color: var(--hope);
+}
+
+.party-roster__form {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.party-roster__status {
+  color: var(--muted);
+}
+
+.party-roster__status--error {
+  color: var(--fear-on-dark);
+}
+
+.party-roster__notes {
+  font-size: 0.85rem;
+  color: var(--ink-dim, var(--muted));
+  margin-bottom: var(--space-1);
+}
+
+.party-roster__trackables {
+  border-top: 1px solid var(--hairline);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+}

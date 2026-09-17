@@ -1,196 +1,270 @@
-# Daggerheart homebrew hub
+# Daggerheart Homebrew Hub
 
-Local desktop app for creating Daggerheart homebrew content. Full context on
-the vision, UX flows, schemas, and architecture decisions behind this
-structure lives in `daggerheart-hub-spec.md` (kept alongside this scaffold,
-not inside the repo itself) — read that first if anything here seems
-under-explained.
+A local-first Electron desktop app for authoring and running homebrew
+content for **Daggerheart**, Darrington Press's tabletop RPG. It covers both
+halves of what a Game Master actually needs: a structured content builder
+for every rule-book type (Classes, Domains, Adversaries, Equipment, etc.),
+and — in active development — a **Session Builder** for running a live game
+session on top of that content (Fear tracking, live Adversary/Environment
+stat blocks, a standing Party roster, dice-backed loot rolls).
 
-## Layout
+Full product context — vision, UX flows, and the original data model — lives
+in [`daggerheart-hub-spec.md`](daggerheart-hub-spec.md).
 
-```
-apps/desktop/electron/  Electron main process — the local JSON data layer
-apps/desktop/seed/      Core Set flavor text (Domains, Classes), loaded on first run
-apps/desktop/src/       React + TypeScript frontend
-```
+## Overview
 
-There used to be a `server/` (Spring Boot + SQLite). It's gone — no backend
-process exists anymore, on desktop or otherwise. See "Architecture" below.
+The app started as a two-tier system (Electron + a Spring Boot/SQLite
+backend) and was deliberately re-architected into a **local-first, backend-
+less desktop app**: a single JSON file on disk is the entire database, owned
+directly by Electron's main process and exposed to the React UI over a
+narrow IPC bridge. That decision — and the reasoning behind it — is the
+first entry in [Engineering Challenges](#engineering-challenges--how-they-were-solved)
+below, since it's the architectural decision everything else in the repo
+builds on.
+
+Every content type (12 in total) has full create/edit/delete backed by real
+validation logic (e.g. a Secondary weapon can't be Two-Handed, a Class's two
+Domains must be distinct), a real automated test suite (unit + end-to-end),
+and a working, installable Windows/macOS/Linux build via `electron-builder`.
+
+## Tech Stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Desktop shell | **Electron 31** | Cross-platform native window + filesystem access, with `contextIsolation: true` / `nodeIntegration: false` — the renderer never touches Node or the filesystem directly, only a narrow `contextBridge` API (`window.daggerheart`). |
+| UI | **React 18 + TypeScript** | Component-driven UI with types enforced end-to-end, from the store's data shapes through the IPC bridge to the components that render them. |
+| Build tool | **Vite 5** | Fast dev server + HMR during UI iteration, and the same config's transform pipeline is reused by Vitest for unit tests. |
+| Data layer | **A single JSON file, no database engine or ORM** | `electron/store.js` is plain Node — synchronous CRUD + validation functions operating on an in-memory cache that's flushed to `~/.daggerheart-hub/data.json`. No SQLite, no Prisma/TypeORM. Chosen specifically so the same data-layer approach can be ported to a future React Native mobile client, which can't embed a JVM (ruling out the original Spring Boot backend) or a native SQLite driver the same way Electron can. |
+| State management | **Component state + one React Context** | No Redux/Zustand. Almost all state is local to the page that owns it (the same drill-down pattern used throughout: gallery → detail → nested list). The one exception is `GameSetsProvider`, a root-mounted context for the handful of values (Game Sets) that genuinely need to be visible from every form at once. |
+| Styling | **Plain CSS with custom-property design tokens** | No Tailwind/MUI dependency. Light/dark theming is two value sets under the same CSS variable names (`tokens.css`), swapped via a `data-theme` attribute — component CSS never needed to change when theming was added. |
+| Unit testing | **Vitest** | Drives `electron/store.js`'s CRUD and validation rules directly (idempotent-by-name creates, rename-collision handling, domain-pair/weapon-burden validation, export/import merge semantics) without ever touching the real on-disk store — each test run gets a throwaway directory via a `DAGGERHEART_STORE_DIR` env override. |
+| End-to-end testing | **Playwright**, via `_electron.launch()` | Drives the *actual* packaged-shape Electron app — a real window, real IPC round trips, a real (throwaway) store file — not a mocked browser page. |
+| Packaging | **electron-builder** | Produces a real NSIS installer on Windows (dmg/AppImage configured for macOS/Linux), verified by installing and running the unpacked build end to end. |
 
 ## Architecture
 
-This was originally built as Electron talking to a local Spring Boot backend
-over HTTP. That's been dropped in favor of a local-first model with no
-backend process at all, because a future mobile (React Native) client can't
-embed a JVM the way Electron could. See `daggerheart-hub-spec.md` Section 6
-for the full reasoning.
+```
+apps/desktop/electron/   Electron main process: owns the JSON data file,
+                          exposes it to the renderer via a preload bridge
+apps/desktop/seed/       Core Set content (Domains, Classes, Cards,
+                          Ancestries, Communities), loaded on first run
+apps/desktop/src/        React + TypeScript frontend (the renderer process)
+```
 
-**How it actually works now:** `apps/desktop/electron/main.js` owns a single
-JSON file on disk (`~/.daggerheart-hub/data.json`) as the entire database —
-`electron/store.js` has the CRUD + validation logic (the direct replacement
-for the deleted Spring services, same rules, ported from git history), and
-`electron/preload.js` exposes it to the renderer as `window.daggerheart` over
-IPC. `src/api/client.ts` calls that bridge instead of `fetch`. On first run,
-the store seeds itself from `apps/desktop/seed/core-content.json` (the Core
-Set's 9 Domains and 9 Classes).
+- **`electron/store.js`** is the entire database: an in-memory cache backed
+  by `~/.daggerheart-hub/data.json`, with a `makeCollection()` factory
+  giving every content type idempotent-by-name create, PATCH-semantics
+  update, and delete for free, plus per-type validation (foreign-key checks,
+  enum checks, cross-field rules) layered on top.
+- **`electron/preload.js`** exposes that store to the renderer as
+  `window.daggerheart` via `contextBridge` — a fixed, narrow set of
+  `list/create/update/remove` calls, never raw Node/filesystem access.
+- **`src/api/client.ts`** is the renderer-side counterpart: every API call
+  goes through this bridge instead of `fetch`, and gracefully degrades (with
+  a clear on-screen message, not a crash) when the app is opened in a plain
+  browser tab where `window.daggerheart` doesn't exist.
+- **Export/Import** (from the Home page) is the deliberate substitute for
+  live sync: Export writes the whole store to a JSON file via a native save
+  dialog, Import reads one back and upserts by id. No conflict resolution —
+  last-imported-wins is a design choice, not a placeholder for something
+  smarter later.
 
-**Export/Import** (Home page) is the substitute for live sync: Export writes
-the whole store to a JSON file via a native save dialog; Import reads one
-back and upserts by id. No conflict resolution — last-imported-wins, by
-design, not as a placeholder for something smarter later.
+## Features
 
-## What's actually built vs. stubbed
+### Content authoring (complete)
 
-**Built:** every content type in the spec — Class, Subclass, Domain,
-Adversary, Environment, Weapon (Primary/Secondary), Armor, Loot, Consumable,
-Community, Ancestry, Transformation — has working create, edit, and delete,
-backed by the real local data layer (validation included, e.g. a Secondary
-weapon can't be Two-Handed). Every content type also has a place to
-actually see what you made: a persistent top nav bar (`AppShell`) reaches
-Classes' full gallery/detail view or one of five simpler "browse" pages
-(Domains; Adversaries & Environments; Heritage; Equipment; Optional
-Mechanics) — minimal list/card views, not the fully designed galleries the
-spec describes, but real enough that nothing is write-only anymore.
-Export/Import, the Electron dev workflow, a working `electron-builder`
-installer build (see the gotcha below), and a real automated test suite
-round it out.
+All twelve Daggerheart content types — Class, Subclass, Domain, Domain
+Card, Adversary, Environment, Weapon, Armor, Loot, Consumable, Community,
+Ancestry, and Transformation — have full create/edit/delete, backed by real
+validation. Highlights:
 
-Editing and deleting now work for all twelve content types (Class/Subclass
-had it already; the other ten got Edit/Delete buttons on their browse-page
-cards, backed by the same store validation as create). Deleting a Domain
-that a HeroClass still references is a known, deliberate gap — same
-limitation the original Spring services had — the UI degrades gracefully
-(falls back to a placeholder color) rather than crashing; see the comment
-on `removeDomain` in `electron/store.js`.
+- **Domains render as a real gallery**, not a flat list: color-swatched
+  banners, a Class-filter row that narrows the grid to a selected Class's
+  two Domains, and a click-through to that Domain's own card builder — a
+  grid of poker-card-shaped tiles (`aspect-ratio: 2.5 / 3.5`) with an
+  illustration band, level badge, and scrollable rules text.
+- **Game Sets** (the mechanism for grouping Core vs. homebrew content) can
+  be created inline from any form via a shared `GameSetSelect` component,
+  immediately available everywhere else through `GameSetsProvider`.
+- **Feature lists are drag-to-reorder** (Class Features, Specialization/
+  Mastery/Foundation Features, Impulses, Experiences, etc.) via a shared
+  `useDragReorder` hook — plain HTML5 drag-and-drop, no external library.
+- **Settings**: Light/Dark/System theme (System tracks the OS preference
+  live) and window-size presets, persisted to `localStorage` since it's a
+  per-machine UI preference, not game content.
+- The Core Set's full 189-card domain reference, 18 Ancestries, and 9
+  Communities are seeded in directly from the official corebook PDF.
 
-There's also a real automated test suite now: `npm test` (Vitest) covers
-`electron/store.js`'s validation and CRUD rules directly — the idempotent-
-by-name creates, the rename-collision skip, the domain-pair and weapon-
-burden validation, export/import merge semantics, and first-run seeding —
-without touching your real `~/.daggerheart-hub`. `npm run test:e2e`
-(Playwright) drives the actual packaged-shape app (real Electron window,
-real IPC, a throwaway store directory per test) through navigation, a full
-create → edit → delete round trip, and export.
+### Session Builder (in progress)
 
-Three more things landed from direct UI feedback after using the app:
-- **Game Sets are no longer stuck at "Core."** Every Game Set dropdown
-  (`GameSetSelect`, shared by every form) offers "+ New Set…" inline —
-  create one on the spot without leaving the form you're in. Backed by a
-  `GameSetsProvider` React context loaded once at the app root, so a Set
-  created from any form is immediately available in every other form
-  without needing a callback threaded through two dozen call sites.
-- **Feature lists are drag-to-reorder.** Class Features, Specialization/
-  Mastery/Foundation Features, Passives/Actions/Reactions, and the free-text
-  lists (Motives and Tactics, Impulses, Experiences) all got a drag handle
-  via a shared `useDragReorder` hook — plain HTML5 drag-and-drop, no library.
-- **Every browse page has its own Create button(s)**, scoped to what that
-  page actually holds (e.g. Equipment gets separate "+ New Primary" / "+ New
-  Secondary" weapon buttons) — not just the Home Create panel.
+A second top-level section for actually *running* a game on top of the
+content above, as opposed to authoring it. Being delivered in three phases:
 
-**Domains are a real gallery, not a flat list.** Each Domain renders as a
-color-swatched banner; clicking one opens that Domain's own card-builder
-view — a grid of every `Card` belonging to it (Name, Type [Spell/Grimoire/
-Ability], Level, Recall Cost, Description, optional art), with a hollow
-"+ New Card" tile to add more. A Class-filter row above the banner grid
-narrows it down to just the two Domains a selected Class draws from. A
-matching hollow "+ Create Domain" banner creates a custom Domain inline
-without leaving the gallery. `Card` is a full content type end-to-end
-(`electron/store.js`'s `cards` collection, `listCardsByDomain`, IPC, and
-`src/api/cards.ts`) — it just wasn't exposed anywhere in the UI until now.
+- **Phase 1 — Campaigns & Party (done).** A Campaign gallery (same
+  banner-grid pattern as Domains) holding a standing Party roster per
+  Campaign. Party members are deliberately lightweight — name and notes —
+  plus a fully freeform list of "trackables" (`{label, current, max}`,
+  rendered as a −/+ stepper), so a GM can track HP/Stress/Hope/Armor Slots
+  or anything homebrew without a fixed schema. Deleting a Campaign cascades
+  to delete its Party — the one deliberate exception to the rest of the
+  app's no-cascade-delete rule (see [Engineering Challenges](#engineering-challenges--how-they-were-solved)).
+- **Phase 2 — Loot & Consumable Tables (planned).** Reusable, rollable
+  tables scoped to a Game Set, implementing the corebook's actual item-
+  rarity mechanic: pick a rarity, roll the matching d12 pool, sum it, and
+  look up that exact position in an ordered table of real Loot/Consumable
+  records.
+- **Phase 3 — Live Sessions (planned).** Fear tracking (0–12), pulling
+  Adversaries/Environments into a session as independent live copies (so
+  editing the master content later can't corrupt an in-progress session),
+  per-PC/NPC/general notes, and a combat/adventuring mode toggle that
+  changes which panels are exposed.
 
-**Not built:** Heritage and Optional Mechanics still don't have the fully
-designed galleries the spec describes (filters, sort, etc.) — just plain
-lists.
+## Engineering Challenges & How They Were Solved
 
-**Domain Cards render as actual poker-card-shaped tiles, not list rows.**
-`DomainCardTile` (`src/components/DomainCardTile.tsx`) fixes each card's
-aspect ratio to 2.5in x 3.5in (`aspect-ratio: 2.5 / 3.5` in CSS, driven off
-grid column width) and splits it like a real card: an illustration band on
-top (~half the card — the parent Domain's color gradient, or the Card's own
-`imagePath` once art exists), a level badge, a name plate, a Type/Domain/
-Recall Cost caption row, and a rules-text area that scrolls internally
-instead of breaking the card's shape on long descriptions. Cards with no art
-yet show a placeholder glyph (sparkle/hexagon/book for Spell/Ability/
-Grimoire) instead of a blank tile.
+**1. The original architecture couldn't reach a future mobile client.**
+The app originally paired Electron with a local Spring Boot + SQLite
+backend. That's a dead end for a planned React Native client, which can't
+embed a JVM (or a native SQLite driver) the way Electron can. Rather than
+maintaining two backend implementations long-term, the Spring services were
+dropped entirely in favor of a local-first model: `electron/store.js` is
+plain Node holding the exact same CRUD/validation rules, operating on a
+single JSON file instead of a database. Record ids moved from server-
+assigned auto-increment integers to client-generated UUIDs, since there's
+no longer a single authority handing out ids. This is the single biggest
+architectural decision in the project, and every layer above it (IPC
+bridge, API client, component data-fetching pattern) was built to match.
 
-The Core Set's full domain-card reference (189 cards across all 9 domains),
-all 18 Ancestries, and all 9 Communities are seeded in from the corebook PDF
-— see `daggerheart-hub-spec.md` if you need to re-run that import against a
-different source.
+**2. A packaged build opened a completely blank window.**
+`electron-builder`'s output loads `dist/index.html` over `file://`, where
+Vite's default *absolute* asset paths (`/assets/index.js`) resolve against
+the filesystem root, not the `dist/` folder — the script tag 404s silently,
+the window opens, and nothing renders. Root-caused by comparing dev vs.
+packaged network behavior, then fixed with one line (`base: './'` in
+`vite.config.ts`) to emit relative paths instead. Verified by installing
+the actual built installer and confirming the app loads real data with no
+console errors.
 
-**Settings page:** theme (Light / Dark / System, with System tracking the OS
-preference live) and a few standard window-size presets (Compact/Standard/
-Large/Extra Large). Reached via the gear icon at the right of the top nav
-bar, not the main content nav — it's app-level, not a content type.
-- Theme is a `data-theme` attribute on `<html>`, set by
-  `src/context/ThemeContext.tsx` and persisted to `localStorage` (not the
-  JSON store — it's a per-machine UI preference, not game content, so it
-  deliberately doesn't round-trip through Export/Import). `index.html` has a
-  small inline script that applies the stored preference before first paint,
-  so there's no flash of the wrong theme on launch.
-- Light and dark are two value sets under the same CSS variable names in
-  `src/styles/tokens.css` (`:root` vs. `:root[data-theme='light']`) — no
-  component CSS needed to change, since everything already read the shared
-  tokens rather than hardcoding colors. The one deliberate exception:
-  Domain/Class hero gradients keep hardcoded white text in both themes,
-  since they render over their own dark-overlaid color gradient regardless
-  of the app theme (see `domainGradient()`).
-- Window resizing is real `BrowserWindow.setSize()` in `electron/main.js`
-  (new `window:getSize`/`window:setSize` IPC channels), clamped to the
-  current display's work area so a preset larger than the screen doesn't
-  push the window off-screen.
+**3. The installer build failed only inside this repo's folder.**
+`npm run electron:build` intermittently failed with
+`EPERM: operation not permitted, rename ... win-unpacked.tmp -> win-unpacked`.
+Not a code or config bug — the repo lives inside a OneDrive-synced folder,
+and OneDrive's sync agent was locking freshly-extracted Electron files
+before `electron-builder` could rename them into place. Confirmed by
+reproducing the same build against an output directory outside the synced
+folder, where it succeeded immediately. Documented as a known environment
+gotcha with a one-line workaround (`--config.directories.output` pointed
+outside the sync scope, or pausing sync for the build) rather than papering
+over it with a retry loop.
 
-## Running it
+**4. A silent React crash produced "a blank colored background, no error."**
+Opening the app in a plain browser tab (`window.daggerheart` undefined)
+should show a clear "needs Electron" message — instead the page went
+completely blank. Root cause: `apiClient`'s methods threw *synchronously*
+instead of returning a rejected Promise, so the `.catch()` on every caller
+(`useApiList`, `GameSetsContext`) never ran — the throw happened before a
+Promise existed to attach it to. A synchronous throw inside a `useEffect`
+with no error boundary anywhere in the tree causes React to unmount
+*everything*, not just the failing component — hence the blank page with no
+console-visible explanation. Fixed by making every `apiClient` method
+genuinely `async`, turning the throw into a rejected Promise the existing
+`.catch()` handlers could actually see. A permanent regression test was
+added that runs against a plain Chromium tab instead of Electron (every
+prior Playwright test ran inside Electron, so none of them could have
+caught this class of bug).
+
+**5. A dev-server port collision silently loaded the wrong app.**
+`wait-on tcp:5173` only confirms *something* is listening on that port —
+not that it's this project's Vite server. Since 5173 is Vite's universal
+default, running this project alongside another freshly-scaffolded Vite
+project risked a different dev server winning the port; `wait-on` would be
+satisfied regardless, and `electron/main.js`'s hardcoded
+`win.loadURL('http://localhost:5173')` would load a completely unrelated
+app into the window with zero indication anything was wrong. Fixed two
+ways: moved the dev port off the universal default (5183), and added
+`strictPort: true` so a real collision now fails immediately with an
+explicit "port already in use" error instead of drifting to 5174/5175 and
+masking the problem.
+
+**6. Cascade deletes are usually the wrong default, except when they're
+not.** Every content type in the original design deliberately has *no*
+cascade delete — deleting a Domain that a HeroClass still references leaves
+a dangling reference that the UI degrades around gracefully, rather than
+silently deleting a HeroClass a user didn't ask to touch. When the Session
+Builder introduced Campaigns owning a Party roster, that same rule would
+have left orphaned Party members with no page in the entire app that could
+ever reach or delete them again — a real dead end, not a graceful
+degradation. The fix was a deliberate, narrow exception rather than a
+blanket policy change: `removeCampaign` cascades specifically because a
+Party member has no independent reachability path, documented in
+`electron/store.js` as the one case where the rule doesn't apply.
+
+## Testing
+
+```
+npm test          # Vitest — electron/store.js's CRUD/validation rules
+npm run test:e2e  # Playwright — drives the real packaged-shape Electron app
+```
+
+Both suites are hermetic — neither ever touches a developer's real
+`~/.daggerheart-hub/data.json`. `npm test` points the store at a fresh
+`DAGGERHEART_STORE_DIR` temp directory per test; `npm run test:e2e` launches
+a real Electron process per test with the same env override, and starts/
+stops its own Vite dev server automatically. `npm run test:watch` runs
+Vitest in watch mode while iterating on the store.
+
+## Feature Roadmap
+
+**Done**
+- [x] Full CRUD + validation for all 12 core content types
+- [x] Domain gallery with a per-Domain Card builder
+- [x] Drag-to-reorder feature lists
+- [x] Inline Game Set creation from any form
+- [x] Export/Import (JSON snapshot, upsert-by-id merge)
+- [x] Light/Dark/System theming + window-size presets
+- [x] Real installer builds (Windows NSIS; macOS/Linux targets configured)
+- [x] Unit (Vitest) + end-to-end (Playwright) automated test coverage
+- [x] **Session Builder Phase 1** — Campaigns gallery + standing Party
+      roster with freeform trackables
+
+**In progress / planned**
+- [ ] **Session Builder Phase 2** — reusable Loot/Consumable Tables and the
+      real corebook d12-pool rarity roll mechanic
+- [ ] **Session Builder Phase 3** — live Sessions: Fear tracking, pulled-in
+      Adversary/Environment stat tracking, per-PC/NPC/general notes, and a
+      combat/adventuring mode toggle
+- [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
+      plain list views — every other content type already got this treatment)
+- [ ] A real application icon and code-signing certificate for the packaged
+      installer (currently uses Electron's default icon and a self-signed
+      test cert)
+
+## Getting Started
 
 ```
 cd apps/desktop
 npm install
 npm run electron:dev
 ```
+
 This starts the Vite dev server and opens the real Electron window against
-it — this is the actual app now, not a browser preview. A plain `npm run
-dev` in a browser tab still works for quick UI iteration, but any screen
-that touches data will show "This app needs to run inside the Electron
-shell," since `window.daggerheart` only exists inside Electron.
+it — this is the actual app, not a browser preview. A plain `npm run dev`
+in a browser tab still works for quick UI iteration, but any screen that
+touches data will show a "needs to run inside the Electron shell" message,
+since `window.daggerheart` only exists inside Electron.
 
 Your data lives at `~/.daggerheart-hub/data.json` — delete it to reset to a
 fresh seeded state.
 
-## Testing
+## Packaging a Real Installer
 
-```
-npm test          # Vitest — electron/store.js's rules, no Electron needed
-npm run test:e2e  # Playwright — drives the real Electron app end to end
-```
-Both are hermetic: `test` never touches `~/.daggerheart-hub` (each test gets
-a throwaway directory via the `DAGGERHEART_STORE_DIR` env var override), and
-`test:e2e` starts and stops its own Vite dev server automatically. Use `npm
-run test:watch` for Vitest's watch mode while iterating on `store.js`.
-
-## Packaging a real installer
-
-`npm run electron:build` (via `electron-builder`) has been run for real and
-produces a working, launchable NSIS installer — confirmed by installing the
-unpacked build and driving it end to end (data loads, navigation works, no
-console errors). Two things worth knowing before you run it yourself:
-
-- **Vite's default absolute asset paths (`/assets/...`) break the packaged
-  app.** The built app loads `dist/index.html` over `file://`, where a
-  leading `/` resolves to the filesystem root, not the `dist/` folder — the
-  window opens but silently stays blank because the script tag 404s. Fixed
-  already, via `base: './'` in `vite.config.ts` — flagging it in case that
-  line ever looks removable, because removing it un-fixes exactly this.
-- **Building from inside a OneDrive-synced folder fails with `EPERM:
-  operation not permitted, rename ... win-unpacked.tmp -> win-unpacked`.**
-  This repo lives under `OneDrive\Documents`, and OneDrive's sync agent
-  locks the freshly-extracted Electron files before electron-builder can
-  rename them into place. It's not a code or config problem — the same
-  build succeeds immediately when the output directory is outside the
-  synced folder. Workaround: point the build somewhere not synced, e.g.
-  `npx electron-builder --config.directories.output=C:/some/local/path`, or
-  pause OneDrive sync for the duration of the build.
+`npm run electron:build` (via `electron-builder`) produces a working,
+launchable NSIS installer on Windows — confirmed by installing the unpacked
+build and driving it end to end. See items 2 and 3 under
+[Engineering Challenges](#engineering-challenges--how-they-were-solved) for
+the two non-obvious issues that had to be solved to get there, and their
+fixes/workarounds.
 
 Not yet done: a real application icon (the default Electron icon is used —
 `electron-builder` warns about this but it isn't fatal), and code signing
 with a real certificate (the build self-signs with a local test cert, which
-is why Windows will still show an "unknown publisher" warning on install).
+is why Windows still shows an "unknown publisher" warning on install).

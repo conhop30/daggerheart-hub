@@ -7,6 +7,7 @@ export interface DaggerheartBridge {
   list: (collection: string) => Promise<unknown[]>;
   listSubclassesByParentClass: (parentClassId: string) => Promise<unknown[]>;
   listCardsByDomain: (domainId: string) => Promise<unknown[]>;
+  listPartyMembersByCampaign: (campaignId: string) => Promise<unknown[]>;
   create: (collection: string, data: unknown) => Promise<unknown>;
   update: (collection: string, id: string, patch: unknown) => Promise<unknown>;
   remove: (collection: string, id: string) => Promise<void>;
@@ -60,6 +61,8 @@ export const apiClient = {
     (await unwrap(bridge().listSubclassesByParentClass(parentClassId))) as T[],
   listCardsByDomain: async <T>(domainId: string): Promise<T[]> =>
     (await unwrap(bridge().listCardsByDomain(domainId))) as T[],
+  listPartyMembersByCampaign: async <T>(campaignId: string): Promise<T[]> =>
+    (await unwrap(bridge().listPartyMembersByCampaign(campaignId))) as T[],
   create: async <T>(collection: string, data: unknown): Promise<T> =>
     (await unwrap(bridge().create(collection, data))) as T,
   update: async <T>(collection: string, id: string, patch: unknown): Promise<T> =>

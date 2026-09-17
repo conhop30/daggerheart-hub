@@ -18,6 +18,8 @@ const COLLECTIONS = [
   'communities',
   'ancestries',
   'transformations',
+  'campaigns',
+  'partyMembers',
 ];
 
 test.describe('Electron app', () => {
@@ -58,7 +60,15 @@ test.describe('Electron app', () => {
   });
 
   test('every nav link reaches its page and marks itself active', async () => {
-    const labels = ['Classes', 'Adversaries & Environments', 'Domains', 'Heritage', 'Equipment', 'Optional Mechanics'];
+    const labels = [
+      'Classes',
+      'Adversaries & Environments',
+      'Domains',
+      'Heritage',
+      'Equipment',
+      'Optional Mechanics',
+      'Campaigns',
+    ];
     for (const label of labels) {
       await win.click(`.app-shell__nav-link:has-text("${label}")`);
       await expect(win.locator('.app-shell__nav-link.active')).toHaveText(label);
@@ -231,7 +241,7 @@ test.describe('Plain browser tab (no Electron)', () => {
 
     const rootHtml = await page.evaluate(() => document.getElementById('root')?.innerHTML ?? '');
     expect(rootHtml.length).toBeGreaterThan(50);
-    await expect(page.locator('.app-shell__nav-link')).toHaveCount(6);
+    await expect(page.locator('.app-shell__nav-link')).toHaveCount(7);
     await expect(page.locator('body')).toContainText('needs to run inside the Electron shell');
     expect(pageErrors).toEqual([]);
 

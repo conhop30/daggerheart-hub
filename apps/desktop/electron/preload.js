@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('daggerheart', {
   listSubclassesByParentClass: (parentClassId) =>
     ipcRenderer.invoke('store:listSubclassesByParentClass', parentClassId),
   listCardsByDomain: (domainId) => ipcRenderer.invoke('store:listCardsByDomain', domainId),
+  listPartyMembersByCampaign: (campaignId) =>
+    ipcRenderer.invoke('store:listPartyMembersByCampaign', campaignId),
   create: (collection, data) => ipcRenderer.invoke('store:create', collection, data),
   update: (collection, id, patch) => ipcRenderer.invoke('store:update', collection, id, patch),
   remove: (collection, id) => ipcRenderer.invoke('store:remove', collection, id),

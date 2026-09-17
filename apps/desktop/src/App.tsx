@@ -6,6 +6,7 @@ import DomainsPage from './pages/DomainsPage';
 import HeritagePage from './pages/HeritagePage';
 import EquipmentPage from './pages/EquipmentPage';
 import OptionalMechanicsPage from './pages/OptionalMechanicsPage';
+import CampaignsPage from './pages/CampaignsPage';
 import SettingsPage from './pages/SettingsPage';
 import AppShell, { type View } from './components/AppShell';
 import { GameSetsProvider } from './context/GameSetsContext';
@@ -22,6 +23,7 @@ export default function App() {
         {view === 'heritage' && <HeritagePage />}
         {view === 'equipment' && <EquipmentPage />}
         {view === 'optional-mechanics' && <OptionalMechanicsPage />}
+        {view === 'campaigns' && <CampaignsPage />}
         {view === 'settings' && <SettingsPage />}
         {view === 'home' && <HomePage onNavigate={setView} />}
       </AppShell>

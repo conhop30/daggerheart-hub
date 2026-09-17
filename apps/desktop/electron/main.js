@@ -43,6 +43,8 @@ const LIST = {
   communities: store.listCommunities,
   ancestries: store.listAncestries,
   transformations: store.listTransformations,
+  campaigns: store.listCampaigns,
+  partyMembers: store.listPartyMembers,
 };
 const CREATE = {
   gameSets: store.createGameSet,
@@ -59,6 +61,8 @@ const CREATE = {
   communities: store.createCommunity,
   ancestries: store.createAncestry,
   transformations: store.createTransformation,
+  campaigns: store.createCampaign,
+  partyMembers: store.createPartyMember,
 };
 const UPDATE = {
   gameSets: store.updateGameSet,
@@ -75,6 +79,8 @@ const UPDATE = {
   communities: store.updateCommunity,
   ancestries: store.updateAncestry,
   transformations: store.updateTransformation,
+  campaigns: store.updateCampaign,
+  partyMembers: store.updatePartyMember,
 };
 // No GameSet/HeroClass/Subclass here — deleting those has real referential-
 // integrity questions (a Class with existing Subclasses, a GameSet with
@@ -93,6 +99,12 @@ const REMOVE = {
   communities: store.removeCommunity,
   ancestries: store.removeAncestry,
   transformations: store.removeTransformation,
+  // Campaign delete cascades to PartyMembers (and, once Sessions exist, to
+  // Sessions/SessionAdversaries/SessionEnvironments) inside store.js itself
+  // — unlike Domain/Card, a Campaign's children have no other reachable
+  // gallery, so leaving them orphaned would strand them with no UI path.
+  campaigns: store.removeCampaign,
+  partyMembers: store.removePartyMember,
 };
 
 function lookup(map, collection) {
@@ -106,6 +118,9 @@ ipcMain.handle('store:listSubclassesByParentClass', (_event, parentClassId) =>
   store.listSubclassesByParentClass(parentClassId)
 );
 ipcMain.handle('store:listCardsByDomain', (_event, domainId) => store.listCardsByDomain(domainId));
+ipcMain.handle('store:listPartyMembersByCampaign', (_event, campaignId) =>
+  store.listPartyMembersByCampaign(campaignId)
+);
 ipcMain.handle('store:create', (_event, collection, data) => lookup(CREATE, collection)(data));
 ipcMain.handle('store:update', (_event, collection, id, patch) => lookup(UPDATE, collection)(id, patch));
 ipcMain.handle('store:remove', (_event, collection, id) => lookup(REMOVE, collection)(id));

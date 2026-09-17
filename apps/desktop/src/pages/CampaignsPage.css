@@ -1,0 +1,40 @@
+.campaigns-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.campaigns-page__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.campaigns-page__title {
+  font-size: 2rem;
+  margin-bottom: 0;
+}
+
+.campaigns-page__status {
+  color: var(--muted);
+}
+
+.campaigns-page__status--error {
+  color: var(--fear-on-dark);
+}
+
+.campaigns-page__edit-panel {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.campaign-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}

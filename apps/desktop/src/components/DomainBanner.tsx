@@ -1,14 +1,12 @@
 import type { Domain } from '../api/domains';
+import { gradientForColor } from '../lib/color';
 import './DomainBanner.css';
 
-// Shared by the grid banner and DomainDetail's hero: a Domain's flat
-// colorHex isn't reliable contrast backdrop for white text on its own (e.g.
-// Bone's #C9B896 is a light tan) — darkening it toward black fixes that
-// everywhere the color is used, not just here.
-export function domainGradient(colorHex: string | null | undefined): string {
-  const base = colorHex ?? 'var(--fear-dim)';
-  return `linear-gradient(160deg, ${base}, rgba(0, 0, 0, 0.55))`;
-}
+// Kept as a re-export so every existing `import { domainGradient } from
+// './DomainBanner'` (DomainDetail, DomainCardTile) keeps working unchanged
+// — the actual implementation now lives in lib/color.ts so CampaignBanner
+// can share it too.
+export const domainGradient = gradientForColor;
 
 interface DomainBannerProps {
   domain: Domain;

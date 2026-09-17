@@ -201,6 +201,84 @@ describe('Weapon', () => {
   });
 });
 
+describe('Campaign', () => {
+  it('create is idempotent by name, case-insensitive', async () => {
+    const a = await store.createCampaign({ name: 'The Wildwood' });
+    const b = await store.createCampaign({ name: 'the wildwood' });
+    expect(a.id).toBe(b.id);
+    expect(store.listCampaigns()).toHaveLength(1);
+  });
+
+  it('update follows PATCH semantics', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood', notes: 'Session 0' });
+    const updated = await store.updateCampaign(c.id, { notes: 'Session 1' });
+    expect(updated.name).toBe('The Wildwood');
+    expect(updated.notes).toBe('Session 1');
+  });
+
+  it('remove cascades to delete its PartyMembers', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const other = await store.createCampaign({ name: 'Other Campaign' });
+    await store.createPartyMember({ campaignId: c.id, name: 'Fenn' });
+    await store.createPartyMember({ campaignId: c.id, name: 'Toth' });
+    await store.createPartyMember({ campaignId: other.id, name: 'Unrelated' });
+
+    await store.removeCampaign(c.id);
+
+    expect(store.listCampaigns().find((x) => x.id === c.id)).toBeUndefined();
+    expect(store.listPartyMembersByCampaign(c.id)).toHaveLength(0);
+    expect(store.listPartyMembersByCampaign(other.id)).toHaveLength(1);
+  });
+
+  it('remove throws for an unknown id', async () => {
+    await expect(store.removeCampaign('missing')).rejects.toThrow('No campaign with id');
+  });
+});
+
+describe('PartyMember', () => {
+  it('rejects a campaignId that does not exist', async () => {
+    await expect(store.createPartyMember({ campaignId: 'missing', name: 'Fenn' })).rejects.toThrow(
+      'No campaign with id'
+    );
+  });
+
+  it('defaults trackables to an empty array', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const member = await store.createPartyMember({ campaignId: c.id, name: 'Fenn' });
+    expect(member.trackables).toEqual([]);
+  });
+
+  it('stores freeform trackables as given, keyed positionally (no synthetic id)', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const member = await store.createPartyMember({
+      campaignId: c.id,
+      name: 'Fenn',
+      trackables: [{ label: 'HP', current: 6, max: 6 }],
+    });
+    expect(member.trackables).toEqual([{ label: 'HP', current: 6, max: 6 }]);
+  });
+
+  it('listPartyMembersByCampaign only returns matching members', async () => {
+    const c1 = await store.createCampaign({ name: 'The Wildwood' });
+    const c2 = await store.createCampaign({ name: 'Other Campaign' });
+    await store.createPartyMember({ campaignId: c1.id, name: 'Fenn' });
+    await store.createPartyMember({ campaignId: c2.id, name: 'Toth' });
+
+    const c1Members = store.listPartyMembersByCampaign(c1.id);
+    expect(c1Members).toHaveLength(1);
+    expect(c1Members[0].name).toBe('Fenn');
+  });
+
+  it('update and remove follow the same makeCollection rules as every other type', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const member = await store.createPartyMember({ campaignId: c.id, name: 'Fenn' });
+    const updated = await store.updatePartyMember(member.id, { notes: 'Ranger' });
+    expect(updated.notes).toBe('Ranger');
+    await store.removePartyMember(member.id);
+    expect(store.listPartyMembers()).toHaveLength(0);
+  });
+});
+
 describe('generic collection (makeCollection) shared behavior', () => {
   it('PATCH semantics: an omitted field is untouched, an explicit empty value overwrites', async () => {
     const loot = await store.createLoot({ name: 'Trinket', description: 'A shiny thing', gameSetId: 'gs-1' });
@@ -231,6 +309,8 @@ describe('Export / Import', () => {
     const snapshot = store.exportSnapshot();
     expect(Array.isArray(snapshot.domains)).toBe(true);
     expect(Array.isArray(snapshot.weapons)).toBe(true);
+    expect(Array.isArray(snapshot.campaigns)).toBe(true);
+    expect(Array.isArray(snapshot.partyMembers)).toBe(true);
   });
 
   it('rejects a non-object payload', async () => {
@@ -253,6 +333,33 @@ describe('Export / Import', () => {
     const domains = store.listDomains();
     expect(domains).toHaveLength(2);
     expect(domains.find((d) => d.id === existing.id).name).toBe('Arcana Renamed');
+  });
+
+  it('round-trips Campaigns and PartyMembers', async () => {
+    const campaign = await store.createCampaign({ name: 'The Wildwood' });
+    const member = await store.createPartyMember({
+      campaignId: campaign.id,
+      name: 'Fenn',
+      trackables: [{ label: 'HP', current: 6, max: 6 }],
+    });
+
+    const snapshot = store.exportSnapshot();
+    const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), 'daggerheart-import-test-'));
+    const previousDir = process.env.DAGGERHEART_STORE_DIR;
+    process.env.DAGGERHEART_STORE_DIR = freshDir;
+    store.__resetCacheForTests();
+    fs.writeFileSync(path.join(freshDir, 'data.json'), JSON.stringify(store.emptyStore()));
+    try {
+      const result = await store.importSnapshot(snapshot);
+      expect(result.importedCount).toBeGreaterThan(0);
+      expect(store.listCampaigns().find((c) => c.id === campaign.id)?.name).toBe('The Wildwood');
+      expect(store.listPartyMembersByCampaign(campaign.id)).toHaveLength(1);
+      expect(store.listPartyMembersByCampaign(campaign.id)[0].id).toBe(member.id);
+    } finally {
+      process.env.DAGGERHEART_STORE_DIR = previousDir;
+      store.__resetCacheForTests();
+      fs.rmSync(freshDir, { recursive: true, force: true });
+    }
   });
 });
 

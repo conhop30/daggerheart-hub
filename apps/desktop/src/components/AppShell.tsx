@@ -9,6 +9,7 @@ export type View =
   | 'heritage'
   | 'equipment'
   | 'optional-mechanics'
+  | 'campaigns'
   | 'settings';
 
 interface NavLink {
@@ -26,6 +27,7 @@ const NAV_LINKS: NavLink[] = [
   { view: 'heritage', label: 'Heritage' },
   { view: 'equipment', label: 'Equipment' },
   { view: 'optional-mechanics', label: 'Optional Mechanics' },
+  { view: 'campaigns', label: 'Campaigns' },
 ];
 
 interface AppShellProps {
