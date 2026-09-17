@@ -8,6 +8,8 @@ interface ContentCardProps {
   /** A row of small stat chips (Tier, Difficulty, etc). */
   meta?: ReactNode;
   onEdit?: () => void;
+  /** Overrides the onEdit button's label — e.g. "Open" for a card that drills into a detail page instead of inline-editing. Defaults to "Edit". */
+  editLabel?: string;
   onDelete?: () => void;
   children?: ReactNode;
 }
@@ -16,7 +18,7 @@ interface ContentCardProps {
 // uses — deliberately plain (no images, no filters) since the point of
 // this pass is closing the write-only gap, not building the fully designed
 // galleries the spec describes for later.
-export function ContentCard({ title, accent, meta, onEdit, onDelete, children }: ContentCardProps) {
+export function ContentCard({ title, accent, meta, onEdit, editLabel, onDelete, children }: ContentCardProps) {
   return (
     <div className="content-card">
       {accent && <span className="content-card__swatch" style={{ background: accent }} aria-hidden="true" />}
@@ -27,7 +29,7 @@ export function ContentCard({ title, accent, meta, onEdit, onDelete, children }:
             <div className="content-card__actions">
               {onEdit && (
                 <button type="button" className="content-card__action" onClick={onEdit}>
-                  Edit
+                  {editLabel ?? 'Edit'}
                 </button>
               )}
               {onDelete && (

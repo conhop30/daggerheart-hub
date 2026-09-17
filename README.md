@@ -108,11 +108,19 @@ content above, as opposed to authoring it. Being delivered in three phases:
   or anything homebrew without a fixed schema. Deleting a Campaign cascades
   to delete its Party — the one deliberate exception to the rest of the
   app's no-cascade-delete rule (see [Engineering Challenges](#engineering-challenges--how-they-were-solved)).
-- **Phase 2 — Loot & Consumable Tables (planned).** Reusable, rollable
-  tables scoped to a Game Set, implementing the corebook's actual item-
-  rarity mechanic: pick a rarity, roll the matching d12 pool, sum it, and
-  look up that exact position in an ordered table of real Loot/Consumable
-  records.
+- **Phase 2 — Loot & Consumable Tables (done).** Reusable, rollable tables
+  scoped to a Game Set, on the Equipment page: each table holds up to four
+  rarity sections (Common/Uncommon/Rare/Legendary), and each entry is a
+  `{position, lootId}` reference into a real Loot or Consumable record —
+  never a copy, so editing the source item is reflected everywhere it's
+  referenced. Positions are validated against the corebook's actual
+  item-rarity mechanic (Common caps at 24, Uncommon 36, Rare 48, Legendary
+  60 — the highest sum reachable by that rarity's larger d12 pool), with
+  uniqueness enforced per rarity. A shared `ItemPicker` (searchable across
+  every Game Set, not a flat dropdown) selects which item an entry points
+  to. The actual roll math (`rollD12Pool`/`sumPool`/`resolveTableRoll`) is
+  pure, dependency-free functions with an injectable RNG, so the dice logic
+  itself is unit-tested deterministically rather than through the UI.
 - **Phase 3 — Live Sessions (planned).** Fear tracking (0–12), pulling
   Adversaries/Environments into a session as independent live copies (so
   editing the master content later can't corrupt an in-progress session),
@@ -198,6 +206,19 @@ blanket policy change: `removeCampaign` cascades specifically because a
 Party member has no independent reachability path, documented in
 `electron/store.js` as the one case where the rule doesn't apply.
 
+**7. Loot Tables and Consumable Tables are the same UI wearing two
+labels.** Once the corebook's rarity mechanic was implemented for Loot,
+Consumable Tables needed the exact same four-rarity ordered-entry editor —
+differing only in which record type an entry references (`lootId` vs.
+`consumableId`) and which collection backs the picker. Writing that editor
+twice would mean every future bug fix or UX change had to land in two
+places and stay manually in sync. Instead `TableDetail.tsx` is generic over
+the entry shape, taking `makeEntry`/`getItemId` callbacks to abstract over
+the one field that actually differs, the same way `SimpleNameDescriptionForm<T>`
+already generalizes the plain name+description forms used by Loot,
+Consumable, and now both Table types. One component, two call sites, zero
+duplicated validation or layout logic.
+
 ## Testing
 
 ```
@@ -225,13 +246,16 @@ Vitest in watch mode while iterating on the store.
 - [x] Unit (Vitest) + end-to-end (Playwright) automated test coverage
 - [x] **Session Builder Phase 1** — Campaigns gallery + standing Party
       roster with freeform trackables
+- [x] **Session Builder Phase 2** — reusable Loot/Consumable Tables on the
+      Equipment page, and the pure-function d12-pool roll mechanic
+      (`rollD12Pool`/`sumPool`/`resolveTableRoll`) that will drive the
+      in-session Loot Roller in Phase 3
 
 **In progress / planned**
-- [ ] **Session Builder Phase 2** — reusable Loot/Consumable Tables and the
-      real corebook d12-pool rarity roll mechanic
 - [ ] **Session Builder Phase 3** — live Sessions: Fear tracking, pulled-in
-      Adversary/Environment stat tracking, per-PC/NPC/general notes, and a
-      combat/adventuring mode toggle
+      Adversary/Environment stat tracking, per-PC/NPC/general notes, a
+      combat/adventuring mode toggle, and a Loot Roller UI wired to the
+      Phase 2 tables with a reverse-chronological session log
 - [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
       plain list views — every other content type already got this treatment)
 - [ ] A real application icon and code-signing certificate for the packaged

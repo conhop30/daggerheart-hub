@@ -39,6 +39,8 @@ const COLLECTIONS = [
   'transformations',
   'campaigns',
   'partyMembers',
+  'lootTables',
+  'consumableTables',
 ];
 
 let cache = null;
@@ -551,6 +553,72 @@ const consumables = makeCollection('consumables', {
   }),
 });
 
+// ---- Loot Tables / Consumable Tables ----
+// Reusable, rollable tables (see the Session Builder's Loot Roller):
+// entries are grouped by rarity and each holds a `position` plus a
+// reference to a real Loot/Consumable record — never a copy of one, so
+// editing the master item later is reflected everywhere it's referenced.
+// The corebook's actual item-rarity mechanic (roll the matching d12 pool,
+// sum it, look up that position) caps each rarity's usable range at its
+// larger pool's max — a table can be sparse; an unfilled position just
+// means "nothing found" at roll time, no wraparound.
+const RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'];
+const RARITY_MAX = { COMMON: 24, UNCOMMON: 36, RARE: 48, LEGENDARY: 60 };
+
+function emptyRarityEntries() {
+  return { COMMON: [], UNCOMMON: [], RARE: [], LEGENDARY: [] };
+}
+
+// Shared by Loot and Consumable Tables — same rules, different item
+// collection/id field (lootId vs consumableId), so it's parameterized
+// rather than written out twice.
+function validateEntriesTable(store, data, itemCollectionKey, idField, itemLabel) {
+  if (!store.gameSets.some((g) => g.id === data.gameSetId)) {
+    throw new Error(`No game set with id ${data.gameSetId}`);
+  }
+  const entries = data.entries ?? emptyRarityEntries();
+  for (const rarity of RARITIES) {
+    const rows = entries[rarity] ?? [];
+    if (!Array.isArray(rows)) throw new Error(`entries.${rarity} must be an array`);
+    const seenPositions = new Set();
+    for (const row of rows) {
+      const position = row.position;
+      if (!Number.isInteger(position) || position < 1 || position > RARITY_MAX[rarity]) {
+        throw new Error(`A ${rarity} entry's position must be a whole number between 1 and ${RARITY_MAX[rarity]}.`);
+      }
+      if (seenPositions.has(position)) {
+        throw new Error(`Position ${position} is used more than once in ${rarity}.`);
+      }
+      seenPositions.add(position);
+      if (!store[itemCollectionKey].some((item) => item.id === row[idField])) {
+        throw new Error(`No ${itemLabel} with id ${row[idField]}`);
+      }
+    }
+  }
+}
+
+const lootTables = makeCollection('lootTables', {
+  validate: (store, data) => validateEntriesTable(store, data, 'loot', 'lootId', 'loot item'),
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    gameSetId: data.gameSetId,
+    entries: data.entries ?? emptyRarityEntries(),
+  }),
+});
+
+const consumableTables = makeCollection('consumableTables', {
+  validate: (store, data) => validateEntriesTable(store, data, 'consumables', 'consumableId', 'consumable'),
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    description: data.description ?? null,
+    gameSetId: data.gameSetId,
+    entries: data.entries ?? emptyRarityEntries(),
+  }),
+});
+
 const communities = makeCollection('communities', {
   buildRecord: (data) => ({
     id: randomUUID(),
@@ -756,6 +824,14 @@ module.exports = {
   updatePartyMember: partyMembers.update,
   removePartyMember: partyMembers.remove,
   listPartyMembersByCampaign,
+  listLootTables: lootTables.list,
+  createLootTable: lootTables.create,
+  updateLootTable: lootTables.update,
+  removeLootTable: lootTables.remove,
+  listConsumableTables: consumableTables.list,
+  createConsumableTable: consumableTables.create,
+  updateConsumableTable: consumableTables.update,
+  removeConsumableTable: consumableTables.remove,
   exportSnapshot,
   importSnapshot,
 };

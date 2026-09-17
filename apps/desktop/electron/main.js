@@ -45,6 +45,8 @@ const LIST = {
   transformations: store.listTransformations,
   campaigns: store.listCampaigns,
   partyMembers: store.listPartyMembers,
+  lootTables: store.listLootTables,
+  consumableTables: store.listConsumableTables,
 };
 const CREATE = {
   gameSets: store.createGameSet,
@@ -63,6 +65,8 @@ const CREATE = {
   transformations: store.createTransformation,
   campaigns: store.createCampaign,
   partyMembers: store.createPartyMember,
+  lootTables: store.createLootTable,
+  consumableTables: store.createConsumableTable,
 };
 const UPDATE = {
   gameSets: store.updateGameSet,
@@ -81,6 +85,8 @@ const UPDATE = {
   transformations: store.updateTransformation,
   campaigns: store.updateCampaign,
   partyMembers: store.updatePartyMember,
+  lootTables: store.updateLootTable,
+  consumableTables: store.updateConsumableTable,
 };
 // No GameSet/HeroClass/Subclass here — deleting those has real referential-
 // integrity questions (a Class with existing Subclasses, a GameSet with
@@ -105,6 +111,8 @@ const REMOVE = {
   // gallery, so leaving them orphaned would strand them with no UI path.
   campaigns: store.removeCampaign,
   partyMembers: store.removePartyMember,
+  lootTables: store.removeLootTable,
+  consumableTables: store.removeConsumableTable,
 };
 
 function lookup(map, collection) {

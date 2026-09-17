@@ -279,6 +279,114 @@ describe('PartyMember', () => {
   });
 });
 
+describe('LootTable', () => {
+  it('rejects a gameSetId that does not exist', async () => {
+    await expect(store.createLootTable({ name: 'Core Loot', gameSetId: 'missing' })).rejects.toThrow(
+      'No game set with id'
+    );
+  });
+
+  it('defaults entries to an empty object for every rarity', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const table = await store.createLootTable({ name: 'Core Loot', gameSetId: gs.id });
+    expect(table.entries).toEqual({ COMMON: [], UNCOMMON: [], RARE: [], LEGENDARY: [] });
+  });
+
+  it('rejects an entry referencing a lootId that does not exist', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    await expect(
+      store.createLootTable({
+        name: 'Core Loot',
+        gameSetId: gs.id,
+        entries: { COMMON: [{ position: 1, lootId: 'missing' }], UNCOMMON: [], RARE: [], LEGENDARY: [] },
+      })
+    ).rejects.toThrow('No loot item with id');
+  });
+
+  it('rejects a position outside [1, rarity max]', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const trinket = await store.createLoot({ name: 'Trinket', gameSetId: gs.id });
+    await expect(
+      store.createLootTable({
+        name: 'Core Loot',
+        gameSetId: gs.id,
+        entries: { COMMON: [{ position: 25, lootId: trinket.id }], UNCOMMON: [], RARE: [], LEGENDARY: [] },
+      })
+    ).rejects.toThrow('between 1 and 24');
+  });
+
+  it('rejects two entries in the same rarity sharing a position', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const trinket = await store.createLoot({ name: 'Trinket', gameSetId: gs.id });
+    const charm = await store.createLoot({ name: 'Charm', gameSetId: gs.id });
+    await expect(
+      store.createLootTable({
+        name: 'Core Loot',
+        gameSetId: gs.id,
+        entries: {
+          COMMON: [
+            { position: 5, lootId: trinket.id },
+            { position: 5, lootId: charm.id },
+          ],
+          UNCOMMON: [],
+          RARE: [],
+          LEGENDARY: [],
+        },
+      })
+    ).rejects.toThrow('used more than once');
+  });
+
+  it('accepts a full LEGENDARY position up to 60', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const trinket = await store.createLoot({ name: 'Trinket', gameSetId: gs.id });
+    const table = await store.createLootTable({
+      name: 'Core Loot',
+      gameSetId: gs.id,
+      entries: { COMMON: [], UNCOMMON: [], RARE: [], LEGENDARY: [{ position: 60, lootId: trinket.id }] },
+    });
+    expect(table.entries.LEGENDARY).toEqual([{ position: 60, lootId: trinket.id }]);
+  });
+
+  it('update and remove follow the same makeCollection rules as every other type', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const table = await store.createLootTable({ name: 'Core Loot', gameSetId: gs.id });
+    const updated = await store.updateLootTable(table.id, { description: 'The default table' });
+    expect(updated.description).toBe('The default table');
+    await store.removeLootTable(table.id);
+    expect(store.listLootTables()).toHaveLength(0);
+  });
+});
+
+describe('ConsumableTable', () => {
+  it('rejects an entry referencing a consumableId that does not exist', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    await expect(
+      store.createConsumableTable({
+        name: 'Core Consumables',
+        gameSetId: gs.id,
+        entries: { COMMON: [{ position: 1, consumableId: 'missing' }], UNCOMMON: [], RARE: [], LEGENDARY: [] },
+      })
+    ).rejects.toThrow('No consumable with id');
+  });
+
+  it('accepts a valid entry and round-trips it through update', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const potion = await store.createConsumable({ name: 'Minor Health Potion', gameSetId: gs.id });
+    const table = await store.createConsumableTable({
+      name: 'Core Consumables',
+      gameSetId: gs.id,
+      entries: { COMMON: [{ position: 3, consumableId: potion.id }], UNCOMMON: [], RARE: [], LEGENDARY: [] },
+    });
+    expect(table.entries.COMMON).toEqual([{ position: 3, consumableId: potion.id }]);
+
+    const potion2 = await store.createConsumable({ name: 'Major Health Potion', gameSetId: gs.id });
+    const updated = await store.updateConsumableTable(table.id, {
+      entries: { COMMON: [{ position: 3, consumableId: potion2.id }], UNCOMMON: [], RARE: [], LEGENDARY: [] },
+    });
+    expect(updated.entries.COMMON).toEqual([{ position: 3, consumableId: potion2.id }]);
+  });
+});
+
 describe('generic collection (makeCollection) shared behavior', () => {
   it('PATCH semantics: an omitted field is untouched, an explicit empty value overwrites', async () => {
     const loot = await store.createLoot({ name: 'Trinket', description: 'A shiny thing', gameSetId: 'gs-1' });
@@ -311,6 +419,8 @@ describe('Export / Import', () => {
     expect(Array.isArray(snapshot.weapons)).toBe(true);
     expect(Array.isArray(snapshot.campaigns)).toBe(true);
     expect(Array.isArray(snapshot.partyMembers)).toBe(true);
+    expect(Array.isArray(snapshot.lootTables)).toBe(true);
+    expect(Array.isArray(snapshot.consumableTables)).toBe(true);
   });
 
   it('rejects a non-object payload', async () => {

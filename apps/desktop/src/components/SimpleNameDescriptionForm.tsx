@@ -16,7 +16,8 @@ interface SimpleNameDescriptionFormProps<T extends NameDescriptionRecord> {
   submitLabel: string;
   /** Pass an existing record to edit it; omit to create a new one. */
   initial?: T | null;
-  create: (body: { name: string; description?: string; gameSetId: string }) => Promise<T>;
+  /** Only needed when this form might be used to create — an edit-only caller (e.g. TableDetail) can omit it. */
+  create?: (body: { name: string; description?: string; gameSetId: string }) => Promise<T>;
   update: (id: string, body: { name?: string; description?: string; gameSetId?: string }) => Promise<T>;
   onSaved: (item: T) => void;
   onCancel: () => void;
@@ -51,7 +52,9 @@ export default function SimpleNameDescriptionForm<T extends NameDescriptionRecor
     setError(null);
     const body = { name, description, gameSetId };
     try {
-      const item = isEditing ? await update(initial!.id, body) : await create(body);
+      const item = isEditing
+        ? await update(initial!.id, body)
+        : await (create ? create(body) : Promise.reject(new Error('Create is not supported here.')));
       onSaved(item);
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the ${title}.`);

@@ -3,12 +3,16 @@ import { weaponsApi, type Weapon, type WeaponSlot } from '../api/weapons';
 import { armorsApi, type Armor } from '../api/armors';
 import { lootApi, type Loot } from '../api/loot';
 import { consumablesApi, type Consumable } from '../api/consumables';
+import { lootTablesApi, type LootTable, type LootTableEntry } from '../api/lootTables';
+import { consumableTablesApi, type ConsumableTable, type ConsumableTableEntry } from '../api/consumableTables';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, ContentCardList, MetaChip } from '../components/ContentCard';
 import WeaponForm from '../components/WeaponForm';
 import ArmorForm from '../components/ArmorForm';
 import SimpleNameDescriptionForm from '../components/SimpleNameDescriptionForm';
+import TableDetail from '../components/TableDetail';
+import { RARITIES } from '../lib/lootRarity';
 import './BrowsePage.css';
 
 function WeaponCard({ w, onEdit, onDelete }: { w: Weapon; onEdit: () => void; onDelete: () => void }) {
@@ -71,11 +75,39 @@ function NameDescriptionCard({
   );
 }
 
+function totalEntries(entries: { COMMON: unknown[]; UNCOMMON: unknown[]; RARE: unknown[]; LEGENDARY: unknown[] }): number {
+  return RARITIES.reduce((sum, rarity) => sum + entries[rarity].length, 0);
+}
+
+function TableCard({
+  table,
+  onOpen,
+  onDelete,
+}: {
+  table: LootTable | ConsumableTable;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <ContentCard
+      title={table.name}
+      onEdit={onOpen}
+      editLabel="Open"
+      onDelete={onDelete}
+      meta={<MetaChip label="Entries" value={totalEntries(table.entries)} />}
+    >
+      {table.description && <p className="content-card__description">{table.description}</p>}
+    </ContentCard>
+  );
+}
+
 export default function EquipmentPage() {
   const weapons = useApiList(weaponsApi.list);
   const armors = useApiList(armorsApi.list);
   const loot = useApiList(lootApi.list);
   const consumables = useApiList(consumablesApi.list);
+  const lootTables = useApiList(lootTablesApi.list);
+  const consumableTables = useApiList(consumableTablesApi.list);
 
   const [editingWeaponId, setEditingWeaponId] = useState<string | null>(null);
   const [editingArmorId, setEditingArmorId] = useState<string | null>(null);
@@ -85,6 +117,10 @@ export default function EquipmentPage() {
   const [creatingArmor, setCreatingArmor] = useState(false);
   const [creatingLoot, setCreatingLoot] = useState(false);
   const [creatingConsumable, setCreatingConsumable] = useState(false);
+  const [creatingLootTable, setCreatingLootTable] = useState(false);
+  const [creatingConsumableTable, setCreatingConsumableTable] = useState(false);
+  const [openLootTableId, setOpenLootTableId] = useState<string | null>(null);
+  const [openConsumableTableId, setOpenConsumableTableId] = useState<string | null>(null);
 
   async function handleDeleteWeapon(w: Weapon) {
     if (!window.confirm(`Delete "${w.name}"? This can't be undone.`)) return;
@@ -124,6 +160,75 @@ export default function EquipmentPage() {
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable.');
     }
+  }
+
+  async function handleDeleteLootTable(t: LootTable) {
+    if (!window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
+    try {
+      await lootTablesApi.remove(t.id);
+      lootTables.remove(t.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Loot Table.');
+    }
+  }
+
+  async function handleDeleteConsumableTable(t: ConsumableTable) {
+    if (!window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
+    try {
+      await consumableTablesApi.remove(t.id);
+      consumableTables.remove(t.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable Table.');
+    }
+  }
+
+  const openLootTable = openLootTableId ? lootTables.items.find((t) => t.id === openLootTableId) ?? null : null;
+  const openConsumableTable = openConsumableTableId
+    ? consumableTables.items.find((t) => t.id === openConsumableTableId) ?? null
+    : null;
+
+  if (openLootTable) {
+    return (
+      <div className="browse-page">
+        <TableDetail<LootTableEntry>
+          table={openLootTable}
+          items={loot.items}
+          itemLabel="Loot"
+          makeEntry={(position, itemId) => ({ position, lootId: itemId })}
+          getItemId={(entry) => entry.lootId}
+          update={(id, body) => lootTablesApi.update(id, body)}
+          remove={(id) => lootTablesApi.remove(id)}
+          onBack={() => setOpenLootTableId(null)}
+          onSaved={(saved) => lootTables.upsert(saved)}
+          onDeleted={(id) => {
+            lootTables.remove(id);
+            setOpenLootTableId(null);
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (openConsumableTable) {
+    return (
+      <div className="browse-page">
+        <TableDetail<ConsumableTableEntry>
+          table={openConsumableTable}
+          items={consumables.items}
+          itemLabel="Consumable"
+          makeEntry={(position, itemId) => ({ position, consumableId: itemId })}
+          getItemId={(entry) => entry.consumableId}
+          update={(id, body) => consumableTablesApi.update(id, body)}
+          remove={(id) => consumableTablesApi.remove(id)}
+          onBack={() => setOpenConsumableTableId(null)}
+          onSaved={(saved) => consumableTables.upsert(saved)}
+          onDeleted={(id) => {
+            consumableTables.remove(id);
+            setOpenConsumableTableId(null);
+          }}
+        />
+      </div>
+    );
   }
 
   return (
@@ -325,6 +430,84 @@ export default function EquipmentPage() {
                 />
               )
             }
+          />
+        )}
+      </div>
+
+      <div className="browse-page__section">
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Loot Tables</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingLootTable(true)}>
+            + New Loot Table
+          </button>
+        </div>
+        {creatingLootTable && (
+          <div className="browse-page__inline-form">
+            <SimpleNameDescriptionForm
+              title="Loot Table"
+              submitLabel="Create Loot Table"
+              create={lootTablesApi.create}
+              update={lootTablesApi.update}
+              onSaved={(saved) => {
+                lootTables.upsert(saved);
+                setCreatingLootTable(false);
+              }}
+              onCancel={() => setCreatingLootTable(false)}
+            />
+          </div>
+        )}
+        {lootTables.loading && <p className="browse-page__status">Loading Loot Tables&hellip;</p>}
+        {lootTables.error && <p className="browse-page__status browse-page__status--error">{lootTables.error}</p>}
+        {!lootTables.loading && !lootTables.error && (
+          <ContentCardList
+            items={lootTables.items}
+            emptyMessage="No Loot Tables yet — click + New Loot Table above, then open it to add rollable entries."
+            getKey={(t) => t.id}
+            renderItem={(t) => (
+              <TableCard table={t} onOpen={() => setOpenLootTableId(t.id)} onDelete={() => handleDeleteLootTable(t)} />
+            )}
+          />
+        )}
+      </div>
+
+      <div className="browse-page__section">
+        <div className="browse-page__section-header">
+          <h2 className="browse-page__section-title">Consumable Tables</h2>
+          <button type="button" className="browse-page__add-button" onClick={() => setCreatingConsumableTable(true)}>
+            + New Consumable Table
+          </button>
+        </div>
+        {creatingConsumableTable && (
+          <div className="browse-page__inline-form">
+            <SimpleNameDescriptionForm
+              title="Consumable Table"
+              submitLabel="Create Consumable Table"
+              create={consumableTablesApi.create}
+              update={consumableTablesApi.update}
+              onSaved={(saved) => {
+                consumableTables.upsert(saved);
+                setCreatingConsumableTable(false);
+              }}
+              onCancel={() => setCreatingConsumableTable(false)}
+            />
+          </div>
+        )}
+        {consumableTables.loading && <p className="browse-page__status">Loading Consumable Tables&hellip;</p>}
+        {consumableTables.error && (
+          <p className="browse-page__status browse-page__status--error">{consumableTables.error}</p>
+        )}
+        {!consumableTables.loading && !consumableTables.error && (
+          <ContentCardList
+            items={consumableTables.items}
+            emptyMessage="No Consumable Tables yet — click + New Consumable Table above, then open it to add rollable entries."
+            getKey={(t) => t.id}
+            renderItem={(t) => (
+              <TableCard
+                table={t}
+                onOpen={() => setOpenConsumableTableId(t.id)}
+                onDelete={() => handleDeleteConsumableTable(t)}
+              />
+            )}
           />
         )}
       </div>

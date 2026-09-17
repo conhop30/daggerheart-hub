@@ -20,6 +20,8 @@ const COLLECTIONS = [
   'transformations',
   'campaigns',
   'partyMembers',
+  'lootTables',
+  'consumableTables',
 ];
 
 test.describe('Electron app', () => {
