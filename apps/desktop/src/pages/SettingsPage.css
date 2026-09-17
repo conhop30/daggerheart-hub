@@ -1,0 +1,80 @@
+.settings-page {
+  max-width: 720px;
+  animation: fadeInUp 280ms var(--ease);
+}
+
+.settings-page__title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  margin-bottom: var(--space-4);
+}
+
+.settings-page__section {
+  margin-bottom: var(--space-4);
+}
+
+.settings-page__section-title {
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.settings-page__section-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-2);
+}
+
+.settings-page__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-page__option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  text-align: left;
+  transition:
+    border-color 200ms var(--ease),
+    background 200ms var(--ease);
+}
+
+.settings-page__option:hover:not(:disabled) {
+  border-color: var(--hope);
+  background: var(--panel-raised);
+}
+
+.settings-page__option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.settings-page__option.active {
+  border-color: var(--hope);
+  background: rgba(228, 179, 65, 0.14);
+}
+
+.settings-page__option-label {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.settings-page__option-description {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.settings-page__error {
+  color: var(--fear-on-dark);
+  font-size: 0.85rem;
+  margin-top: var(--space-2);
+}

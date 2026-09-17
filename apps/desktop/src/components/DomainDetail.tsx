@@ -4,9 +4,8 @@ import { domainsApi, type Domain } from '../api/domains';
 import DomainForm from './DomainForm';
 import CardForm from './CardForm';
 import { domainGradient } from './DomainBanner';
-import { ContentCard, MetaChip } from './ContentCard';
+import DomainCardTile from './DomainCardTile';
 import { upsertById } from '../lib/upsert';
-import { titleCaseEnum } from '../lib/format';
 import './DomainDetail.css';
 
 interface DomainDetailProps {
@@ -145,22 +144,14 @@ export default function DomainDetail({ domain, onBack, onDomainSaved, onDomainDe
                 />
               </div>
             ) : (
-              <ContentCard
+              <DomainCardTile
                 key={card.id}
-                title={card.name}
-                meta={
-                  <>
-                    <MetaChip label="Type" value={titleCaseEnum(card.type)} />
-                    <MetaChip label="Level" value={card.level ?? undefined} />
-                    <MetaChip label="Recall" value={card.recallCost ?? undefined} />
-                  </>
-                }
+                card={card}
+                domainName={domain.name}
+                domainColor={domain.colorHex}
                 onEdit={() => setEditingCardId(card.id)}
                 onDelete={() => handleDeleteCard(card)}
-              >
-                {card.imagePath && <img className="domain-card-grid__thumb" src={card.imagePath} alt="" />}
-                {card.description && <p className="content-card__description">{card.description}</p>}
-              </ContentCard>
+              />
             )
           )}
           <button type="button" className="domain-card-grid__create" onClick={() => setCreatingCard(true)}>

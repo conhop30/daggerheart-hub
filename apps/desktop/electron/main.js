@@ -4,7 +4,7 @@
 // (reading 'exports')") because the `electron` module's CJS shape isn't a
 // real file Node's ESM/CJS interop can statically preparse. CJS sidesteps
 // the problem entirely.
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const store = require('./store.js');
@@ -109,6 +109,19 @@ ipcMain.handle('store:listCardsByDomain', (_event, domainId) => store.listCardsB
 ipcMain.handle('store:create', (_event, collection, data) => lookup(CREATE, collection)(data));
 ipcMain.handle('store:update', (_event, collection, id, patch) => lookup(UPDATE, collection)(id, patch));
 ipcMain.handle('store:remove', (_event, collection, id) => lookup(REMOVE, collection)(id));
+
+ipcMain.handle('window:getSize', (event) => BrowserWindow.fromWebContents(event.sender).getSize());
+
+ipcMain.handle('window:setSize', (event, { width, height }) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  // Clamp to the current display's work area — a "Large" preset picked on a
+  // laptop screen smaller than 1600x1000 would otherwise push the window
+  // partly off-screen instead of just filling what's available.
+  const { width: maxW, height: maxH } = screen.getDisplayMatching(win.getBounds()).workAreaSize;
+  win.setSize(Math.min(width, maxW), Math.min(height, maxH));
+  win.center();
+  return win.getSize();
+});
 
 ipcMain.handle('store:export', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);

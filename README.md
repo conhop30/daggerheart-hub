@@ -102,6 +102,44 @@ without leaving the gallery. `Card` is a full content type end-to-end
 designed galleries the spec describes (filters, sort, etc.) — just plain
 lists.
 
+**Domain Cards render as actual poker-card-shaped tiles, not list rows.**
+`DomainCardTile` (`src/components/DomainCardTile.tsx`) fixes each card's
+aspect ratio to 2.5in x 3.5in (`aspect-ratio: 2.5 / 3.5` in CSS, driven off
+grid column width) and splits it like a real card: an illustration band on
+top (~half the card — the parent Domain's color gradient, or the Card's own
+`imagePath` once art exists), a level badge, a name plate, a Type/Domain/
+Recall Cost caption row, and a rules-text area that scrolls internally
+instead of breaking the card's shape on long descriptions. Cards with no art
+yet show a placeholder glyph (sparkle/hexagon/book for Spell/Ability/
+Grimoire) instead of a blank tile.
+
+The Core Set's full domain-card reference (189 cards across all 9 domains),
+all 18 Ancestries, and all 9 Communities are seeded in from the corebook PDF
+— see `daggerheart-hub-spec.md` if you need to re-run that import against a
+different source.
+
+**Settings page:** theme (Light / Dark / System, with System tracking the OS
+preference live) and a few standard window-size presets (Compact/Standard/
+Large/Extra Large). Reached via the gear icon at the right of the top nav
+bar, not the main content nav — it's app-level, not a content type.
+- Theme is a `data-theme` attribute on `<html>`, set by
+  `src/context/ThemeContext.tsx` and persisted to `localStorage` (not the
+  JSON store — it's a per-machine UI preference, not game content, so it
+  deliberately doesn't round-trip through Export/Import). `index.html` has a
+  small inline script that applies the stored preference before first paint,
+  so there's no flash of the wrong theme on launch.
+- Light and dark are two value sets under the same CSS variable names in
+  `src/styles/tokens.css` (`:root` vs. `:root[data-theme='light']`) — no
+  component CSS needed to change, since everything already read the shared
+  tokens rather than hardcoding colors. The one deliberate exception:
+  Domain/Class hero gradients keep hardcoded white text in both themes,
+  since they render over their own dark-overlaid color gradient regardless
+  of the app theme (see `domainGradient()`).
+- Window resizing is real `BrowserWindow.setSize()` in `electron/main.js`
+  (new `window:getSize`/`window:setSize` IPC channels), clamped to the
+  current display's work area so a preset larger than the screen doesn't
+  push the window off-screen.
+
 ## Running it
 
 ```

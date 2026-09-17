@@ -35,6 +35,38 @@
   gap: var(--space-1);
 }
 
+.app-shell__settings {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  transition:
+    color 200ms var(--ease),
+    border-color 200ms var(--ease),
+    transform 400ms var(--ease);
+}
+
+.app-shell__settings:hover {
+  color: var(--ink);
+  transform: rotate(24deg);
+}
+
+.app-shell__settings.active {
+  color: var(--ink);
+  border-color: var(--hope);
+  background: rgba(228, 179, 65, 0.14);
+}
+
+.app-shell__settings-glyph {
+  width: 18px;
+  height: 18px;
+}
+
 .app-shell__nav-link {
   background: none;
   border: 1px solid transparent;

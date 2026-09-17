@@ -64,6 +64,41 @@
   --ease-field: var(--ease);
 }
 
+/* Light theme — same token names as :root above (nothing outside this file
+   needs to know which theme is active), just lighter values. Applied via
+   [data-theme="light"] on <html>, set by ThemeContext; "system" preference
+   resolves to this or the default dark block above based on
+   prefers-color-scheme, re-evaluated live. Hero/banner surfaces (Domain
+   gradients, ClassSpread) keep hardcoded white text on purpose — they
+   already render on their own dark-overlaid gradient regardless of theme
+   (see domainGradient()), so they're intentionally left out of this swap.
+
+   Contrast, checked the same way as the dark block's comment above:
+     --ink        #2b2620 on #f6f2e8  -> 13.4:1 (AAA)
+     --ink-dim    #4a4032 on #f6f2e8  ->  9.1:1 (AAA) — reuses --parchment-ink
+     --muted      #6b5a42 on #f6f2e8  ->  5.9:1 (AA)  — reuses --parchment-ink-dim
+     --hope-on-dark (text role) #6e561e on #f6f2e8 -> 6.2:1 (AA) — reuses --hope-on-light
+     --fear-on-dark (text role) #43307a on #f6f2e8 -> 9.7:1 (AAA) */
+:root[data-theme='light'] {
+  --void: #f6f2e8;
+  --panel: #fffdf9;
+  --panel-raised: #efe7d6;
+  --hairline: rgba(43, 38, 32, 0.16);
+
+  --ink: #2b2620;
+  --ink-dim: #4a4032;
+  --muted: #6b5a42;
+
+  /* Same two accents, re-pointed at their light-surface-safe text variants
+     so component CSS that references --hope-on-dark/--fear-on-dark as
+     "the accent, as text" keeps working unchanged in either theme. --hope/
+     --fear/--*-dim (used for fills, borders, low-opacity backgrounds, not
+     text) are left as-is — those only need the looser 3:1 non-text bar,
+     which the base tones already clear on this surface too. */
+  --hope-on-dark: #6e561e;
+  --fear-on-dark: #43307a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -82,6 +117,9 @@ body {
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 220ms var(--ease),
+    color 220ms var(--ease);
 }
 
 h1,

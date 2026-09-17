@@ -93,15 +93,15 @@ test.describe('Electron app', () => {
     await win.click('.domain-card-grid__create');
     await win.fill('.create-form input[type="text"]', 'Rune Ward');
     await win.click('button:has-text("Create Card")');
-    await expect(win.locator('.content-card', { hasText: 'Rune Ward' })).toBeVisible();
+    await expect(win.locator('.domain-card-tile', { hasText: 'Rune Ward' })).toBeVisible();
 
-    await win.locator('.content-card', { hasText: 'Rune Ward' }).getByRole('button', { name: 'Edit' }).click();
+    await win.locator('.domain-card-tile', { hasText: 'Rune Ward' }).getByRole('button', { name: 'Edit' }).click();
     await win.fill('.create-form input[type="text"]', 'Rune Ward Renamed');
     await win.click('button:has-text("Save Changes")');
-    await expect(win.locator('.content-card', { hasText: 'Rune Ward Renamed' })).toBeVisible();
+    await expect(win.locator('.domain-card-tile', { hasText: 'Rune Ward Renamed' })).toBeVisible();
 
-    await win.locator('.content-card', { hasText: 'Rune Ward Renamed' }).getByRole('button', { name: 'Delete' }).click();
-    await expect(win.locator('.content-card', { hasText: 'Rune Ward Renamed' })).toHaveCount(0);
+    await win.locator('.domain-card-tile', { hasText: 'Rune Ward Renamed' }).getByRole('button', { name: 'Delete' }).click();
+    await expect(win.locator('.domain-card-tile', { hasText: 'Rune Ward Renamed' })).toHaveCount(0);
   });
 
   test('selecting a Class filters the Domain grid to its two Domains', async () => {
@@ -182,6 +182,30 @@ test.describe('Electron app', () => {
     for (const key of COLLECTIONS) {
       expect(Array.isArray(exported[key]), `${key} should be an array`).toBe(true);
     }
+  });
+
+  test('Settings: switching theme updates the document and persists across reload', async () => {
+    await win.click('.app-shell__settings');
+    await expect(win.locator('.settings-page__title')).toBeVisible();
+
+    await win.click('.settings-page__option:has-text("Light")');
+    await expect(win.locator('html')).toHaveAttribute('data-theme', 'light');
+
+    await win.click('.settings-page__option:has-text("Dark")');
+    await expect(win.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await expect(win.locator('html')).toHaveAttribute('data-theme', 'dark');
+  });
+
+  test('Settings: applying a window size preset actually resizes the window', async () => {
+    await win.click('.app-shell__settings');
+    await win.click('.settings-page__option:has-text("Compact")');
+    await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize())).toEqual([
+      1024, 720,
+    ]);
+    await expect(win.locator('.settings-page__section-hint', { hasText: '1024' })).toBeVisible();
   });
 });
 

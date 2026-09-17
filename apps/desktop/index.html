@@ -9,6 +9,22 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Set the theme attribute before first paint so there's no flash of
+      // the wrong theme — ThemeContext (which owns this logic for real,
+      // including live system-preference changes) re-derives the same
+      // value on mount, this just beats CSS to the first frame.
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem('daggerheart-theme-preference');
+        } catch (e) {}
+        var pref = stored === 'light' || stored === 'dark' ? stored : 'system';
+        var resolved =
+          pref === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : pref;
+        document.documentElement.dataset.theme = resolved;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
