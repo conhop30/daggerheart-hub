@@ -1,0 +1,121 @@
+.loot-roller {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+}
+
+.loot-roller__title {
+  font-size: 1.1rem;
+  margin-bottom: var(--space-2);
+}
+
+.loot-roller__rarities,
+.loot-roller__pool-sizes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-1);
+}
+
+.loot-roller__rarity,
+.loot-roller__pool-size {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.8rem;
+  transition:
+    border-color 180ms var(--ease),
+    color 180ms var(--ease);
+}
+
+.loot-roller__rarity:hover,
+.loot-roller__pool-size:hover {
+  color: var(--ink);
+}
+
+.loot-roller__rarity--active,
+.loot-roller__pool-size--active {
+  border-color: var(--hope);
+  color: var(--hope);
+}
+
+.loot-roller__hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: var(--space-2);
+}
+
+.loot-roller__empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.loot-roller__tables {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-2);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.loot-roller__table-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.loot-roller__table-type {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.loot-roller__roll {
+  background: var(--hope);
+  border: none;
+  color: var(--void);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1.2rem;
+  border-radius: 999px;
+  margin-bottom: var(--space-2);
+}
+
+.loot-roller__roll:disabled {
+  background: var(--hairline);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.loot-roller__log {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.loot-roller__log-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.loot-roller__log-results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}

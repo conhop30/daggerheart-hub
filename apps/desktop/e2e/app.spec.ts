@@ -22,6 +22,9 @@ const COLLECTIONS = [
   'partyMembers',
   'lootTables',
   'consumableTables',
+  'sessions',
+  'sessionAdversaries',
+  'sessionEnvironments',
 ];
 
 test.describe('Electron app', () => {

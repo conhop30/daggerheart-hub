@@ -1,0 +1,45 @@
+.session-list {
+  margin-top: var(--space-4);
+}
+
+.session-list__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.session-list__title {
+  font-size: 1.3rem;
+  margin-bottom: 0;
+}
+
+.session-list__add {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--hope);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.session-list__add:hover {
+  border-color: var(--hope);
+}
+
+.session-list__form {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.session-list__status {
+  color: var(--muted);
+}
+
+.session-list__status--error {
+  color: var(--fear-on-dark);
+}

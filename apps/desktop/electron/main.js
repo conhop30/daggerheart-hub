@@ -47,6 +47,9 @@ const LIST = {
   partyMembers: store.listPartyMembers,
   lootTables: store.listLootTables,
   consumableTables: store.listConsumableTables,
+  sessions: store.listSessions,
+  sessionAdversaries: store.listSessionAdversaries,
+  sessionEnvironments: store.listSessionEnvironments,
 };
 const CREATE = {
   gameSets: store.createGameSet,
@@ -67,6 +70,9 @@ const CREATE = {
   partyMembers: store.createPartyMember,
   lootTables: store.createLootTable,
   consumableTables: store.createConsumableTable,
+  sessions: store.createSession,
+  sessionAdversaries: store.createSessionAdversary,
+  sessionEnvironments: store.createSessionEnvironment,
 };
 const UPDATE = {
   gameSets: store.updateGameSet,
@@ -87,6 +93,9 @@ const UPDATE = {
   partyMembers: store.updatePartyMember,
   lootTables: store.updateLootTable,
   consumableTables: store.updateConsumableTable,
+  sessions: store.updateSession,
+  sessionAdversaries: store.updateSessionAdversary,
+  sessionEnvironments: store.updateSessionEnvironment,
 };
 // No GameSet/HeroClass/Subclass here — deleting those has real referential-
 // integrity questions (a Class with existing Subclasses, a GameSet with
@@ -113,6 +122,11 @@ const REMOVE = {
   partyMembers: store.removePartyMember,
   lootTables: store.removeLootTable,
   consumableTables: store.removeConsumableTable,
+  // Session delete cascades to its own SessionAdversaries/SessionEnvironments
+  // inside store.js, same reasoning as Campaign -> PartyMembers.
+  sessions: store.removeSession,
+  sessionAdversaries: store.removeSessionAdversary,
+  sessionEnvironments: store.removeSessionEnvironment,
 };
 
 function lookup(map, collection) {
@@ -128,6 +142,13 @@ ipcMain.handle('store:listSubclassesByParentClass', (_event, parentClassId) =>
 ipcMain.handle('store:listCardsByDomain', (_event, domainId) => store.listCardsByDomain(domainId));
 ipcMain.handle('store:listPartyMembersByCampaign', (_event, campaignId) =>
   store.listPartyMembersByCampaign(campaignId)
+);
+ipcMain.handle('store:listSessionsByCampaign', (_event, campaignId) => store.listSessionsByCampaign(campaignId));
+ipcMain.handle('store:listSessionAdversariesBySession', (_event, sessionId) =>
+  store.listSessionAdversariesBySession(sessionId)
+);
+ipcMain.handle('store:listSessionEnvironmentsBySession', (_event, sessionId) =>
+  store.listSessionEnvironmentsBySession(sessionId)
 );
 ipcMain.handle('store:create', (_event, collection, data) => lookup(CREATE, collection)(data));
 ipcMain.handle('store:update', (_event, collection, id, patch) => lookup(UPDATE, collection)(id, patch));

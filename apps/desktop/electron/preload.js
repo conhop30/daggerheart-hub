@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('daggerheart', {
   listCardsByDomain: (domainId) => ipcRenderer.invoke('store:listCardsByDomain', domainId),
   listPartyMembersByCampaign: (campaignId) =>
     ipcRenderer.invoke('store:listPartyMembersByCampaign', campaignId),
+  listSessionsByCampaign: (campaignId) => ipcRenderer.invoke('store:listSessionsByCampaign', campaignId),
+  listSessionAdversariesBySession: (sessionId) =>
+    ipcRenderer.invoke('store:listSessionAdversariesBySession', sessionId),
+  listSessionEnvironmentsBySession: (sessionId) =>
+    ipcRenderer.invoke('store:listSessionEnvironmentsBySession', sessionId),
   create: (collection, data) => ipcRenderer.invoke('store:create', collection, data),
   update: (collection, id, patch) => ipcRenderer.invoke('store:update', collection, id, patch),
   remove: (collection, id) => ipcRenderer.invoke('store:remove', collection, id),

@@ -41,6 +41,9 @@ const COLLECTIONS = [
   'partyMembers',
   'lootTables',
   'consumableTables',
+  'sessions',
+  'sessionAdversaries',
+  'sessionEnvironments',
 ];
 
 let cache = null;
@@ -654,9 +657,9 @@ const transformations = makeCollection('transformations', {
 // PartyMember roster below) and, later, the Sessions run against it.
 // Unlike most collections, deleting a Campaign cascades to its children —
 // they have no other reachable gallery/list the way e.g. Card does off of
-// Domain, so an orphaned PartyMember would be permanently stuck with no UI
-// path to it. removeSession (once Sessions exist) will cascade the same way
-// to SessionAdversaries/SessionEnvironments.
+// Domain, so an orphaned PartyMember or Session would be permanently stuck
+// with no UI path to it. removeSession cascades the same way to that
+// Session's own SessionAdversaries/SessionEnvironments.
 
 const campaigns = makeCollection('campaigns', {
   buildRecord: (data) => ({
@@ -673,6 +676,10 @@ function removeCampaign(id) {
     if (index === -1) throw new Error(`No campaign with id ${id}`);
     store.campaigns.splice(index, 1);
     store.partyMembers = store.partyMembers.filter((p) => p.campaignId !== id);
+    const sessionIds = new Set(store.sessions.filter((s) => s.campaignId === id).map((s) => s.id));
+    store.sessions = store.sessions.filter((s) => s.campaignId !== id);
+    store.sessionAdversaries = store.sessionAdversaries.filter((sa) => !sessionIds.has(sa.sessionId));
+    store.sessionEnvironments = store.sessionEnvironments.filter((se) => !sessionIds.has(se.sessionId));
   });
 }
 
@@ -709,6 +716,184 @@ const partyMembers = makeCollection('partyMembers', {
 
 function listPartyMembersByCampaign(campaignId) {
   return getCache().partyMembers.filter((p) => p.campaignId === campaignId);
+}
+
+// ---- Sessions ----
+// A persistent, resumable run of a Campaign: Fear (0-12), a combat/
+// adventuring mode, notes, and a loot log. Built with makeCollection like
+// Campaign itself — a Session genuinely has a user-given name ("The Ambush
+// at Dawn") and idempotent-by-name create is an acceptable, already-
+// familiar limitation here (same gap as PartyMember/Card: name uniqueness
+// isn't scoped to campaignId).
+
+const SESSION_MODES = ['adventuring', 'combat'];
+
+function validateSession(store, data) {
+  if (!store.campaigns.some((c) => c.id === data.campaignId)) {
+    throw new Error(`No campaign with id ${data.campaignId}`);
+  }
+  if (data.mode !== undefined && !SESSION_MODES.includes(data.mode)) {
+    throw new Error(`Session mode must be one of ${SESSION_MODES.join(', ')}`);
+  }
+  // Fear is a bounded 0-12 resource — clamp rather than reject an
+  // out-of-range value (the UI's +/- controls can never produce one, but a
+  // clamp is friendlier than an error for any other caller). validate runs
+  // on the same object create()/update() go on to persist, so mutating it
+  // here is enough to make the clamp stick, the same way Card's buildRecord
+  // auto-fills domainIcon without a separate pass.
+  if (data.fear !== undefined) {
+    data.fear = Math.max(0, Math.min(12, data.fear));
+  }
+}
+
+const sessions = makeCollection('sessions', {
+  validate: validateSession,
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    campaignId: data.campaignId,
+    name: data.name,
+    fear: data.fear ?? 0,
+    mode: data.mode ?? 'adventuring',
+    generalNotes: data.generalNotes ?? null,
+    npcNotes: data.npcNotes ?? null,
+    pcNotes: data.pcNotes ?? [],
+    lootLog: data.lootLog ?? [],
+  }),
+});
+
+function removeSession(id) {
+  return mutate((store) => {
+    const index = store.sessions.findIndex((s) => s.id === id);
+    if (index === -1) throw new Error(`No session with id ${id}`);
+    store.sessions.splice(index, 1);
+    store.sessionAdversaries = store.sessionAdversaries.filter((sa) => sa.sessionId !== id);
+    store.sessionEnvironments = store.sessionEnvironments.filter((se) => se.sessionId !== id);
+  });
+}
+
+function listSessionsByCampaign(campaignId) {
+  return getCache().sessions.filter((s) => s.campaignId === campaignId);
+}
+
+// ---- Session Adversaries / Session Environments ----
+// Deliberately NOT built with makeCollection. Pulling the same Adversary
+// into a session twice (two Ogres) must create two independent records —
+// makeCollection's idempotent-by-name create would collapse the second
+// pull-in into the first instead of inserting a new one — and there's no
+// user-supplied "name" to key that on anyway, since name is snapshotted
+// from the master record. Every create here just inserts, the same
+// reasoning as GameSet.
+//
+// These are snapshots, not live references: the master Adversary/
+// Environment is only ever looked up at create time (inside the
+// buildX functions below), so editing or even deleting the master later
+// can never disturb a session already in progress. Daggerheart tracks
+// HP/Stress as *marked boxes* during play, not a countdown, hence
+// hpMarked/stressMarked starting at 0 against a snapshotted hpMax/stressMax.
+
+function buildSessionAdversary(store, data) {
+  const adversary = store.adversaries.find((a) => a.id === data.adversaryId);
+  if (!adversary) throw new Error(`No adversary with id ${data.adversaryId}`);
+  return {
+    id: randomUUID(),
+    sessionId: data.sessionId,
+    adversaryId: data.adversaryId,
+    label: data.label && data.label.trim() ? data.label.trim() : adversary.name,
+    name: adversary.name,
+    tier: adversary.tier,
+    difficulty: adversary.difficulty,
+    thresholds: adversary.thresholds,
+    hpMax: adversary.hp,
+    stressMax: adversary.stress,
+    attackModifier: adversary.attackModifier,
+    attackDescription: adversary.attackDescription,
+    attackRange: adversary.attackRange,
+    attackType: adversary.attackType,
+    hpMarked: 0,
+    stressMarked: 0,
+    conditions: [],
+  };
+}
+
+function listSessionAdversaries() {
+  return getCache().sessionAdversaries;
+}
+function listSessionAdversariesBySession(sessionId) {
+  return getCache().sessionAdversaries.filter((sa) => sa.sessionId === sessionId);
+}
+function createSessionAdversary(data) {
+  return mutate((store) => {
+    if (!store.sessions.some((s) => s.id === data.sessionId)) {
+      throw new Error(`No session with id ${data.sessionId}`);
+    }
+    const record = buildSessionAdversary(store, data);
+    store.sessionAdversaries.push(record);
+    return record;
+  });
+}
+function updateSessionAdversary(id, patch) {
+  return mutate((store) => {
+    const existing = store.sessionAdversaries.find((r) => r.id === id);
+    if (!existing) throw new Error(`No record with id ${id}`);
+    Object.assign(existing, mergePatch(existing, patch));
+    return existing;
+  });
+}
+function removeSessionAdversary(id) {
+  return mutate((store) => {
+    const index = store.sessionAdversaries.findIndex((r) => r.id === id);
+    if (index === -1) throw new Error(`No record with id ${id}`);
+    store.sessionAdversaries.splice(index, 1);
+  });
+}
+
+function buildSessionEnvironment(store, data) {
+  const environment = store.environments.find((e) => e.id === data.environmentId);
+  if (!environment) throw new Error(`No environment with id ${data.environmentId}`);
+  return {
+    id: randomUUID(),
+    sessionId: data.sessionId,
+    environmentId: data.environmentId,
+    label: data.label && data.label.trim() ? data.label.trim() : environment.name,
+    name: environment.name,
+    tier: environment.tier,
+    difficulty: environment.difficulty,
+    description: environment.description,
+    impulses: environment.impulses,
+    notes: data.notes ?? null,
+  };
+}
+
+function listSessionEnvironments() {
+  return getCache().sessionEnvironments;
+}
+function listSessionEnvironmentsBySession(sessionId) {
+  return getCache().sessionEnvironments.filter((se) => se.sessionId === sessionId);
+}
+function createSessionEnvironment(data) {
+  return mutate((store) => {
+    if (!store.sessions.some((s) => s.id === data.sessionId)) {
+      throw new Error(`No session with id ${data.sessionId}`);
+    }
+    const record = buildSessionEnvironment(store, data);
+    store.sessionEnvironments.push(record);
+    return record;
+  });
+}
+function updateSessionEnvironment(id, patch) {
+  return mutate((store) => {
+    const existing = store.sessionEnvironments.find((r) => r.id === id);
+    if (!existing) throw new Error(`No record with id ${id}`);
+    Object.assign(existing, mergePatch(existing, patch));
+    return existing;
+  });
+}
+function removeSessionEnvironment(id) {
+  return mutate((store) => {
+    const index = store.sessionEnvironments.findIndex((r) => r.id === id);
+    if (index === -1) throw new Error(`No record with id ${id}`);
+    store.sessionEnvironments.splice(index, 1);
+  });
 }
 
 // ---- Export / Import ----
@@ -832,6 +1017,21 @@ module.exports = {
   createConsumableTable: consumableTables.create,
   updateConsumableTable: consumableTables.update,
   removeConsumableTable: consumableTables.remove,
+  listSessions: sessions.list,
+  createSession: sessions.create,
+  updateSession: sessions.update,
+  removeSession,
+  listSessionsByCampaign,
+  listSessionAdversaries,
+  createSessionAdversary,
+  updateSessionAdversary,
+  removeSessionAdversary,
+  listSessionAdversariesBySession,
+  listSessionEnvironments,
+  createSessionEnvironment,
+  updateSessionEnvironment,
+  removeSessionEnvironment,
+  listSessionEnvironmentsBySession,
   exportSnapshot,
   importSnapshot,
 };

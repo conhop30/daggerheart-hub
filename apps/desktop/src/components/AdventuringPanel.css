@@ -1,0 +1,31 @@
+.adventuring-panel__notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.adventuring-panel__note-field {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+.adventuring-panel__note-field textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.adventuring-panel__section-title {
+  font-size: 1rem;
+  margin-bottom: var(--space-1);
+}
+
+.adventuring-panel__pc-notes {
+  margin-bottom: var(--space-3);
+}

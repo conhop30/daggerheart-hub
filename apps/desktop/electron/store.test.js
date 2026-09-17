@@ -387,6 +387,176 @@ describe('ConsumableTable', () => {
   });
 });
 
+describe('Session', () => {
+  it('rejects a campaignId that does not exist', async () => {
+    await expect(store.createSession({ campaignId: 'missing', name: 'Session 1' })).rejects.toThrow(
+      'No campaign with id'
+    );
+  });
+
+  it('defaults fear to 0 and mode to adventuring', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    expect(session.fear).toBe(0);
+    expect(session.mode).toBe('adventuring');
+    expect(session.pcNotes).toEqual([]);
+    expect(session.lootLog).toEqual([]);
+  });
+
+  it('rejects a mode outside the enum', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    await expect(store.createSession({ campaignId: c.id, name: 'Session 1', mode: 'stealth' })).rejects.toThrow(
+      'Session mode must be one of'
+    );
+  });
+
+  it('clamps fear to [0, 12] instead of rejecting an out-of-range value', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1', fear: 99 });
+    expect(session.fear).toBe(12);
+    const updated = await store.updateSession(session.id, { fear: -5 });
+    expect(updated.fear).toBe(0);
+  });
+
+  it('listSessionsByCampaign only returns matching sessions', async () => {
+    const c1 = await store.createCampaign({ name: 'The Wildwood' });
+    const c2 = await store.createCampaign({ name: 'Other Campaign' });
+    await store.createSession({ campaignId: c1.id, name: 'Session 1' });
+    await store.createSession({ campaignId: c2.id, name: 'Session 1' });
+
+    const c1Sessions = store.listSessionsByCampaign(c1.id);
+    expect(c1Sessions).toHaveLength(1);
+  });
+
+  it('remove cascades to delete its SessionAdversaries and SessionEnvironments', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const otherSession = await store.createSession({ campaignId: c.id, name: 'Session 2' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const cave = await store.createEnvironment({ name: 'Cave', gameSetId: gs.id });
+    await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+    await store.createSessionEnvironment({ sessionId: session.id, environmentId: cave.id });
+    await store.createSessionAdversary({ sessionId: otherSession.id, adversaryId: ogre.id });
+
+    await store.removeSession(session.id);
+
+    expect(store.listSessions().find((s) => s.id === session.id)).toBeUndefined();
+    expect(store.listSessionAdversariesBySession(session.id)).toHaveLength(0);
+    expect(store.listSessionEnvironmentsBySession(session.id)).toHaveLength(0);
+    expect(store.listSessionAdversariesBySession(otherSession.id)).toHaveLength(1);
+  });
+
+  it('remove throws for an unknown id', async () => {
+    await expect(store.removeSession('missing')).rejects.toThrow('No session with id');
+  });
+});
+
+describe('SessionAdversary', () => {
+  it('rejects a sessionId that does not exist', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    await expect(store.createSessionAdversary({ sessionId: 'missing', adversaryId: ogre.id })).rejects.toThrow(
+      'No session with id'
+    );
+  });
+
+  it('rejects an adversaryId that does not exist', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    await expect(store.createSessionAdversary({ sessionId: session.id, adversaryId: 'missing' })).rejects.toThrow(
+      'No adversary with id'
+    );
+  });
+
+  it('snapshots the master Adversary at create time, defaulting label to its name', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', hp: 8, stress: 3, tier: 2, gameSetId: gs.id });
+
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+    expect(pulled.label).toBe('Ogre');
+    expect(pulled.name).toBe('Ogre');
+    expect(pulled.hpMax).toBe(8);
+    expect(pulled.stressMax).toBe(3);
+    expect(pulled.hpMarked).toBe(0);
+    expect(pulled.stressMarked).toBe(0);
+    expect(pulled.conditions).toEqual([]);
+  });
+
+  it('pulling in the same Adversary twice creates two independent records, not one', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+
+    const first = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id, label: 'Ogre A' });
+    const second = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id, label: 'Ogre B' });
+    expect(first.id).not.toBe(second.id);
+    expect(store.listSessionAdversariesBySession(session.id)).toHaveLength(2);
+  });
+
+  it('editing the master Adversary after pull-in does not change the snapshot', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', hp: 8, gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+
+    await store.updateAdversary(ogre.id, { hp: 20 });
+
+    const stillSnapshotted = store.listSessionAdversariesBySession(session.id).find((sa) => sa.id === pulled.id);
+    expect(stillSnapshotted.hpMax).toBe(8);
+  });
+
+  it('marking HP/Stress and adding conditions updates the record', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', hp: 8, gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+
+    const updated = await store.updateSessionAdversary(pulled.id, { hpMarked: 3, conditions: ['Restrained'] });
+    expect(updated.hpMarked).toBe(3);
+    expect(updated.conditions).toEqual(['Restrained']);
+  });
+
+  it('remove deletes the record', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+
+    await store.removeSessionAdversary(pulled.id);
+    expect(store.listSessionAdversariesBySession(session.id)).toHaveLength(0);
+  });
+});
+
+describe('SessionEnvironment', () => {
+  it('rejects an environmentId that does not exist', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    await expect(store.createSessionEnvironment({ sessionId: session.id, environmentId: 'missing' })).rejects.toThrow(
+      'No environment with id'
+    );
+  });
+
+  it('snapshots the master Environment at create time', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const cave = await store.createEnvironment({ name: 'Cave', tier: 1, impulses: ['Ambush'], gameSetId: gs.id });
+
+    const pulled = await store.createSessionEnvironment({ sessionId: session.id, environmentId: cave.id });
+    expect(pulled.label).toBe('Cave');
+    expect(pulled.tier).toBe(1);
+    expect(pulled.impulses).toEqual(['Ambush']);
+    expect(pulled.notes).toBeNull();
+  });
+});
+
 describe('generic collection (makeCollection) shared behavior', () => {
   it('PATCH semantics: an omitted field is untouched, an explicit empty value overwrites', async () => {
     const loot = await store.createLoot({ name: 'Trinket', description: 'A shiny thing', gameSetId: 'gs-1' });
@@ -421,6 +591,9 @@ describe('Export / Import', () => {
     expect(Array.isArray(snapshot.partyMembers)).toBe(true);
     expect(Array.isArray(snapshot.lootTables)).toBe(true);
     expect(Array.isArray(snapshot.consumableTables)).toBe(true);
+    expect(Array.isArray(snapshot.sessions)).toBe(true);
+    expect(Array.isArray(snapshot.sessionAdversaries)).toBe(true);
+    expect(Array.isArray(snapshot.sessionEnvironments)).toBe(true);
   });
 
   it('rejects a non-object payload', async () => {

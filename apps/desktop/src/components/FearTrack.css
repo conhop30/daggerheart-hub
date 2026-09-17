@@ -1,0 +1,68 @@
+.fear-track {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.fear-track__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.fear-track__label {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--fear-on-dark, #c66);
+}
+
+.fear-track__value {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.fear-track__pips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fear-track__pip {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: var(--void);
+  transition:
+    background 160ms var(--ease),
+    border-color 160ms var(--ease);
+}
+
+.fear-track__pip:hover {
+  border-color: var(--fear-on-dark, #c66);
+}
+
+.fear-track__pip--filled {
+  background: var(--fear-on-dark, #c66);
+  border-color: var(--fear-on-dark, #c66);
+}
+
+.fear-track__step {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  width: 1.8rem;
+  height: 1.8rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.fear-track__step:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}

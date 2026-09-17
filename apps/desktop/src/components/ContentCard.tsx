@@ -11,6 +11,8 @@ interface ContentCardProps {
   /** Overrides the onEdit button's label — e.g. "Open" for a card that drills into a detail page instead of inline-editing. Defaults to "Edit". */
   editLabel?: string;
   onDelete?: () => void;
+  /** Overrides the onDelete button's label — e.g. "Push Out" for a session tile where nothing is actually destroyed. Defaults to "Delete". */
+  deleteLabel?: string;
   children?: ReactNode;
 }
 
@@ -18,7 +20,7 @@ interface ContentCardProps {
 // uses — deliberately plain (no images, no filters) since the point of
 // this pass is closing the write-only gap, not building the fully designed
 // galleries the spec describes for later.
-export function ContentCard({ title, accent, meta, onEdit, editLabel, onDelete, children }: ContentCardProps) {
+export function ContentCard({ title, accent, meta, onEdit, editLabel, onDelete, deleteLabel, children }: ContentCardProps) {
   return (
     <div className="content-card">
       {accent && <span className="content-card__swatch" style={{ background: accent }} aria-hidden="true" />}
@@ -34,7 +36,7 @@ export function ContentCard({ title, accent, meta, onEdit, editLabel, onDelete, 
               )}
               {onDelete && (
                 <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
-                  Delete
+                  {deleteLabel ?? 'Delete'}
                 </button>
               )}
             </div>

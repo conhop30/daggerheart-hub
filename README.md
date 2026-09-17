@@ -4,9 +4,9 @@ A local-first Electron desktop app for authoring and running homebrew
 content for **Daggerheart**, Darrington Press's tabletop RPG. It covers both
 halves of what a Game Master actually needs: a structured content builder
 for every rule-book type (Classes, Domains, Adversaries, Equipment, etc.),
-and — in active development — a **Session Builder** for running a live game
-session on top of that content (Fear tracking, live Adversary/Environment
-stat blocks, a standing Party roster, dice-backed loot rolls).
+and a **Session Builder** for running a live game session on top of that
+content (Fear tracking, live Adversary/Environment stat tracking, a
+standing Party roster, dice-backed loot rolls).
 
 Full product context — vision, UX flows, and the original data model — lives
 in [`daggerheart-hub-spec.md`](daggerheart-hub-spec.md).
@@ -95,10 +95,10 @@ validation. Highlights:
 - The Core Set's full 189-card domain reference, 18 Ancestries, and 9
   Communities are seeded in directly from the official corebook PDF.
 
-### Session Builder (in progress)
+### Session Builder (complete)
 
 A second top-level section for actually *running* a game on top of the
-content above, as opposed to authoring it. Being delivered in three phases:
+content above, as opposed to authoring it. Delivered in three phases:
 
 - **Phase 1 — Campaigns & Party (done).** A Campaign gallery (same
   banner-grid pattern as Domains) holding a standing Party roster per
@@ -121,11 +121,19 @@ content above, as opposed to authoring it. Being delivered in three phases:
   to. The actual roll math (`rollD12Pool`/`sumPool`/`resolveTableRoll`) is
   pure, dependency-free functions with an injectable RNG, so the dice logic
   itself is unit-tested deterministically rather than through the UI.
-- **Phase 3 — Live Sessions (planned).** Fear tracking (0–12), pulling
-  Adversaries/Environments into a session as independent live copies (so
-  editing the master content later can't corrupt an in-progress session),
-  per-PC/NPC/general notes, and a combat/adventuring mode toggle that
-  changes which panels are exposed.
+- **Phase 3 — Live Sessions (done).** Fear tracking (0–12, a clickable pip
+  track), pulling Adversaries/Environments into a session as independent
+  snapshot copies — not references, so editing or even deleting the master
+  content later can't corrupt an in-progress session — with HP/Stress
+  tracked as *marked boxes* (Daggerheart's actual mechanic) via the same
+  stepper UI as Party trackables. A combat/adventuring mode toggle swaps
+  between a live combatant grid and a notes-and-loot-rolling view (general/
+  NPC/per-PC notes, plus a Loot Roller wired directly to Phase 2's tables
+  that appends every roll to a reverse-chronological session log). Built as
+  independent, self-contained panels on purpose — `SessionView` itself is a
+  thin shell that owns no combat/notes state at all, so any one panel can
+  be reworked without touching the others (see
+  [Engineering Challenges](#engineering-challenges--how-they-were-solved)).
 
 ## Engineering Challenges & How They Were Solved
 
@@ -219,6 +227,36 @@ already generalizes the plain name+description forms used by Loot,
 Consumable, and now both Table types. One component, two call sites, zero
 duplicated validation or layout logic.
 
+**8. A generic factory doesn't always generalize — pulling the same
+Adversary into a session twice exposed where `makeCollection` stops
+fitting.** Every other content type's create is idempotent-by-name (create
+"Ogre" twice, get the same record back) and requires a user-supplied name.
+Neither holds for `SessionAdversary`: a GM pulling two Ogres into one fight
+needs two independent records, and there's no user-typed name at all — the
+display name is snapshotted from the master Adversary at pull-in time. Using
+`makeCollection` here would have silently collapsed the second Ogre into the
+first. Caught by working through the real scenario before writing the
+collection, not after; fixed by hand-writing `sessionAdversaries`'/
+`sessionEnvironments`' CRUD directly (always-insert create, the same
+reasoning `GameSet` already established for "no natural idempotency key"),
+rather than forcing every collection through one factory regardless of fit.
+
+**9. Building Phase 3 as independent panels instead of one screen, on
+request.** Sessions needed to compose a lot at once — Fear, a mode toggle, a
+combat view, a notes-and-loot view — and the ask going in was explicit:
+build it so any one piece can be "unplugged" and reworked without a ripple
+effect, expecting several iteration passes. The result mirrors the
+ownership boundaries already established elsewhere in the app rather than
+inventing a new pattern: `FearTrack` and `ModeToggle` are purely controlled
+(no API awareness, like `StatStepper`); `CombatPanel` is fully self-contained
+given only a `sessionId` (it fetches and persists its own
+SessionAdversaries/SessionEnvironments, the same shape `PartyRoster` already
+uses for a `campaignId`); `LootRoller` needs nothing but a log array and an
+`onRoll` callback, so it's droppable anywhere a "roll and report" button
+would make sense later. `SessionView` itself ends up owning almost no state —
+it's a thin shell wiring independent pieces together, so a rewrite of, say,
+the combat grid never touches the notes panel or the Fear track.
+
 ## Testing
 
 ```
@@ -248,14 +286,15 @@ Vitest in watch mode while iterating on the store.
       roster with freeform trackables
 - [x] **Session Builder Phase 2** — reusable Loot/Consumable Tables on the
       Equipment page, and the pure-function d12-pool roll mechanic
-      (`rollD12Pool`/`sumPool`/`resolveTableRoll`) that will drive the
-      in-session Loot Roller in Phase 3
+      (`rollD12Pool`/`sumPool`/`resolveTableRoll`) driving the in-session
+      Loot Roller
+- [x] **Session Builder Phase 3** — live Sessions: Fear tracking, pulled-in
+      Adversary/Environment snapshot tracking, per-PC/NPC/general notes, a
+      combat/adventuring mode toggle, and a Loot Roller wired to the Phase 2
+      tables with a reverse-chronological session log — **the whole Session
+      Builder feature is now complete**
 
 **In progress / planned**
-- [ ] **Session Builder Phase 3** — live Sessions: Fear tracking, pulled-in
-      Adversary/Environment stat tracking, per-PC/NPC/general notes, a
-      combat/adventuring mode toggle, and a Loot Roller UI wired to the
-      Phase 2 tables with a reverse-chronological session log
 - [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
       plain list views — every other content type already got this treatment)
 - [ ] A real application icon and code-signing certificate for the packaged

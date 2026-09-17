@@ -1,0 +1,26 @@
+.session-tile__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-1);
+}
+
+.session-tile__attack {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+.session-tile__notes-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: var(--space-1);
+}
+
+.session-tile__notes-label textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}

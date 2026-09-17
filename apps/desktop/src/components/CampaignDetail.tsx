@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
+import type { Session } from '../api/sessions';
 import CampaignForm from './CampaignForm';
 import PartyRoster from './PartyRoster';
+import SessionList from './SessionList';
 import { gradientForColor } from '../lib/color';
 import './CampaignDetail.css';
 
@@ -10,13 +12,21 @@ interface CampaignDetailProps {
   onBack: () => void;
   onCampaignSaved: (updated: Campaign) => void;
   onCampaignDeleted: (id: string) => void;
+  onOpenSession: (session: Session) => void;
 }
 
-export default function CampaignDetail({ campaign, onBack, onCampaignSaved, onCampaignDeleted }: CampaignDetailProps) {
+export default function CampaignDetail({
+  campaign,
+  onBack,
+  onCampaignSaved,
+  onCampaignDeleted,
+  onOpenSession,
+}: CampaignDetailProps) {
   const [editing, setEditing] = useState(false);
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${campaign.name}"? This removes its whole Party too and can't be undone.`)) return;
+    if (!window.confirm(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`))
+      return;
     try {
       await campaignsApi.remove(campaign.id);
       onCampaignDeleted(campaign.id);
@@ -62,6 +72,7 @@ export default function CampaignDetail({ campaign, onBack, onCampaignSaved, onCa
       )}
 
       <PartyRoster campaignId={campaign.id} />
+      <SessionList campaignId={campaign.id} onOpenSession={onOpenSession} />
     </div>
   );
 }
