@@ -309,6 +309,13 @@ Vitest in watch mode while iterating on the store.
       data
 
 **In progress / planned**
+- [ ] Condensed gallery view for Adversaries & Environments, replacing the
+      current one-stat-block-per-row list: a compact tile grid, a spotlight
+      column showing the full stat block for whichever tile was last
+      clicked (without reflowing the grid), a compressed history of
+      previously-viewed tiles (name/tier/type), search + filter, and a
+      bordered "stat rail" frame replacing the current rounded pill chips —
+      mirroring the corebook's own boxed stat line styling
 - [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
       plain list views — every other content type already got this treatment)
 - [ ] A real application icon and code-signing certificate for the packaged
