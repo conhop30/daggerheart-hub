@@ -92,8 +92,18 @@ validation. Highlights:
 - **Settings**: Light/Dark/System theme (System tracks the OS preference
   live) and window-size presets, persisted to `localStorage` since it's a
   per-machine UI preference, not game content.
-- The Core Set's full 189-card domain reference, 18 Ancestries, and 9
-  Communities are seeded in directly from the official corebook PDF.
+- Content is seeded in directly from official PDFs rather than hand-typed:
+  the **Core** Game Set carries the full 189-card domain reference, 251
+  Adversaries, 47 Environments, 152 Weapons, and 39 Armors, all parsed out
+  of the corebook. A second Game Set, **Hope & Fear**, adds that expansion's
+  4 Classes/8 Subclasses, 6 new Ancestries, 6 new Communities, 6
+  Transformations, a new Dread Domain, and its own Adversary/Environment/
+  Equipment/Loot tables — kept fully separate from Core so it can be
+  toggled off. Corebook Loot/Consumables and the Hope & Fear Consumables
+  table are the one known gap: their source tables interleave two
+  print columns badly enough under text extraction that automated parsing
+  couldn't hit the same accuracy bar as everything else, so they were
+  deliberately left unseeded rather than imported with silent corruption.
 
 ### Session Builder (complete)
 
@@ -293,6 +303,10 @@ Vitest in watch mode while iterating on the store.
       combat/adventuring mode toggle, and a Loot Roller wired to the Phase 2
       tables with a reverse-chronological session log — **the whole Session
       Builder feature is now complete**
+- [x] Real corebook + Hope & Fear expansion content imported (Adversaries,
+      Environments, Weapons, Armor, Loot, Classes, Ancestries, Communities,
+      Transformations) as two independent Game Sets, replacing placeholder
+      data
 
 **In progress / planned**
 - [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
@@ -300,6 +314,10 @@ Vitest in watch mode while iterating on the store.
 - [ ] A real application icon and code-signing certificate for the packaged
       installer (currently uses Electron's default icon and a self-signed
       test cert)
+- [ ] Corebook Loot/Consumables and Hope & Fear Consumables — the source
+      tables' two-column layout defeated automated text-extraction parsing
+      accurately enough to trust; needs a manual pass or a different
+      extraction approach
 
 ## Getting Started
 
