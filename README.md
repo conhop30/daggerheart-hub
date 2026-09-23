@@ -27,6 +27,14 @@ validation logic (e.g. a Secondary weapon can't be Two-Handed, a Class's two
 Domains must be distinct), a real automated test suite (unit + end-to-end),
 and a working, installable Windows/macOS/Linux build via `electron-builder`.
 
+## Download
+
+A Windows installer is on the [Releases page](https://github.com/conhop30/daggerheart-hub/releases/latest)
+(also linked from the [portfolio page](https://conhop30.github.io/projects/daggerheart-hub/)).
+It isn't code-signed, so SmartScreen may ask you to choose "More info" then
+"Run anyway". A fresh install ships with only the 9 Domains and 9 Classes
+seeded from `apps/desktop/seed/` — no published book text is bundled.
+
 ## Tech Stack
 
 | Layer | Choice | Why |
