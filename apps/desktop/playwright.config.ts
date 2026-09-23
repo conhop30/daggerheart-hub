@@ -6,6 +6,8 @@ import { defineConfig } from '@playwright/test';
 // app.isPackaged is false; webServer here starts and stops it automatically
 // around the test run instead of requiring a manually-run `npm run dev`.
 // Port must match vite.config.ts's server.port exactly.
+const port = process.env.DAGGERHEART_DEV_PORT || '5183';
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
@@ -14,7 +16,7 @@ export default defineConfig({
   reporter: 'list',
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5183',
+    url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },

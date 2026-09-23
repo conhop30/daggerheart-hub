@@ -10,7 +10,8 @@ export default defineConfig({
   // packaged-build smoke test — a blank window, script never loaded).
   base: './',
   server: {
-    // Off Vite's universal default (5173) specifically to reduce collisions
+    // Override with DAGGERHEART_DEV_PORT when 5183 is taken (e.g. a second
+    // session of this project). Off Vite's universal default (5173) specifically to reduce collisions
     // with other, unrelated projects' dev servers running at the same time
     // (e.g. another agent's session on a different scaffold) — and
     // strictPort so a collision fails loudly instead of Vite silently
@@ -18,7 +19,7 @@ export default defineConfig({
     // let Electron's hardcoded dev URL (see electron/main.js) load a
     // completely different app once, undetected, since wait-on only checks
     // that *something* is listening on the port, not that it's this one.
-    port: 5183,
+    port: Number(process.env.DAGGERHEART_DEV_PORT) || 5183,
     strictPort: true,
   },
 });

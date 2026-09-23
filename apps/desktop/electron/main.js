@@ -25,7 +25,7 @@ function createWindow() {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   } else {
     // Must match vite.config.ts's server.port exactly.
-    win.loadURL('http://localhost:5183');
+    win.loadURL(`http://localhost:${process.env.DAGGERHEART_DEV_PORT || 5183}`);
   }
 }
 
