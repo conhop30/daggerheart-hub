@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { FeatureTiers } from './adversaries';
+import type { FeatureSections } from '../lib/featureKinds';
 
 export type EnvironmentCategory = 'EXPLORATION' | 'EVENT' | 'SOCIAL' | 'TRAVERSAL';
 
@@ -12,7 +12,7 @@ export interface Environment {
   impulses: string[];
   difficulty: number | null;
   potentialAdversaries: string[];
-  features: FeatureTiers;
+  features: FeatureSections;
   gameSetId: string;
 }
 
@@ -24,7 +24,7 @@ export interface CreateEnvironmentRequest {
   impulses?: string[];
   difficulty?: number;
   potentialAdversaries?: string[];
-  features?: FeatureTiers;
+  features?: FeatureSections;
   gameSetId: string;
 }
 

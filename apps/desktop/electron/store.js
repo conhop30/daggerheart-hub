@@ -465,7 +465,11 @@ function listCardsByDomain(domainId) {
   return getCache().cards.filter((c) => c.domainId === domainId);
 }
 
-const emptyFeatureTiers = () => ({ passives: [], actions: [], reactions: [] });
+// `features` is a map of section key -> [{name, description}], deliberately
+// schema-free: which sections exist (passives, actions, reactions,
+// evolutions, or a homebrew one) is defined renderer-side in
+// src/lib/featureKinds.ts, and the store persists whatever keys it's given.
+const emptyFeatures = () => ({});
 
 const adversaries = makeCollection('adversaries', {
   buildRecord: (data) => ({
@@ -489,7 +493,7 @@ const adversaries = makeCollection('adversaries', {
     attackRange: data.attackRange ?? null,
     attackType: data.attackType ?? null,
     experiences: data.experiences ?? [],
-    features: data.features ?? emptyFeatureTiers(),
+    features: data.features ?? emptyFeatures(),
     gameSetId: data.gameSetId,
   }),
 });
@@ -507,7 +511,7 @@ const environments = makeCollection('environments', {
     impulses: data.impulses ?? [],
     difficulty: data.difficulty ?? null,
     potentialAdversaries: data.potentialAdversaries ?? [],
-    features: data.features ?? emptyFeatureTiers(),
+    features: data.features ?? emptyFeatures(),
     gameSetId: data.gameSetId,
   }),
 });

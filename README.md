@@ -128,6 +128,16 @@ validation. Highlights:
   editable in their forms, and backfilled for all 251 imported Adversaries
   and 47 imported Environments by recovering the type/category word the
   original PDF parse had left stuck onto the front of each description.
+- **Feature sections are data-driven, not hardcoded.** An Adversary's or
+  Environment's features are stored as a free-form map of section →
+  features, and the sections themselves (Passives, Actions, Reactions, and
+  the newer **Evolutions**) are defined in one registry,
+  `src/lib/featureKinds.ts`. Every editor and stat sheet iterates that
+  registry plus any extra keys already on a record, so supporting a new
+  rules element is a one-line change — and a homebrew system can add (or
+  remove) a section of its own straight from the editor ("Lair Actions",
+  "Phase 2", …) with no code change, since the store persists whatever
+  keys it's given.
 - Content is seeded in directly from official PDFs rather than hand-typed:
   the **Core** Game Set carries the full 189-card domain reference, 251
   Adversaries, 47 Environments, 152 Weapons, and 39 Armors, all parsed out

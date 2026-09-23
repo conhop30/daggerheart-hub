@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Feature } from './heroClasses';
+import type { FeatureSections } from '../lib/featureKinds';
 import type { Thresholds } from '../components/ThresholdsInput';
 import type { Experience } from '../components/ExperienceListEditor';
 
@@ -16,12 +16,6 @@ export type AdversaryType =
   | 'SOCIAL'
   | 'SOLO'
   | 'SUPPORT';
-
-export interface FeatureTiers {
-  passives: Feature[];
-  actions: Feature[];
-  reactions: Feature[];
-}
 
 export interface Adversary {
   id: string;
@@ -41,7 +35,7 @@ export interface Adversary {
   attackRange: AttackRange | null;
   attackType: AttackType | null;
   experiences: Experience[];
-  features: FeatureTiers;
+  features: FeatureSections;
   gameSetId: string;
 }
 
@@ -61,7 +55,7 @@ export interface CreateAdversaryRequest {
   attackRange?: AttackRange | null;
   attackType?: AttackType | null;
   experiences?: Experience[];
-  features?: FeatureTiers;
+  features?: FeatureSections;
   gameSetId: string;
 }
 

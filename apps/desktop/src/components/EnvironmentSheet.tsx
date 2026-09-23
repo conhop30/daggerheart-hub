@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { Environment } from '../api/environments';
 import { titleCaseEnum } from '../lib/format';
+import { featureRowsFor } from '../lib/featureKinds';
 import './StatSheet.css';
 
 // Same book-accurate treatment as AdversarySheet, adapted to an
@@ -8,11 +9,7 @@ import './StatSheet.css';
 // Thresholds/ATK) and its Impulses/Potential Adversaries lines in place of
 // Motives & Tactics/Experience.
 const EnvironmentSheet = forwardRef<HTMLDivElement, { e: Environment }>(function EnvironmentSheet({ e }, ref) {
-  const featureRows = [
-    ...e.features.passives.map((f) => ({ ...f, kind: 'Passive' })),
-    ...e.features.actions.map((f) => ({ ...f, kind: 'Action' })),
-    ...e.features.reactions.map((f) => ({ ...f, kind: 'Reaction' })),
-  ];
+  const featureRows = featureRowsFor(e.features);
 
   return (
     <div className="stat-sheet" ref={ref}>

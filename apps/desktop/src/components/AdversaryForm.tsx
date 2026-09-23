@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { adversariesApi, type Adversary, type AdversaryType, type AttackRange, type AttackType } from '../api/adversaries';
-import type { Feature } from '../api/heroClasses';
-import FeatureListEditor from './FeatureListEditor';
+import FeatureSectionsEditor from './FeatureSectionsEditor';
+import type { FeatureSections } from '../lib/featureKinds';
 import StringListEditor from './StringListEditor';
 import ExperienceListEditor, { type Experience } from './ExperienceListEditor';
 import ThresholdsInput, { type Thresholds } from './ThresholdsInput';
@@ -51,9 +51,7 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
   const [attackRange, setAttackRange] = useState<AttackRange | ''>(initial?.attackRange ?? '');
   const [attackType, setAttackType] = useState<AttackType | ''>(initial?.attackType ?? '');
   const [experiences, setExperiences] = useState<Experience[]>(initial?.experiences ?? []);
-  const [passives, setPassives] = useState<Feature[]>(initial?.features.passives ?? []);
-  const [actions, setActions] = useState<Feature[]>(initial?.features.actions ?? []);
-  const [reactions, setReactions] = useState<Feature[]>(initial?.features.reactions ?? []);
+  const [features, setFeatures] = useState<FeatureSections>(initial?.features ?? {});
   const [gameSetId, setGameSetId] = useState<string>(initial?.gameSetId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +80,7 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
       attackRange: attackRange || null,
       attackType: attackType || null,
       experiences,
-      features: { passives, actions, reactions },
+      features,
       gameSetId,
     };
     try {
@@ -167,9 +165,7 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
         <textarea value={attackDescription} onChange={(e) => setAttackDescription(e.target.value)} rows={2} />
       </label>
       <ExperienceListEditor experiences={experiences} onChange={setExperiences} />
-      <FeatureListEditor label="Passives" features={passives} onChange={setPassives} />
-      <FeatureListEditor label="Actions" features={actions} onChange={setActions} />
-      <FeatureListEditor label="Reactions" features={reactions} onChange={setReactions} />
+      <FeatureSectionsEditor value={features} onChange={setFeatures} />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">

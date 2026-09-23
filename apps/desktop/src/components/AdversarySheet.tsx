@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { Adversary } from '../api/adversaries';
 import { titleCaseEnum } from '../lib/format';
+import { featureRowsFor } from '../lib/featureKinds';
 import './StatSheet.css';
 
 function thresholdsValue(a: Adversary): string {
@@ -25,11 +26,7 @@ function attackLine(a: Adversary): string | null {
 // else (no surrounding Edit/Delete toolbar).
 const AdversarySheet = forwardRef<HTMLDivElement, { a: Adversary }>(function AdversarySheet({ a }, ref) {
   const atk = attackLine(a);
-  const featureRows = [
-    ...a.features.passives.map((f) => ({ ...f, kind: 'Passive' })),
-    ...a.features.actions.map((f) => ({ ...f, kind: 'Action' })),
-    ...a.features.reactions.map((f) => ({ ...f, kind: 'Reaction' })),
-  ];
+  const featureRows = featureRowsFor(a.features);
 
   return (
     <div className="stat-sheet" ref={ref}>
