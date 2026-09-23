@@ -135,7 +135,12 @@ validation. Highlights:
   4 Classes/8 Subclasses, 6 new Ancestries, 6 new Communities, 6
   Transformations, a new Dread Domain, and its own Adversary/Environment/
   Equipment/Loot tables — kept fully separate from Core so it can be
-  toggled off. Corebook Loot/Consumables and the Hope & Fear Consumables
+  toggled off. A follow-up sanitization pass cleaned the parser's residue
+  out of the imported Adversaries/Environments: trailing next-entry names
+  and page headers glued onto feature text, features whose name/description
+  boundary had shifted (rebuilt by hand from the raw text), dropped numbers
+  in "Relentless ()"/"Minion ()", and encoding artifacts. Corebook
+  Loot/Consumables and the Hope & Fear Consumables
   table are the one known gap: their source tables interleave two
   print columns badly enough under text extraction that automated parsing
   couldn't hit the same accuracy bar as everything else, so they were
