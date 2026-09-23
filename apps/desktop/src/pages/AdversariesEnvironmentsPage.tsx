@@ -3,30 +3,59 @@ import { adversariesApi, type Adversary } from '../api/adversaries';
 import { environmentsApi, type Environment } from '../api/environments';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
-import { ContentCard, ContentCardList, MetaChip, FeatureLines, StringLines } from '../components/ContentCard';
+import { FeatureLines, StringLines } from '../components/ContentCard';
+import { StatRail } from '../components/StatRail';
+import { StatGallery } from '../components/StatGallery';
 import AdversaryForm from '../components/AdversaryForm';
 import EnvironmentForm from '../components/EnvironmentForm';
 import './BrowsePage.css';
 
-function AdversaryCard({ a, onEdit, onDelete }: { a: Adversary; onEdit: () => void; onDelete: () => void }) {
+function thresholdsValue(a: Adversary): string | null {
+  return a.thresholds.major != null || a.thresholds.severe != null
+    ? `${a.thresholds.major ?? '—'}/${a.thresholds.severe ?? '—'}`
+    : null;
+}
+
+function AdversaryTile({ a }: { a: Adversary }) {
   return (
-    <ContentCard
-      title={a.name}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      meta={
-        <>
-          <MetaChip label="Tier" value={a.tier} />
-          <MetaChip label="Difficulty" value={a.difficulty} />
-          <MetaChip label="HP" value={a.hp} />
-          <MetaChip label="Stress" value={a.stress} />
-          <MetaChip
-            label="Thresholds"
-            value={a.thresholds.major != null || a.thresholds.severe != null ? `${a.thresholds.major ?? '—'} / ${a.thresholds.severe ?? '—'}` : null}
-          />
-        </>
-      }
-    >
+    <>
+      <span className="stat-gallery__tile-name">{a.name}</span>
+      <StatRail
+        compact
+        items={[
+          { label: 'Tier', value: a.tier },
+          { label: 'Diff', value: a.difficulty },
+          { label: 'HP', value: a.hp },
+          { label: 'Stress', value: a.stress },
+        ]}
+      />
+    </>
+  );
+}
+
+function AdversarySpotlight({ a, onEdit, onDelete }: { a: Adversary; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <>
+      <div className="content-card__header">
+        <h3 className="content-card__title">{a.name}</h3>
+        <div className="content-card__actions">
+          <button type="button" className="content-card__action" onClick={onEdit}>
+            Edit
+          </button>
+          <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      </div>
+      <StatRail
+        items={[
+          { label: 'Tier', value: a.tier },
+          { label: 'Difficulty', value: a.difficulty },
+          { label: 'HP', value: a.hp },
+          { label: 'Stress', value: a.stress },
+          { label: 'Thresh', value: thresholdsValue(a) },
+        ]}
+      />
       {a.description && <p className="content-card__description">{a.description}</p>}
       {(a.attackModifier != null || a.attackRange || a.attackType || a.attackDescription) && (
         <div className="content-card__section">
@@ -55,30 +84,60 @@ function AdversaryCard({ a, onEdit, onDelete }: { a: Adversary; onEdit: () => vo
       <FeatureLines label="Passives" features={a.features.passives} />
       <FeatureLines label="Actions" features={a.features.actions} />
       <FeatureLines label="Reactions" features={a.features.reactions} />
-    </ContentCard>
+    </>
   );
 }
 
-function EnvironmentCard({ e, onEdit, onDelete }: { e: Environment; onEdit: () => void; onDelete: () => void }) {
+function EnvironmentTile({ e }: { e: Environment }) {
   return (
-    <ContentCard
-      title={e.name}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      meta={
-        <>
-          <MetaChip label="Tier" value={e.tier} />
-          <MetaChip label="Difficulty" value={e.difficulty} />
-        </>
-      }
-    >
+    <>
+      <span className="stat-gallery__tile-name">{e.name}</span>
+      <StatRail
+        compact
+        items={[
+          { label: 'Tier', value: e.tier },
+          { label: 'Diff', value: e.difficulty },
+        ]}
+      />
+    </>
+  );
+}
+
+function EnvironmentSpotlight({
+  e,
+  onEdit,
+  onDelete,
+}: {
+  e: Environment;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <div className="content-card__header">
+        <h3 className="content-card__title">{e.name}</h3>
+        <div className="content-card__actions">
+          <button type="button" className="content-card__action" onClick={onEdit}>
+            Edit
+          </button>
+          <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      </div>
+      <StatRail
+        items={[
+          { label: 'Tier', value: e.tier },
+          { label: 'Difficulty', value: e.difficulty },
+        ]}
+      />
       {e.description && <p className="content-card__description">{e.description}</p>}
       <StringLines label="Impulses" values={e.impulses} />
       <StringLines label="Potential Adversaries" values={e.potentialAdversaries} />
       <FeatureLines label="Passives" features={e.features.passives} />
       <FeatureLines label="Actions" features={e.features.actions} />
       <FeatureLines label="Reactions" features={e.features.reactions} />
-    </ContentCard>
+    </>
   );
 }
 
@@ -135,11 +194,16 @@ export default function AdversariesEnvironmentsPage() {
         {adversaries.loading && <p className="browse-page__status">Loading Adversaries&hellip;</p>}
         {adversaries.error && <p className="browse-page__status browse-page__status--error">{adversaries.error}</p>}
         {!adversaries.loading && !adversaries.error && (
-          <ContentCardList
+          <StatGallery
             items={adversaries.items}
-            emptyMessage="No Adversaries yet — click + New Adversary above to create one."
             getKey={(a) => a.id}
-            renderItem={(a) =>
+            getName={(a) => a.name}
+            getTier={(a) => a.tier}
+            searchMatch={(a, q) => a.name.toLowerCase().includes(q) || (a.description ?? '').toLowerCase().includes(q)}
+            emptyMessage="No Adversaries yet — click + New Adversary above to create one."
+            itemLabel="Adversary"
+            renderTile={(a) => <AdversaryTile a={a} />}
+            renderSpotlight={(a) =>
               editingAdversaryId === a.id ? (
                 <AdversaryForm
                   initial={a}
@@ -150,7 +214,7 @@ export default function AdversariesEnvironmentsPage() {
                   onCancel={() => setEditingAdversaryId(null)}
                 />
               ) : (
-                <AdversaryCard
+                <AdversarySpotlight
                   a={a}
                   onEdit={() => setEditingAdversaryId(a.id)}
                   onDelete={() => handleDeleteAdversary(a)}
@@ -180,13 +244,20 @@ export default function AdversariesEnvironmentsPage() {
           </div>
         )}
         {environments.loading && <p className="browse-page__status">Loading Environments&hellip;</p>}
-        {environments.error && <p className="browse-page__status browse-page__status--error">{environments.error}</p>}
+        {environments.error && (
+          <p className="browse-page__status browse-page__status--error">{environments.error}</p>
+        )}
         {!environments.loading && !environments.error && (
-          <ContentCardList
+          <StatGallery
             items={environments.items}
-            emptyMessage="No Environments yet — click + New Environment above to create one."
             getKey={(e) => e.id}
-            renderItem={(e) =>
+            getName={(e) => e.name}
+            getTier={(e) => e.tier}
+            searchMatch={(e, q) => e.name.toLowerCase().includes(q) || (e.description ?? '').toLowerCase().includes(q)}
+            emptyMessage="No Environments yet — click + New Environment above to create one."
+            itemLabel="Environment"
+            renderTile={(e) => <EnvironmentTile e={e} />}
+            renderSpotlight={(e) =>
               editingEnvironmentId === e.id ? (
                 <EnvironmentForm
                   initial={e}
@@ -197,7 +268,7 @@ export default function AdversariesEnvironmentsPage() {
                   onCancel={() => setEditingEnvironmentId(null)}
                 />
               ) : (
-                <EnvironmentCard
+                <EnvironmentSpotlight
                   e={e}
                   onEdit={() => setEditingEnvironmentId(e.id)}
                   onDelete={() => handleDeleteEnvironment(e)}

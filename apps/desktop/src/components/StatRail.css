@@ -1,0 +1,54 @@
+.stat-rail {
+  display: flex;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  overflow: hidden;
+}
+
+.stat-rail__cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px var(--space-1);
+  border-right: 1px solid var(--hairline);
+  text-align: center;
+  overflow: hidden;
+}
+
+.stat-rail__cell:last-child {
+  border-right: none;
+}
+
+.stat-rail__label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.15;
+  overflow-wrap: break-word;
+}
+
+.stat-rail__value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: break-word;
+}
+
+.stat-rail--compact .stat-rail__cell {
+  padding: 3px 4px;
+}
+
+.stat-rail--compact .stat-rail__label {
+  font-size: 0.52rem;
+}
+
+.stat-rail--compact .stat-rail__value {
+  font-size: 0.72rem;
+}

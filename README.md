@@ -92,6 +92,18 @@ validation. Highlights:
 - **Settings**: Light/Dark/System theme (System tracks the OS preference
   live) and window-size presets, persisted to `localStorage` since it's a
   per-machine UI preference, not game content.
+- **Adversaries & Environments render as a condensed stat-block gallery**,
+  not one full card per row: a compact tile grid (name + a `StatRail`
+  snapshot) paired with a spotlight column that shows the full stat block
+  for whichever tile was last clicked without reflowing the grid, a
+  compressed "Recently Viewed" history (name + tier) for jumping back to a
+  prior selection, and name/description search plus a Tier filter. The
+  generic `StatGallery<T>` component (grid + spotlight + MRU history +
+  search/filter) and `StatRail` (a bordered, hairline-divided stat band
+  replacing rounded pill chips, mirroring the corebook's own boxed stat
+  line under a name) are reusable — this pass applies them to Adversaries
+  and Environments only, the two content types with the most stats per
+  entry.
 - Content is seeded in directly from official PDFs rather than hand-typed:
   the **Core** Game Set carries the full 189-card domain reference, 251
   Adversaries, 47 Environments, 152 Weapons, and 39 Armors, all parsed out
@@ -307,15 +319,18 @@ Vitest in watch mode while iterating on the store.
       Environments, Weapons, Armor, Loot, Classes, Ancestries, Communities,
       Transformations) as two independent Game Sets, replacing placeholder
       data
+- [x] Condensed gallery view for Adversaries & Environments — a compact tile
+      grid, a spotlight column showing the full stat block for whichever
+      tile was last clicked (without reflowing the grid), a compressed
+      "Recently Viewed" history (name + tier), name/description search, a
+      Tier filter, and a bordered `StatRail` frame replacing the old
+      rounded pill chips
 
 **In progress / planned**
-- [ ] Condensed gallery view for Adversaries & Environments, replacing the
-      current one-stat-block-per-row list: a compact tile grid, a spotlight
-      column showing the full stat block for whichever tile was last
-      clicked (without reflowing the grid), a compressed history of
-      previously-viewed tiles (name/tier/type), search + filter, and a
-      bordered "stat rail" frame replacing the current rounded pill chips —
-      mirroring the corebook's own boxed stat line styling
+- [ ] Same gallery/spotlight/`StatRail` treatment for the other
+      `ContentCard`-based pages (Weapons, Armor, Loot, Ancestries,
+      Communities, etc.) — this pass deliberately scoped to Adversaries &
+      Environments first
 - [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
       plain list views — every other content type already got this treatment)
 - [ ] A real application icon and code-signing certificate for the packaged
