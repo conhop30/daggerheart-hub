@@ -8,7 +8,11 @@ const port = process.env.DAGGERHEART_DEV_PORT || '5183';
 
 waitOn({ resources: [`tcp:${port}`] })
   .then(() => {
-    const child = spawn(require('electron'), ['.'], { stdio: 'inherit', env: process.env });
+    // A stray ELECTRON_RUN_AS_NODE (set by some shells/sandboxes) makes Electron
+    // start as plain Node, where app/ipcMain are undefined.
+    const env = { ...process.env };
+    delete env.ELECTRON_RUN_AS_NODE;
+    const child = spawn(require('electron'), ['.'], { stdio: 'inherit', env });
     child.on('exit', (code) => process.exit(code ?? 0));
   })
   .catch((err) => {
