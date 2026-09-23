@@ -32,6 +32,8 @@ export interface Session {
   name: string;
   fear: number;
   mode: SessionMode;
+  /** The music region this session plays from; null = the built-in Everywhere region. */
+  regionId: string | null;
   generalNotes: string | null;
   npcNotes: string | null;
   pcNotes: PcNote[];
@@ -43,6 +45,7 @@ export interface CreateSessionRequest {
   name: string;
   fear?: number;
   mode?: SessionMode;
+  regionId?: string | null;
   generalNotes?: string;
   npcNotes?: string;
   pcNotes?: PcNote[];
@@ -55,6 +58,8 @@ export const sessionsApi = {
   list: () => apiClient.list<Session>('sessions'),
   listByCampaign: (campaignId: string) => apiClient.listSessionsByCampaign<Session>(campaignId),
   create: (body: CreateSessionRequest) => apiClient.create<Session>('sessions', body),
+  /** Copies a session's whole board (Fear, notes, Adversaries, Environments) into a new one. */
+  clone: (sourceId: string, options?: { name?: string }) => apiClient.cloneSession<Session>(sourceId, options),
   update: (id: string, body: UpdateSessionRequest) => apiClient.update<Session>('sessions', id, body),
   remove: (id: string) => apiClient.remove('sessions', id),
 };

@@ -4,9 +4,11 @@
 // (reading 'exports')") because the `electron` module's CJS shape isn't a
 // real file Node's ESM/CJS interop can statically preparse. CJS sidesteps
 // the problem entirely.
-const { app, BrowserWindow, ipcMain, dialog, screen, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, shell, protocol } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const { randomUUID } = require('node:crypto');
+const { Readable } = require('node:stream');
 const store = require('./store.js');
 const updateCheck = require('./updateCheck.js');
 
@@ -51,6 +53,8 @@ const LIST = {
   sessions: store.listSessions,
   sessionAdversaries: store.listSessionAdversaries,
   sessionEnvironments: store.listSessionEnvironments,
+  musicRegions: store.listMusicRegions,
+  musicTracks: store.listMusicTracks,
 };
 const CREATE = {
   gameSets: store.createGameSet,
@@ -74,6 +78,9 @@ const CREATE = {
   sessions: store.createSession,
   sessionAdversaries: store.createSessionAdversary,
   sessionEnvironments: store.createSessionEnvironment,
+  // musicTracks is deliberately absent: a track is only ever created by the
+  // audio import flow below, which has to copy the file in first.
+  musicRegions: store.createMusicRegion,
 };
 const UPDATE = {
   gameSets: store.updateGameSet,
@@ -97,6 +104,8 @@ const UPDATE = {
   sessions: store.updateSession,
   sessionAdversaries: store.updateSessionAdversary,
   sessionEnvironments: store.updateSessionEnvironment,
+  musicRegions: store.updateMusicRegion,
+  musicTracks: store.updateMusicTrack,
 };
 // No GameSet/HeroClass/Subclass here — deleting those has real referential-
 // integrity questions (a Class with existing Subclasses, a GameSet with
@@ -128,6 +137,12 @@ const REMOVE = {
   sessions: store.removeSession,
   sessionAdversaries: store.removeSessionAdversary,
   sessionEnvironments: store.removeSessionEnvironment,
+  musicRegions: store.removeMusicRegion,
+  // Removing a track also deletes the audio file copied in for it.
+  musicTracks: async (id) => {
+    const removed = await store.removeMusicTrack(id);
+    fs.rmSync(path.join(musicDir(), removed.fileName), { force: true });
+  },
 };
 
 function lookup(map, collection) {
@@ -145,6 +160,7 @@ ipcMain.handle('store:listPartyMembersByCampaign', (_event, campaignId) =>
   store.listPartyMembersByCampaign(campaignId)
 );
 ipcMain.handle('store:listSessionsByCampaign', (_event, campaignId) => store.listSessionsByCampaign(campaignId));
+ipcMain.handle('store:cloneSession', (_event, sourceId, options) => store.cloneSession(sourceId, options));
 ipcMain.handle('store:listSessionAdversariesBySession', (_event, sessionId) =>
   store.listSessionAdversariesBySession(sessionId)
 );
@@ -223,7 +239,100 @@ ipcMain.handle('file:saveImage', async (event, dataUrl, defaultName) => {
   return { canceled: false, filePath };
 });
 
+// ---- Music library files ----
+// Audio is copied into <store dir>/music under a generated name (never the
+// user's filename — keeps paths safe and collisions impossible) and played
+// back through the dhmedia:// scheme below. Only metadata lives in data.json.
+const AUDIO_TYPES = {
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.opus': 'audio/ogg',
+  '.wav': 'audio/wav',
+  '.flac': 'audio/flac',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.webm': 'audio/webm',
+};
+
+function musicDir() {
+  return path.join(store.getStoreDir(), 'music');
+}
+
+// The renderer's page origin (http://localhost in dev, file:// packaged)
+// can't load local files directly, so audio is served over a tiny custom
+// scheme. It must be registered before the app is ready.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'dhmedia', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
+]);
+
+// dhmedia://track/<generated file name>. Serves byte ranges (206) by hand —
+// an <audio loop> needs to seek back to the start, which fails on a source
+// that can't answer Range requests.
+function serveMedia(request) {
+  const fileName = decodeURIComponent(new URL(request.url).pathname.slice(1));
+  if (!/^[A-Za-z0-9-]+\.[a-z0-9]+$/.test(fileName)) return new Response('Bad request', { status: 400 });
+  const type = AUDIO_TYPES[path.extname(fileName).toLowerCase()];
+  const filePath = path.join(musicDir(), fileName);
+  if (!type || !fs.existsSync(filePath)) return new Response('Not found', { status: 404 });
+
+  const size = fs.statSync(filePath).size;
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') || '');
+  let start = 0;
+  let end = size - 1;
+  if (range) {
+    if (range[1] !== '') {
+      start = Number(range[1]);
+      if (range[2] !== '') end = Math.min(Number(range[2]), size - 1);
+    } else if (range[2] !== '') {
+      start = Math.max(0, size - Number(range[2])); // suffix range: the last N bytes
+    }
+    if (start > end || start >= size) {
+      return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+    }
+  }
+  const body = Readable.toWeb(fs.createReadStream(filePath, { start, end }));
+  const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) };
+  if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+
+ipcMain.handle('music:importFiles', async (event, regionId) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: 'Add music',
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Audio', extensions: Object.keys(AUDIO_TYPES).map((ext) => ext.slice(1)) }],
+  });
+  if (canceled || filePaths.length === 0) return { canceled: true, tracks: [] };
+
+  fs.mkdirSync(musicDir(), { recursive: true });
+  const tracks = [];
+  for (const source of filePaths) {
+    const ext = path.extname(source).toLowerCase();
+    if (!AUDIO_TYPES[ext]) continue;
+    const fileName = `${randomUUID()}${ext}`;
+    const dest = path.join(musicDir(), fileName);
+    fs.copyFileSync(source, dest);
+    try {
+      tracks.push(
+        await store.createMusicTrack({
+          name: path.basename(source, path.extname(source)),
+          regionId,
+          fileName,
+          sizeBytes: fs.statSync(dest).size,
+        })
+      );
+    } catch (err) {
+      fs.rmSync(dest, { force: true }); // don't leave an orphaned copy if the record was rejected
+      throw err;
+    }
+  }
+  return { canceled: false, tracks };
+});
+
 app.whenReady().then(() => {
+  protocol.handle('dhmedia', serveMedia);
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

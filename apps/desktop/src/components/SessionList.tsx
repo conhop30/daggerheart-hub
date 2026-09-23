@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { sessionsApi, type Session } from '../api/sessions';
 import { ContentCard, ContentCardList, MetaChip } from './ContentCard';
 import SessionForm from './SessionForm';
-import { titleCaseEnum } from '../lib/format';
 import { upsertById } from '../lib/upsert';
 import './SessionList.css';
 
@@ -20,6 +19,7 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [cloning, setCloning] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +46,26 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
     setCreating(false);
   }
 
+  // Sessions come back in creation order, so the last one is the most recent.
+  const mostRecent = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+
+  // A fresh Session starts blank; "Session N" is just a starting suggestion for the name.
+  const suggestedName = `Session ${sessions.length + 1}`;
+
+  async function handleClone() {
+    if (!mostRecent) return;
+    setCloning(true);
+    try {
+      const copy = await sessionsApi.clone(mostRecent.id);
+      setSessions((prev) => upsertById(prev, copy));
+      onOpenSession(copy);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not clone the Session.');
+    } finally {
+      setCloning(false);
+    }
+  }
+
   async function handleDelete(session: Session) {
     if (!window.confirm(`Delete "${session.name}"? This can't be undone.`)) return;
     try {
@@ -61,15 +81,31 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
       <div className="session-list__header">
         <h2 className="session-list__title">Sessions</h2>
         {!creating && (
-          <button type="button" className="session-list__add" onClick={() => setCreating(true)}>
-            + New Session
-          </button>
+          <div className="session-list__header-actions">
+            <button
+              type="button"
+              className="session-list__clone"
+              onClick={handleClone}
+              disabled={!mostRecent || cloning}
+              title={mostRecent ? `Copy Fear, notes, and the whole board from "${mostRecent.name}"` : 'Nothing to clone yet'}
+            >
+              Clone Most Recent
+            </button>
+            <button type="button" className="session-list__add" onClick={() => setCreating(true)}>
+              + New Session
+            </button>
+          </div>
         )}
       </div>
 
       {creating && (
         <div className="session-list__form">
-          <SessionForm campaignId={campaignId} onSaved={handleCreated} onCancel={() => setCreating(false)} />
+          <SessionForm
+            campaignId={campaignId}
+            defaultName={suggestedName}
+            onSaved={handleCreated}
+            onCancel={() => setCreating(false)}
+          />
         </div>
       )}
 
@@ -90,7 +126,6 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
               meta={
                 <>
                   <MetaChip label="Fear" value={`${session.fear} / 12`} />
-                  <MetaChip label="Mode" value={titleCaseEnum(session.mode)} />
                 </>
               }
             />

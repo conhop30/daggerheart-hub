@@ -4,7 +4,7 @@ import './CampaignBanner.css';
 
 interface CampaignBannerProps {
   campaign: Campaign;
-  partyCount: number;
+  partyNames: string[];
   sessionCount: number;
   onOpen: () => void;
   onEdit: () => void;
@@ -14,7 +14,12 @@ interface CampaignBannerProps {
 // The Campaigns gallery tile — same gradient-swatch treatment as
 // DomainBanner (see lib/color.ts), sized for a grid of Campaigns instead of
 // Domains.
-export function CampaignBanner({ campaign, partyCount, sessionCount, onOpen, onEdit, onDelete }: CampaignBannerProps) {
+// Most names that fit on the tile before the rest collapse to "+N more".
+const MAX_NAMES = 4;
+
+export function CampaignBanner({ campaign, partyNames, sessionCount, onOpen, onEdit, onDelete }: CampaignBannerProps) {
+  const shown = partyNames.slice(0, MAX_NAMES);
+  const extra = partyNames.length - shown.length;
   return (
     <div className="campaign-banner" style={{ background: gradientForColor(campaign.colorHex) }}>
       <button
@@ -46,11 +51,14 @@ export function CampaignBanner({ campaign, partyCount, sessionCount, onOpen, onE
         </button>
       </div>
       <div className="campaign-banner__body">
+        <span className="campaign-banner__level">Level {campaign.level}</span>
         <h3 className="campaign-banner__title">{campaign.name}</h3>
         {campaign.notes && <p className="campaign-banner__notes">{campaign.notes}</p>}
+        <p className="campaign-banner__party">
+          {shown.length > 0 ? `${shown.join(', ')}${extra > 0 ? ` +${extra} more` : ''}` : 'No party yet'}
+        </p>
         <span className="campaign-banner__count">
-          {partyCount} party member{partyCount === 1 ? '' : 's'} &middot; {sessionCount} session
-          {sessionCount === 1 ? '' : 's'}
+          {sessionCount} session{sessionCount === 1 ? '' : 's'}
         </span>
       </div>
     </div>

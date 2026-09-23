@@ -1,0 +1,217 @@
+.music-library {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-4);
+  align-items: start;
+  animation: fadeInUp 280ms var(--ease);
+}
+
+.music-library__rail {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+}
+
+.music-library__rail-title {
+  font-size: 1.05rem;
+  margin-bottom: var(--space-2);
+}
+
+.music-library__regions {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.music-library__region {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  background: none;
+  border: 1px solid transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.music-library__region:hover {
+  border-color: var(--hairline);
+}
+
+.music-library__region--active {
+  border-color: var(--hope);
+  background: rgba(228, 179, 65, 0.1);
+}
+
+.music-library__region-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.music-library__inline-form {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.music-library__inline-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.music-library__main {
+  min-width: 0;
+}
+
+.music-library__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.music-library__title {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.music-library__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.music-library__hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-2);
+}
+
+.music-library__btn {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  padding: 0.35rem 0.75rem;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.music-library__btn:hover:not(:disabled) {
+  border-color: var(--hope);
+  color: var(--hope);
+}
+
+.music-library__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.music-library__btn--primary {
+  color: var(--hope);
+}
+
+.music-library__btn--danger:hover:not(:disabled) {
+  border-color: var(--fear-on-dark, #c66);
+  color: var(--fear-on-dark, #c66);
+}
+
+.music-library__defaults {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.music-library__defaults label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.music-library__tracks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.music-library__track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  padding: 0.5rem 0.75rem;
+}
+
+.music-library__play {
+  width: 2rem;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.music-library__track-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-library__tag {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-style: normal;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--hope);
+  border: 1px solid var(--hope);
+  padding: 0 5px;
+  margin-left: 8px;
+}
+
+.music-library__rename {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+}
+
+.music-library__move {
+  max-width: 170px;
+}
+
+.music-library__status {
+  color: var(--muted);
+}
+
+.music-library__status--error {
+  color: var(--fear-on-dark, #c66);
+}
+
+@media (max-width: 800px) {
+  .music-library {
+    grid-template-columns: 1fr;
+  }
+}

@@ -5,6 +5,8 @@ import path from 'node:path';
 
 const COLLECTIONS = [
   'gameSets',
+  'musicRegions',
+  'musicTracks',
   'domains',
   'heroClasses',
   'subclasses',

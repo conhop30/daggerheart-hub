@@ -44,7 +44,21 @@ const COLLECTIONS = [
   'sessions',
   'sessionAdversaries',
   'sessionEnvironments',
+  'musicRegions',
+  'musicTracks',
 ];
+
+// The built-in music region that always exists: it holds the library's
+// "everywhere" defaults and any track not filed under a user-made region. A
+// fixed id (not a random UUID) so Export/Import from another machine upserts
+// onto the same record instead of creating a second default.
+const DEFAULT_REGION_ID = 'everywhere';
+function defaultMusicRegion() {
+  return { id: DEFAULT_REGION_ID, name: 'Everywhere', isDefault: true, adventuringTrackId: null, combatTrackId: null };
+}
+function ensureDefaultRegion(store) {
+  if (!store.musicRegions.some((r) => r.id === DEFAULT_REGION_ID)) store.musicRegions.unshift(defaultMusicRegion());
+}
 
 let cache = null;
 // Serializes every mutation so two overlapping IPC calls can't interleave
@@ -55,6 +69,7 @@ let writeQueue = Promise.resolve();
 function emptyStore() {
   const store = { version: STORE_VERSION };
   for (const key of COLLECTIONS) store[key] = [];
+  ensureDefaultRegion(store);
   return store;
 }
 
@@ -122,6 +137,7 @@ function readStoreFromDisk() {
   for (const key of COLLECTIONS) {
     if (!Array.isArray(store[key])) store[key] = [];
   }
+  ensureDefaultRegion(store);
   return store;
 }
 
@@ -382,7 +398,16 @@ function updateSubclass(id, patch) {
 // that CRUD block nine more times would just be copy-paste, so it's
 // factored out here — the per-type differences (which fields exist, extra
 // validation) are supplied as a buildRecord/validate pair.
-function makeCollection(key, { buildRecord, validate } = {}) {
+//
+// `scope` (optional) narrows the by-name uniqueness check to records that
+// share a scope value — e.g. a Session name only has to be unique within its
+// Campaign, so two Campaigns can each have a "Session 1". Without it, names
+// are unique across the whole collection.
+function makeCollection(key, { buildRecord, validate, scope } = {}) {
+  const sameScope = (data) => (r) => !scope || scope(r) === scope(data);
+  const findDuplicate = (store, data, ignoreId) =>
+    store[key].find((r) => r.id !== ignoreId && sameScope(data)(r) && r.name.toLowerCase() === data.name.toLowerCase());
+
   function list() {
     return getCache()[key];
   }
@@ -390,7 +415,7 @@ function makeCollection(key, { buildRecord, validate } = {}) {
   function create(data) {
     return mutate((store) => {
       requireName(data);
-      const existing = findByNameIgnoreCase(store[key], data.name);
+      const existing = findDuplicate(store, data);
       if (existing) return existing;
       if (validate) validate(store, data);
       const record = buildRecord(data);
@@ -405,7 +430,7 @@ function makeCollection(key, { buildRecord, validate } = {}) {
       if (!existing) throw new Error(`No record with id ${id}`);
       const merged = mergePatch(existing, patch);
       if (validate) validate(store, merged);
-      applyRename(store[key], id, existing, patch, merged);
+      if (patch.name !== undefined && findDuplicate(store, merged, id)) merged.name = existing.name;
       Object.assign(existing, merged);
       return existing;
     });
@@ -675,12 +700,23 @@ const transformations = makeCollection('transformations', {
 // with no UI path to it. removeSession cascades the same way to that
 // Session's own SessionAdversaries/SessionEnvironments.
 
+// The party's level, shown at a glance on the Campaign banner. Daggerheart
+// characters run level 1-10, so clamp into that range (same normalize-then-
+// persist use of validate as Session's fear).
+function validateCampaign(_store, data) {
+  if (data.level !== undefined) {
+    data.level = Math.max(1, Math.min(10, Math.round(Number(data.level)) || 1));
+  }
+}
+
 const campaigns = makeCollection('campaigns', {
+  validate: validateCampaign,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
     notes: data.notes ?? null,
     colorHex: data.colorHex ?? null,
+    level: data.level ?? 1,
   }),
 });
 
@@ -704,12 +740,8 @@ function removeCampaign(id) {
 // schema, so a table can track whatever it wants without the store caring
 // what "HP" means.
 //
-// Known limitation shared with Card/Subclass: makeCollection's
-// idempotent-by-name create() checks name uniqueness across the WHOLE
-// collection, not scoped to campaignId (same as Card isn't scoped to
-// domainId) — two different Campaigns can't each have a same-named PC
-// without the second create() silently returning the first Campaign's
-// record. Consistent with existing behavior elsewhere; not a new gap.
+// Name uniqueness is scoped to the Campaign (see makeCollection's `scope`),
+// so two Campaigns can each have a same-named PC.
 
 function validatePartyMember(store, data) {
   if (!store.campaigns.some((c) => c.id === data.campaignId)) {
@@ -719,6 +751,7 @@ function validatePartyMember(store, data) {
 
 const partyMembers = makeCollection('partyMembers', {
   validate: validatePartyMember,
+  scope: (r) => r.campaignId,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
@@ -737,8 +770,8 @@ function listPartyMembersByCampaign(campaignId) {
 // adventuring mode, notes, and a loot log. Built with makeCollection like
 // Campaign itself — a Session genuinely has a user-given name ("The Ambush
 // at Dawn") and idempotent-by-name create is an acceptable, already-
-// familiar limitation here (same gap as PartyMember/Card: name uniqueness
-// isn't scoped to campaignId).
+// familiar behavior here, scoped to the Campaign so two Campaigns can each
+// have a "Session 1".
 
 const SESSION_MODES = ['adventuring', 'combat'];
 
@@ -748,6 +781,9 @@ function validateSession(store, data) {
   }
   if (data.mode !== undefined && !SESSION_MODES.includes(data.mode)) {
     throw new Error(`Session mode must be one of ${SESSION_MODES.join(', ')}`);
+  }
+  if (data.regionId != null && !store.musicRegions.some((r) => r.id === data.regionId)) {
+    throw new Error(`No music region with id ${data.regionId}`);
   }
   // Fear is a bounded 0-12 resource — clamp rather than reject an
   // out-of-range value (the UI's +/- controls can never produce one, but a
@@ -762,12 +798,14 @@ function validateSession(store, data) {
 
 const sessions = makeCollection('sessions', {
   validate: validateSession,
+  scope: (r) => r.campaignId,
   buildRecord: (data) => ({
     id: randomUUID(),
     campaignId: data.campaignId,
     name: data.name,
     fear: data.fear ?? 0,
     mode: data.mode ?? 'adventuring',
+    regionId: data.regionId ?? null,
     generalNotes: data.generalNotes ?? null,
     npcNotes: data.npcNotes ?? null,
     pcNotes: data.pcNotes ?? [],
@@ -910,6 +948,171 @@ function removeSessionEnvironment(id) {
   });
 }
 
+// ---- Cloning a Session ----
+// "Clone most recent session" for the next night's game: copies the whole
+// board as it stood — Fear, mode, notes, and every pulled-in Adversary/
+// Environment with its marked HP/Stress and conditions — into a new
+// independent Session. The loot log is deliberately NOT copied: it's a
+// record of what was rolled *in that session*, not state to carry forward.
+// Everything is deep-copied with fresh ids, so editing or deleting either
+// session afterward never touches the other.
+
+function nextSessionName(name, taken) {
+  const numbered = name.match(/^(.*?)(\d+)\s*$/);
+  if (numbered) {
+    let n = Number(numbered[2]) + 1;
+    while (taken.has(`${numbered[1]}${n}`.toLowerCase())) n++;
+    return `${numbered[1]}${n}`;
+  }
+  let candidate = `${name} (copy)`;
+  let n = 2;
+  while (taken.has(candidate.toLowerCase())) candidate = `${name} (copy ${n++})`;
+  return candidate;
+}
+
+function cloneSession(sourceId, { name } = {}) {
+  return mutate((store) => {
+    const source = store.sessions.find((s) => s.id === sourceId);
+    if (!source) throw new Error(`No session with id ${sourceId}`);
+    const taken = new Set(store.sessions.filter((s) => s.campaignId === source.campaignId).map((s) => s.name.toLowerCase()));
+    const copy = {
+      ...structuredClone(source),
+      id: randomUUID(),
+      name: name && name.trim() ? name.trim() : nextSessionName(source.name, taken),
+      lootLog: [],
+    };
+    store.sessions.push(copy);
+    const cloneChildren = (list) =>
+      list
+        .filter((r) => r.sessionId === sourceId)
+        .map((r) => ({ ...structuredClone(r), id: randomUUID(), sessionId: copy.id }));
+    store.sessionAdversaries.push(...cloneChildren(store.sessionAdversaries));
+    store.sessionEnvironments.push(...cloneChildren(store.sessionEnvironments));
+    return copy;
+  });
+}
+
+// ---- Music ----
+// A small library the GM files into "regions" (folders like "The Sunken
+// Coast"), with a default track per Session mode: what loops while
+// adventuring, what loops in combat. The built-in "Everywhere" region holds
+// the fallback defaults; a user region can override them, and a Session
+// picks a region to play from. The audio files themselves live on disk under
+// <store dir>/music (copied there at import time, so the library survives
+// the originals moving) — only their metadata is in data.json, which is also
+// why an Export/Import moves the library's structure but not the audio.
+
+function validateRegionDefaults(store, data) {
+  for (const field of ['adventuringTrackId', 'combatTrackId']) {
+    if (data[field] == null) continue;
+    const track = store.musicTracks.find((t) => t.id === data[field]);
+    if (!track) throw new Error(`No music track with id ${data[field]}`);
+    // A user region's defaults come from its own tracks; the built-in
+    // region's are the app-wide fallback, so any track in the library works.
+    if (!data.isDefault && track.regionId !== data.id) {
+      throw new Error('A region can only default to a track filed under it.');
+    }
+  }
+}
+
+const musicRegions = makeCollection('musicRegions', {
+  validate: validateRegionDefaults,
+  buildRecord: (data) => ({
+    id: randomUUID(),
+    name: data.name,
+    isDefault: false,
+    adventuringTrackId: null,
+    combatTrackId: null,
+  }),
+});
+
+function updateMusicRegion(id, patch) {
+  // isDefault is never client-settable, and the built-in region keeps its name.
+  const { isDefault: _ignored, ...rest } = patch;
+  if (id === DEFAULT_REGION_ID) delete rest.name;
+  return musicRegions.update(id, rest);
+}
+
+function removeMusicRegion(id) {
+  return mutate((store) => {
+    if (id === DEFAULT_REGION_ID) throw new Error('The Everywhere region cannot be removed.');
+    const index = store.musicRegions.findIndex((r) => r.id === id);
+    if (index === -1) throw new Error(`No record with id ${id}`);
+    store.musicRegions.splice(index, 1);
+    // Tracks are the user's, so they're kept (moved to Everywhere), not
+    // destroyed along with the folder; Sessions that pointed at the region
+    // fall back to it too.
+    for (const track of store.musicTracks) if (track.regionId === id) track.regionId = DEFAULT_REGION_ID;
+    for (const session of store.sessions) if (session.regionId === id) session.regionId = null;
+  });
+}
+
+function listMusicRegions() {
+  return getCache().musicRegions;
+}
+
+function listMusicTracks() {
+  return getCache().musicTracks;
+}
+
+// Tracks are hand-written, not makeCollection: two files can share a name
+// ("Battle.mp3" from two albums), and a track is only ever created by the
+// import flow, which has already copied the file (fileName) into place.
+function createMusicTrack(data) {
+  return mutate((store) => {
+    requireName(data);
+    const regionId = data.regionId ?? DEFAULT_REGION_ID;
+    if (!store.musicRegions.some((r) => r.id === regionId)) throw new Error(`No music region with id ${regionId}`);
+    if (!data.fileName) throw new Error('A track needs an audio file.');
+    const record = {
+      id: randomUUID(),
+      name: data.name.trim(),
+      regionId,
+      fileName: data.fileName,
+      sizeBytes: data.sizeBytes ?? null,
+    };
+    store.musicTracks.push(record);
+    return record;
+  });
+}
+
+function updateMusicTrack(id, patch) {
+  return mutate((store) => {
+    const track = store.musicTracks.find((t) => t.id === id);
+    if (!track) throw new Error(`No record with id ${id}`);
+    if (patch.name !== undefined) {
+      if (!patch.name.trim()) throw new Error('Name is required.');
+      track.name = patch.name.trim();
+    }
+    if (patch.regionId !== undefined && patch.regionId !== track.regionId) {
+      if (!store.musicRegions.some((r) => r.id === patch.regionId)) throw new Error(`No music region with id ${patch.regionId}`);
+      // A user region can't keep defaulting to a track it no longer holds.
+      const from = store.musicRegions.find((r) => r.id === track.regionId);
+      if (from && !from.isDefault) {
+        if (from.adventuringTrackId === id) from.adventuringTrackId = null;
+        if (from.combatTrackId === id) from.combatTrackId = null;
+      }
+      track.regionId = patch.regionId;
+    }
+    return track;
+  });
+}
+
+// Resolves with the removed record so the caller (main.js) can delete the
+// audio file that backed it.
+function removeMusicTrack(id) {
+  return mutate((store) => {
+    const index = store.musicTracks.findIndex((t) => t.id === id);
+    if (index === -1) throw new Error(`No record with id ${id}`);
+    const [removed] = store.musicTracks.splice(index, 1);
+    for (const region of store.musicRegions) {
+      if (region.adventuringTrackId === id) region.adventuringTrackId = null;
+      if (region.combatTrackId === id) region.combatTrackId = null;
+    }
+    return removed;
+  });
+}
+
 // ---- Export / Import ----
 // Export hands back the whole store as-is. Import upserts by id, one
 // collection at a time — a record whose id already exists is overwritten
@@ -1036,6 +1239,7 @@ module.exports = {
   updateSession: sessions.update,
   removeSession,
   listSessionsByCampaign,
+  cloneSession,
   listSessionAdversaries,
   createSessionAdversary,
   updateSessionAdversary,
@@ -1046,6 +1250,16 @@ module.exports = {
   updateSessionEnvironment,
   removeSessionEnvironment,
   listSessionEnvironmentsBySession,
+  listMusicRegions,
+  createMusicRegion: musicRegions.create,
+  updateMusicRegion,
+  removeMusicRegion,
+  listMusicTracks,
+  createMusicTrack,
+  updateMusicTrack,
+  removeMusicTrack,
+  getStoreDir,
+  DEFAULT_REGION_ID,
   exportSnapshot,
   importSnapshot,
 };

@@ -17,6 +17,7 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [colorHex, setColorHex] = useState(initial?.colorHex ?? '#A97815');
+  const [level, setLevel] = useState(String(initial?.level ?? 1));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,7 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const body = { name, notes, colorHex };
+    const body = { name, notes, colorHex, level: Number(level) || 1 };
     try {
       const campaign = isEditing ? await campaignsApi.update(initial!.id, body) : await campaignsApi.create(body);
       onSaved(campaign);
@@ -43,6 +44,7 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
         Notes
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
       </label>
+      <TextField label="Party Level" type="number" value={level} onChange={setLevel} min={1} />
       <label className="create-form__color">
         Color
         <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)} />

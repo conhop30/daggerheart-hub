@@ -5,6 +5,7 @@ import { sessionsApi, type Session } from '../api/sessions';
 import { CampaignBanner, CampaignBannerCreate } from '../components/CampaignBanner';
 import CampaignDetail from '../components/CampaignDetail';
 import CampaignForm from '../components/CampaignForm';
+import MusicLibrary from '../components/MusicLibrary';
 import SessionView from '../components/SessionView';
 import { useApiList } from '../lib/useApiList';
 import './CampaignsPage.css';
@@ -18,8 +19,13 @@ export default function CampaignsPage() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'campaigns' | 'music'>('campaigns');
 
+  // The banners summarize the party and sessions, both of which are edited
+  // inside a Campaign's own pages — so refetch each time the gallery comes
+  // back into view instead of trusting what was loaded on first mount.
   useEffect(() => {
+    if (selectedCampaignId !== null) return;
     let cancelled = false;
     Promise.all([partyMembersApi.list(), sessionsApi.list()]).then(([members, sessionList]) => {
       if (cancelled) return;
@@ -29,14 +35,14 @@ export default function CampaignsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedCampaignId]);
 
-  const partyCountByCampaign = useMemo(() => {
-    const counts = new Map<string, number>();
+  const partyNamesByCampaign = useMemo(() => {
+    const names = new Map<string, string[]>();
     for (const member of partyMembers) {
-      counts.set(member.campaignId, (counts.get(member.campaignId) ?? 0) + 1);
+      names.set(member.campaignId, [...(names.get(member.campaignId) ?? []), member.name]);
     }
-    return counts;
+    return names;
   }, [partyMembers]);
 
   const sessionCountByCampaign = useMemo(() => {
@@ -111,13 +117,35 @@ export default function CampaignsPage() {
   return (
     <div className="campaigns-page">
       <div className="campaigns-page__header">
-        <h1 className="campaigns-page__title">Campaigns</h1>
+        <h1 className="campaigns-page__title">{tab === 'music' ? 'Music' : 'Campaigns'}</h1>
+        <div className="campaigns-page__tabs" role="tablist" aria-label="Campaigns sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'campaigns'}
+            className={`campaigns-page__tab${tab === 'campaigns' ? ' campaigns-page__tab--active' : ''}`}
+            onClick={() => setTab('campaigns')}
+          >
+            Campaigns
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'music'}
+            className={`campaigns-page__tab${tab === 'music' ? ' campaigns-page__tab--active' : ''}`}
+            onClick={() => setTab('music')}
+          >
+            Music
+          </button>
+        </div>
       </div>
 
-      {loading && <p className="campaigns-page__status">Loading Campaigns&hellip;</p>}
-      {error && <p className="campaigns-page__status campaigns-page__status--error">{error}</p>}
+      {tab === 'music' && <MusicLibrary />}
 
-      {!loading && !error && (
+      {tab === 'campaigns' && loading && <p className="campaigns-page__status">Loading Campaigns&hellip;</p>}
+      {tab === 'campaigns' && error && <p className="campaigns-page__status campaigns-page__status--error">{error}</p>}
+
+      {tab === 'campaigns' && !loading && !error && (
         <>
           {(creating || editingCampaign) && (
             <div className="campaigns-page__edit-panel">
@@ -137,7 +165,7 @@ export default function CampaignsPage() {
               <CampaignBanner
                 key={campaign.id}
                 campaign={campaign}
-                partyCount={partyCountByCampaign.get(campaign.id) ?? 0}
+                partyNames={partyNamesByCampaign.get(campaign.id) ?? []}
                 sessionCount={sessionCountByCampaign.get(campaign.id) ?? 0}
                 onOpen={() => setSelectedCampaignId(campaign.id)}
                 onEdit={() => setEditingId(campaign.id)}

@@ -66,6 +66,7 @@ export default function CampaignDetail({
               Delete Campaign
             </button>
           </div>
+          <span className="campaign-detail__level">Party Level {campaign.level}</span>
           <h1 className="campaign-detail__title">{campaign.name}</h1>
           {campaign.notes && <p className="campaign-detail__notes">{campaign.notes}</p>}
         </div>

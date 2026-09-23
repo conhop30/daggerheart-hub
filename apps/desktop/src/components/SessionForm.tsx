@@ -8,13 +8,15 @@ interface SessionFormProps {
   campaignId: string;
   /** Pass an existing Session to rename it; omit to create a new one. */
   initial?: Session | null;
+  /** Pre-fills the name when creating (ignored when renaming). */
+  defaultName?: string;
   onSaved: (session: Session) => void;
   onCancel: () => void;
 }
 
-export default function SessionForm({ campaignId, initial, onSaved, onCancel }: SessionFormProps) {
+export default function SessionForm({ campaignId, initial, defaultName, onSaved, onCancel }: SessionFormProps) {
   const isEditing = initial != null;
-  const [name, setName] = useState(initial?.name ?? '');
+  const [name, setName] = useState(initial?.name ?? defaultName ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

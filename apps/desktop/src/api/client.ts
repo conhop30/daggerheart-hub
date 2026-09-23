@@ -20,6 +20,8 @@ export interface DaggerheartBridge {
   listSessionsByCampaign: (campaignId: string) => Promise<unknown[]>;
   listSessionAdversariesBySession: (sessionId: string) => Promise<unknown[]>;
   listSessionEnvironmentsBySession: (sessionId: string) => Promise<unknown[]>;
+  cloneSession: (sourceId: string, options?: { name?: string }) => Promise<unknown>;
+  importMusicFiles: (regionId: string) => Promise<{ canceled: boolean; tracks: unknown[] }>;
   create: (collection: string, data: unknown) => Promise<unknown>;
   update: (collection: string, id: string, patch: unknown) => Promise<unknown>;
   remove: (collection: string, id: string) => Promise<void>;
@@ -85,6 +87,10 @@ export const apiClient = {
     (await unwrap(bridge().listSessionAdversariesBySession(sessionId))) as T[],
   listSessionEnvironmentsBySession: async <T>(sessionId: string): Promise<T[]> =>
     (await unwrap(bridge().listSessionEnvironmentsBySession(sessionId))) as T[],
+  cloneSession: async <T>(sourceId: string, options?: { name?: string }): Promise<T> =>
+    (await unwrap(bridge().cloneSession(sourceId, options))) as T,
+  importMusicFiles: async <T>(regionId: string): Promise<{ canceled: boolean; tracks: T[] }> =>
+    (await unwrap(bridge().importMusicFiles(regionId))) as { canceled: boolean; tracks: T[] },
   create: async <T>(collection: string, data: unknown): Promise<T> =>
     (await unwrap(bridge().create(collection, data))) as T,
   update: async <T>(collection: string, id: string, patch: unknown): Promise<T> =>

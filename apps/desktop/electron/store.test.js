@@ -687,3 +687,204 @@ describe('seeding', () => {
     }
   });
 });
+
+describe('Campaign level', () => {
+  it('defaults to 1 and clamps into [1, 10]', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    expect(c.level).toBe(1);
+    const high = await store.updateCampaign(c.id, { level: 99 });
+    expect(high.level).toBe(10);
+    const low = await store.updateCampaign(c.id, { level: 0 });
+    expect(low.level).toBe(1);
+    const ok = await store.updateCampaign(c.id, { level: 4 });
+    expect(ok.level).toBe(4);
+  });
+});
+
+describe('name uniqueness scoped to a Campaign', () => {
+  it('two Campaigns can each have a Session or PartyMember with the same name', async () => {
+    const a = await store.createCampaign({ name: 'A' });
+    const b = await store.createCampaign({ name: 'B' });
+    const s1 = await store.createSession({ campaignId: a.id, name: 'Session 1' });
+    const s2 = await store.createSession({ campaignId: b.id, name: 'Session 1' });
+    expect(s1.id).not.toBe(s2.id);
+    expect(store.listSessionsByCampaign(a.id)).toHaveLength(1);
+    expect(store.listSessionsByCampaign(b.id)).toHaveLength(1);
+
+    const p1 = await store.createPartyMember({ campaignId: a.id, name: 'Mira' });
+    const p2 = await store.createPartyMember({ campaignId: b.id, name: 'Mira' });
+    expect(p1.id).not.toBe(p2.id);
+  });
+
+  it('is still idempotent by name inside one Campaign', async () => {
+    const a = await store.createCampaign({ name: 'A' });
+    const s1 = await store.createSession({ campaignId: a.id, name: 'Session 1' });
+    const again = await store.createSession({ campaignId: a.id, name: 'session 1' });
+    expect(again.id).toBe(s1.id);
+  });
+});
+
+describe('cloneSession', () => {
+  async function setup() {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const adv = await store.createAdversary({ name: 'Ogre', tier: 1, difficulty: 12, gameSetId: gs.id });
+    const env = await store.createEnvironment({ name: 'Bog', tier: 1, difficulty: 10, gameSetId: gs.id });
+    const source = await store.createSession({
+      campaignId: c.id,
+      name: 'Session 3',
+      fear: 7,
+      mode: 'combat',
+      generalNotes: 'The bridge is out.',
+      npcNotes: 'Old Marn lies.',
+      pcNotes: [{ partyMemberId: 'pm-1', text: 'Low on arrows' }],
+      lootLog: [{ rolledAt: 'x', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] }],
+    });
+    const sa = await store.createSessionAdversary({ sessionId: source.id, adversaryId: adv.id, label: 'Ogre A' });
+    await store.updateSessionAdversary(sa.id, { hpMarked: 2, conditions: ['Vulnerable'] });
+    await store.createSessionEnvironment({ sessionId: source.id, environmentId: env.id, label: 'Bog' });
+    return { c, source };
+  }
+
+  it('copies fear, mode, notes, and the whole board into a new session', async () => {
+    const { c, source } = await setup();
+    const copy = await store.cloneSession(source.id);
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.campaignId).toBe(c.id);
+    expect(copy).toMatchObject({ fear: 7, mode: 'combat', generalNotes: 'The bridge is out.', npcNotes: 'Old Marn lies.' });
+    expect(copy.pcNotes).toEqual([{ partyMemberId: 'pm-1', text: 'Low on arrows' }]);
+
+    const advs = store.listSessionAdversariesBySession(copy.id);
+    expect(advs).toHaveLength(1);
+    expect(advs[0]).toMatchObject({ label: 'Ogre A', hpMarked: 2, conditions: ['Vulnerable'] });
+    expect(store.listSessionEnvironmentsBySession(copy.id)).toHaveLength(1);
+  });
+
+  it('does not copy the loot log', async () => {
+    const { source } = await setup();
+    const copy = await store.cloneSession(source.id);
+    expect(copy.lootLog).toEqual([]);
+    expect(store.listSessions().find((s) => s.id === source.id).lootLog).toHaveLength(1);
+  });
+
+  it('names the copy by incrementing a trailing number, or by appending "(copy)"', async () => {
+    const { c, source } = await setup();
+    const next = await store.cloneSession(source.id);
+    expect(next.name).toBe('Session 4');
+    const afterNext = await store.cloneSession(source.id); // 4 is taken, so it skips to 5
+    expect(afterNext.name).toBe('Session 5');
+
+    const plain = await store.createSession({ campaignId: c.id, name: 'The Ambush' });
+    expect((await store.cloneSession(plain.id)).name).toBe('The Ambush (copy)');
+    expect((await store.cloneSession(plain.id)).name).toBe('The Ambush (copy 2)');
+  });
+
+  it('accepts an explicit name', async () => {
+    const { source } = await setup();
+    expect((await store.cloneSession(source.id, { name: 'Finale' })).name).toBe('Finale');
+  });
+
+  it('makes an independent copy: changes and deletes on one never touch the other', async () => {
+    const { source } = await setup();
+    const copy = await store.cloneSession(source.id);
+    const [copyAdv] = store.listSessionAdversariesBySession(copy.id);
+    await store.updateSessionAdversary(copyAdv.id, { hpMarked: 5 });
+    expect(store.listSessionAdversariesBySession(source.id)[0].hpMarked).toBe(2);
+
+    await store.removeSession(source.id);
+    expect(store.listSessionAdversariesBySession(copy.id)).toHaveLength(1);
+    expect(store.listSessionEnvironmentsBySession(copy.id)).toHaveLength(1);
+  });
+
+  it('rejects an unknown session id', async () => {
+    await expect(store.cloneSession('missing')).rejects.toThrow('No session with id');
+  });
+});
+
+describe('Music', () => {
+  const DEFAULT = 'everywhere';
+
+  it('always has the built-in Everywhere region, which cannot be removed or renamed', async () => {
+    const regions = store.listMusicRegions();
+    expect(regions).toHaveLength(1);
+    expect(regions[0]).toMatchObject({ id: DEFAULT, name: 'Everywhere', isDefault: true });
+    await expect(store.removeMusicRegion(DEFAULT)).rejects.toThrow('cannot be removed');
+    const renamed = await store.updateMusicRegion(DEFAULT, { name: 'Elsewhere', isDefault: false });
+    expect(renamed).toMatchObject({ name: 'Everywhere', isDefault: true });
+  });
+
+  it('backfills the Everywhere region into an older store that lacks the collections', async () => {
+    fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify({ version: 1, campaigns: [] }));
+    store.__resetCacheForTests();
+    expect(store.listMusicRegions().map((r) => r.id)).toEqual([DEFAULT]);
+  });
+
+  it('creates regions and files tracks under them (default region if none given)', async () => {
+    const coast = await store.createMusicRegion({ name: 'The Sunken Coast' });
+    expect(coast).toMatchObject({ isDefault: false, adventuringTrackId: null, combatTrackId: null });
+    const a = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
+    const b = await store.createMusicTrack({ name: 'Tide', fileName: 'b.mp3' }); // same name is fine
+    expect(a.regionId).toBe(coast.id);
+    expect(b.regionId).toBe(DEFAULT);
+    expect(store.listMusicTracks()).toHaveLength(2);
+  });
+
+  it('rejects a track with an unknown region or no file', async () => {
+    await expect(store.createMusicTrack({ name: 'X', fileName: 'x.mp3', regionId: 'missing' })).rejects.toThrow(
+      'No music region'
+    );
+    await expect(store.createMusicTrack({ name: 'X' })).rejects.toThrow('audio file');
+  });
+
+  it('a user region can only default to its own tracks; Everywhere can default to any', async () => {
+    const coast = await store.createMusicRegion({ name: 'The Sunken Coast' });
+    const inCoast = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
+    const elsewhere = await store.createMusicTrack({ name: 'Drums', fileName: 'b.mp3' });
+
+    const set = await store.updateMusicRegion(coast.id, { adventuringTrackId: inCoast.id });
+    expect(set.adventuringTrackId).toBe(inCoast.id);
+    await expect(store.updateMusicRegion(coast.id, { combatTrackId: elsewhere.id })).rejects.toThrow('filed under it');
+    await expect(store.updateMusicRegion(coast.id, { combatTrackId: 'missing' })).rejects.toThrow('No music track');
+
+    const global = await store.updateMusicRegion(DEFAULT, { combatTrackId: inCoast.id });
+    expect(global.combatTrackId).toBe(inCoast.id);
+    const cleared = await store.updateMusicRegion(DEFAULT, { combatTrackId: null });
+    expect(cleared.combatTrackId).toBeNull();
+  });
+
+  it('moving a track out of a region clears that region\'s default pointing at it', async () => {
+    const coast = await store.createMusicRegion({ name: 'The Sunken Coast' });
+    const t = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
+    await store.updateMusicRegion(coast.id, { adventuringTrackId: t.id });
+    await store.updateMusicTrack(t.id, { regionId: DEFAULT });
+    expect(store.listMusicRegions().find((r) => r.id === coast.id).adventuringTrackId).toBeNull();
+  });
+
+  it('removing a track returns its record and clears any default that used it', async () => {
+    const t = await store.createMusicTrack({ name: 'Drums', fileName: 'b.mp3' });
+    await store.updateMusicRegion(DEFAULT, { combatTrackId: t.id });
+    const removed = await store.removeMusicTrack(t.id);
+    expect(removed.fileName).toBe('b.mp3');
+    expect(store.listMusicTracks()).toHaveLength(0);
+    expect(store.listMusicRegions()[0].combatTrackId).toBeNull();
+  });
+
+  it('removing a region keeps its tracks (moved to Everywhere) and un-sets Sessions using it', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const coast = await store.createMusicRegion({ name: 'The Sunken Coast' });
+    const t = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1', regionId: coast.id });
+    expect(session.regionId).toBe(coast.id);
+
+    await store.removeMusicRegion(coast.id);
+    expect(store.listMusicTracks().find((x) => x.id === t.id).regionId).toBe(DEFAULT);
+    expect(store.listSessions().find((s) => s.id === session.id).regionId).toBeNull();
+  });
+
+  it('a Session rejects a region that does not exist', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    await expect(store.createSession({ campaignId: c.id, name: 'Session 1', regionId: 'missing' })).rejects.toThrow(
+      'No music region'
+    );
+  });
+});

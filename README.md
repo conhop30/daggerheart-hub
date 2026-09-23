@@ -155,9 +155,9 @@ validation. Highlights:
   "Phase 2", …) with no code change, since the store persists whatever
   keys it's given.
 - Content is seeded in directly from official PDFs rather than hand-typed:
-  the **Core** Game Set carries the full 189-card domain reference, 251
-  Adversaries, 47 Environments, 152 Weapons, and 39 Armors, all parsed out
-  of the corebook. A second Game Set, **Hope & Fear**, adds that expansion's
+  the **Core** Game Set carries the full 189-card domain reference, all 9
+  Classes with their 18 Subclasses, 251 Adversaries, 47 Environments, 152
+  Weapons, and 39 Armors, all parsed out of the corebook. A second Game Set, **Hope & Fear**, adds that expansion's
   4 Classes/8 Subclasses, 6 new Ancestries, 6 new Communities, 6
   Transformations, a new Dread Domain, and its own Adversary/Environment/
   Equipment/Loot tables — kept fully separate from Core so it can be
@@ -172,7 +172,7 @@ validation. Highlights:
   couldn't hit the same accuracy bar as everything else, so they were
   deliberately left unseeded rather than imported with silent corruption.
 
-### Session Builder (complete)
+### Session Builder (complete, and growing)
 
 A second top-level section for actually *running* a game on top of the
 content above, as opposed to authoring it. Delivered in three phases:
@@ -212,6 +212,27 @@ content above, as opposed to authoring it. Delivered in three phases:
   be reworked without touching the others (see
   [Engineering Challenges](#engineering-challenges--how-they-were-solved)).
 
+
+**Follow-ups after the three phases:**
+
+- **Carry a session forward.** *New Session* starts blank (suggesting the
+  next "Session N"); *Clone Most Recent* copies the last session's Fear,
+  mode, notes, and every pulled-in Adversary/Environment (with its marked
+  HP/Stress and conditions) into an independent new session and opens it.
+  The loot log is deliberately not copied — it records what was rolled *in*
+  that session. Session and Party-member names are now unique per Campaign
+  rather than across the whole app, so two Campaigns can each have a
+  "Session 1".
+- **Campaign banners at a glance.** Each Campaign has a party level (1–10),
+  and its banner shows that level and the players' names.
+- **Music library.** A tab under Campaigns: audio files are copied into the
+  app's own folder and filed into user-made *regions* (folders like "The
+  Sunken Coast"), with a default loop per mode (adventuring / combat). A
+  region can override the built-in *Everywhere* defaults, and a session
+  picks a region; its player loops the mode's default and swaps when the
+  mode changes. Audio is served to the renderer over a small custom
+  `dhmedia://` protocol that answers byte-range requests by hand, since a
+  looping `<audio>` element can't seek on a source that can't.
 ## Engineering Challenges & How They Were Solved
 
 **1. The original architecture couldn't reach a future mobile client.**
@@ -348,6 +369,10 @@ a real Electron process per test with the same env override, and starts/
 stops its own Vite dev server automatically. `npm run test:watch` runs
 Vitest in watch mode while iterating on the store.
 
+The dev server defaults to port 5183. If that's taken (say, a second
+session of this project), set `DAGGERHEART_DEV_PORT` to another port for
+`npm run electron:dev`, `npm run dev`, and `npm run test:e2e` alike.
+
 ## Feature Roadmap
 
 **Done**
@@ -370,6 +395,13 @@ Vitest in watch mode while iterating on the store.
       combat/adventuring mode toggle, and a Loot Roller wired to the Phase 2
       tables with a reverse-chronological session log — **the whole Session
       Builder feature is now complete**
+- [x] Clone-most-recent session, Campaign party level and player names on
+      the banner, and a per-region Music library with looping defaults per
+      session mode
+- [ ] Persistent "containers" that follow a Campaign across sessions (e.g.
+      standing NPCs, recurring Adversaries, running notes), where removing
+      something in a session drops it from that session onward but leaves
+      earlier sessions untouched — design is scoped but not built
 - [x] Real corebook + Hope & Fear expansion content imported (Adversaries,
       Environments, Weapons, Armor, Loot, Classes, Ancestries, Communities,
       Transformations) as two independent Game Sets, replacing placeholder

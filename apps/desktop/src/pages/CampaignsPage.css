@@ -38,3 +38,32 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-3);
 }
+
+.campaigns-page__tabs {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.campaigns-page__tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.3rem 0;
+  transition:
+    color 200ms var(--ease),
+    border-color 200ms var(--ease);
+}
+
+.campaigns-page__tab:hover {
+  color: var(--ink);
+}
+
+.campaigns-page__tab--active {
+  color: var(--hope);
+  border-bottom-color: var(--hope);
+}

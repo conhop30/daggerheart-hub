@@ -3,6 +3,7 @@ import { sessionsApi, type Session, type UpdateSessionRequest } from '../api/ses
 import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
 import ModeToggle from './ModeToggle';
+import MusicPlayer from './MusicPlayer';
 import CombatPanel from './CombatPanel';
 import AdventuringPanel from './AdventuringPanel';
 import './SessionView.css';
@@ -80,6 +81,11 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
 
       <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
       <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
+      <MusicPlayer
+        mode={session.mode}
+        regionId={session.regionId ?? null}
+        onRegionChange={(regionId) => persist({ regionId })}
+      />
 
       {session.mode === 'combat' ? (
         <CombatPanel sessionId={session.id} />
