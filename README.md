@@ -35,6 +35,14 @@ It isn't code-signed, so SmartScreen may ask you to choose "More info" then
 "Run anyway". A fresh install ships with only the 9 Domains and 9 Classes
 seeded from `apps/desktop/seed/` — no published book text is bundled.
 
+From the first release that includes it onward, the app checks GitHub's
+"latest release" once at startup and shows a dismissible banner if a newer
+version exists (Settings → About & Updates has the installed version, a
+manual check, and an off switch). It is notify-only by design: it links to
+the download page and never downloads or installs anything itself, which
+keeps it simple, safe with an unsigned installer, and free of a new
+dependency. Installs from before that release don't have the check.
+
 ## Tech Stack
 
 | Layer | Choice | Why |

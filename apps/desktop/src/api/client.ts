@@ -3,6 +3,15 @@
 // local JSON store in electron/main.js over IPC, not HTTP. See
 // daggerheart-hub-spec.md Section 6 for why (React Native can't embed the
 // Spring Boot backend this used to call, so nothing embeds a backend now).
+export interface UpdateInfo {
+  currentVersion: string;
+  updateAvailable: boolean;
+  latestVersion?: string;
+  url?: string;
+  /** Set when the check itself failed (offline, rate-limited...) — not an app error. */
+  error?: string;
+}
+
 export interface DaggerheartBridge {
   list: (collection: string) => Promise<unknown[]>;
   listSubclassesByParentClass: (parentClassId: string) => Promise<unknown[]>;
@@ -17,6 +26,9 @@ export interface DaggerheartBridge {
   exportData: () => Promise<{ canceled: boolean; filePath?: string }>;
   importData: () => Promise<{ canceled: boolean; filePath?: string; importedCount?: number }>;
   saveImage: (dataUrl: string, defaultName: string) => Promise<{ canceled: boolean; filePath?: string }>;
+  getVersion: () => Promise<string>;
+  checkForUpdate: () => Promise<UpdateInfo>;
+  openReleasePage: (url: string) => Promise<void>;
   getWindowSize: () => Promise<[number, number]>;
   setWindowSize: (width: number, height: number) => Promise<[number, number]>;
 }
@@ -83,6 +95,9 @@ export const apiClient = {
   exportData: async () => unwrap(bridge().exportData()),
   importData: async () => unwrap(bridge().importData()),
   saveImage: async (dataUrl: string, defaultName: string) => unwrap(bridge().saveImage(dataUrl, defaultName)),
+  getVersion: async () => unwrap(bridge().getVersion()),
+  checkForUpdate: async () => unwrap(bridge().checkForUpdate()),
+  openReleasePage: async (url: string) => unwrap(bridge().openReleasePage(url)),
   getWindowSize: async () => unwrap(bridge().getWindowSize()),
   setWindowSize: async (width: number, height: number) => unwrap(bridge().setWindowSize(width, height)),
 };

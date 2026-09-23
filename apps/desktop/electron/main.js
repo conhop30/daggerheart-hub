@@ -4,10 +4,11 @@
 // (reading 'exports')") because the `electron` module's CJS shape isn't a
 // real file Node's ESM/CJS interop can statically preparse. CJS sidesteps
 // the problem entirely.
-const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const store = require('./store.js');
+const updateCheck = require('./updateCheck.js');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -190,6 +191,23 @@ ipcMain.handle('store:import', async (event) => {
   const incoming = JSON.parse(fs.readFileSync(filePaths[0], 'utf-8'));
   const { importedCount } = await store.importSnapshot(incoming);
   return { canceled: false, filePath: filePaths[0], importedCount };
+});
+
+// Notify-only update check against GitHub Releases (see updateCheck.js).
+// DAGGERHEART_UPDATE_URL exists so tests can point it at a local fake
+// server; real usage never sets it.
+ipcMain.handle('app:checkForUpdate', () =>
+  updateCheck.checkForUpdate({
+    currentVersion: app.getVersion(),
+    url: process.env.DAGGERHEART_UPDATE_URL || updateCheck.DEFAULT_URL,
+  })
+);
+
+ipcMain.handle('app:getVersion', () => app.getVersion());
+
+ipcMain.handle('app:openReleasePage', async (_event, url) => {
+  if (!updateCheck.isSafeReleaseUrl(url)) throw new Error('Refusing to open a non-release URL.');
+  await shell.openExternal(url);
 });
 
 ipcMain.handle('file:saveImage', async (event, dataUrl, defaultName) => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { apiClient } from '../api/client';
+import { apiClient, type UpdateInfo } from '../api/client';
+import { isLaunchCheckEnabled, setLaunchCheckEnabled } from '../lib/updatePrefs';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import './SettingsPage.css';
 
@@ -32,9 +33,32 @@ export default function SettingsPage() {
   const [currentSize, setCurrentSize] = useState<[number, number] | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [launchCheck, setLaunchCheck] = useState(isLaunchCheckEnabled);
+
+  async function runUpdateCheck() {
+    setChecking(true);
+    try {
+      const info = await apiClient.checkForUpdate();
+      setVersion(info.currentVersion);
+      setUpdateInfo(info);
+    } catch {
+      // Running outside Electron — nothing to check.
+    } finally {
+      setChecking(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
+    apiClient
+      .getVersion()
+      .then((v) => {
+        if (!cancelled) setVersion(v);
+      })
+      .catch(() => {});
     apiClient
       .getWindowSize()
       .then((size) => {
@@ -107,6 +131,51 @@ export default function SettingsPage() {
           ))}
         </div>
         {error && <p className="settings-page__error">{error}</p>}
+      </section>
+
+      <section className="settings-page__section">
+        <h2 className="settings-page__section-title">About &amp; Updates</h2>
+        <p className="settings-page__section-hint">
+          {version ? `You're running version ${version}.` : 'Check whether a newer version is out.'} The
+          check only reads the project's public release page on GitHub; nothing is downloaded or installed for you.
+        </p>
+        <div className="settings-page__update-row">
+          <button type="button" className="settings-page__option" onClick={runUpdateCheck} disabled={checking}>
+            <span className="settings-page__option-label">{checking ? 'Checking…' : 'Check for updates'}</span>
+          </button>
+          {updateInfo && (
+            <p className="settings-page__update-status" role="status">
+              {updateInfo.error
+                ? "Couldn't reach GitHub right now — try again later."
+                : updateInfo.updateAvailable
+                  ? `Version ${updateInfo.latestVersion} is available.`
+                  : `You're up to date (${updateInfo.currentVersion}).`}
+              {updateInfo.updateAvailable && updateInfo.url && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="settings-page__link"
+                    onClick={() => apiClient.openReleasePage(updateInfo.url!).catch(() => {})}
+                  >
+                    View download
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+        </div>
+        <label className="settings-page__checkbox">
+          <input
+            type="checkbox"
+            checked={launchCheck}
+            onChange={(e) => {
+              setLaunchCheck(e.target.checked);
+              setLaunchCheckEnabled(e.target.checked);
+            }}
+          />
+          Check for updates when the app starts
+        </label>
       </section>
     </div>
   );

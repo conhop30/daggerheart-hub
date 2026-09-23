@@ -1,0 +1,44 @@
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0.5rem var(--space-3);
+  background: rgba(228, 179, 65, 0.12);
+  border-bottom: 1px solid var(--hope-dim);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.update-banner strong {
+  color: var(--hope-on-dark);
+}
+
+.update-banner__action {
+  background: none;
+  border: 1px solid var(--hope);
+  color: var(--hope-on-dark);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  transition: background 200ms var(--ease);
+}
+
+.update-banner__action:hover {
+  background: rgba(228, 179, 65, 0.18);
+}
+
+.update-banner__dismiss {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.update-banner__dismiss:hover {
+  color: var(--ink);
+}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import UpdateBanner from './UpdateBanner';
 import './AppShell.css';
 
 export type View =
@@ -70,6 +71,7 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
           <SettingsGlyph />
         </button>
       </nav>
+      <UpdateBanner />
       <div className="app-shell__page" key={view}>
         {children}
       </div>
