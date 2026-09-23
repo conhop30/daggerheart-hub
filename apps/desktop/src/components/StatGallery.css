@@ -1,18 +1,14 @@
 .stat-gallery {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: var(--space-3);
-  align-items: start;
-}
-
-.stat-gallery__main {
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .stat-gallery__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  align-items: center;
 }
 
 .stat-gallery__search,
@@ -29,7 +25,7 @@
 
 .stat-gallery__search {
   flex: 1;
-  min-width: 0;
+  min-width: 160px;
 }
 
 .stat-gallery__tier-filter {
@@ -41,10 +37,58 @@
   border-color: var(--hope);
 }
 
+/* Same segmented-pill visual language as ModeToggle.css (Session combat/
+   adventuring) and SettingsPage's theme picker — a UI-chrome control, not a
+   stat display, so the "no pill shapes" rule from the stat-sheet redesign
+   doesn't apply here. */
+.stat-gallery__mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.stat-gallery__mode-option {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.45rem 0.85rem;
+  white-space: nowrap;
+  transition:
+    background 200ms var(--ease),
+    color 200ms var(--ease);
+}
+
+.stat-gallery__mode-option:hover {
+  color: var(--ink);
+}
+
+.stat-gallery__mode-option--active {
+  background: rgba(228, 179, 65, 0.16);
+  color: var(--hope);
+}
+
+/* Standard/Condensed layout: a tile grid alongside a spotlight column. */
+.stat-gallery__browse {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-3);
+  align-items: start;
+}
+
 .stat-gallery__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: var(--space-2);
+}
+
+.stat-gallery__grid--condensed {
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-1);
 }
 
 .stat-gallery__tile {
@@ -63,6 +107,11 @@
     border-color 150ms var(--ease),
     background 150ms var(--ease);
   animation: fadeInUp 220ms var(--ease);
+}
+
+.stat-gallery__tile--condensed {
+  padding: 8px 10px;
+  gap: 2px;
 }
 
 .stat-gallery__tile:hover {
@@ -87,15 +136,42 @@
   overflow: hidden;
 }
 
+.stat-gallery__tile--condensed .stat-gallery__tile-name {
+  font-size: 0.85rem;
+  -webkit-line-clamp: 1;
+}
+
+.stat-gallery__tile-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The spotlight column is a fixed-height sticky panel split into two
+   pieces: a history bar that's always fully visible (never clipped or
+   scrolled away), and the sheet content below it in its own scroll
+   region — so "recently viewed" never requires scrolling past a long
+   stat block to reach. */
 .stat-gallery__spotlight {
   position: sticky;
   top: var(--space-2);
+  display: flex;
+  flex-direction: column;
   background: var(--panel);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  padding: var(--space-3);
   max-height: calc(100vh - var(--space-5));
+  overflow: hidden;
+}
+
+.stat-gallery__sheet-scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: var(--space-3);
 }
 
 .stat-gallery__spotlight-empty {
@@ -107,9 +183,10 @@
 }
 
 .stat-gallery__history {
-  margin-top: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--hairline);
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--panel-raised);
 }
 
 .stat-gallery__history-title {
@@ -161,13 +238,32 @@
   flex-shrink: 0;
 }
 
+/* Expanded mode: every matching item renders as its own full stat sheet,
+   opted into on purpose — takes more screen space, so items per row
+   depends on how much width is actually available rather than forcing a
+   fixed column count. */
+.stat-gallery__expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.stat-gallery__expanded-item {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
-  .stat-gallery {
+  .stat-gallery__browse {
     grid-template-columns: 1fr;
   }
 
   .stat-gallery__spotlight {
     position: static;
     max-height: none;
+  }
+
+  .stat-gallery__expanded-grid {
+    grid-template-columns: 1fr;
   }
 }

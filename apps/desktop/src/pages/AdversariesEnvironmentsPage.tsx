@@ -11,7 +11,7 @@ import EnvironmentForm from '../components/EnvironmentForm';
 import AdversarySheet from '../components/AdversarySheet';
 import EnvironmentSheet from '../components/EnvironmentSheet';
 import './BrowsePage.css';
-import './StatSheetSpotlight.css';
+import './AdversariesEnvironmentsPage.css';
 
 function AdversaryTile({ a }: { a: Adversary }) {
   return (
@@ -26,6 +26,18 @@ function AdversaryTile({ a }: { a: Adversary }) {
           { label: 'Stress', value: a.stress },
         ]}
       />
+    </>
+  );
+}
+
+function AdversaryTileCondensed({ a }: { a: Adversary }) {
+  return (
+    <>
+      <span className="stat-gallery__tile-name">{a.name}</span>
+      <span className="stat-gallery__tile-subtitle">
+        {a.tier != null ? `Tier ${a.tier}` : ''}
+        {a.type ? ` ${titleCaseEnum(a.type)}` : ''}
+      </span>
     </>
   );
 }
@@ -75,6 +87,18 @@ function EnvironmentTile({ e }: { e: Environment }) {
           { label: 'Diff', value: e.difficulty },
         ]}
       />
+    </>
+  );
+}
+
+function EnvironmentTileCondensed({ e }: { e: Environment }) {
+  return (
+    <>
+      <span className="stat-gallery__tile-name">{e.name}</span>
+      <span className="stat-gallery__tile-subtitle">
+        {e.tier != null ? `Tier ${e.tier}` : ''}
+        {e.category ? ` ${titleCaseEnum(e.category)}` : ''}
+      </span>
     </>
   );
 }
@@ -150,7 +174,7 @@ export default function AdversariesEnvironmentsPage() {
   }
 
   return (
-    <div className="browse-page">
+    <div className="browse-page browse-page--wide">
       <h1 className="browse-page__title">Adversaries &amp; Environments</h1>
 
       <div className="browse-page__section">
@@ -184,6 +208,7 @@ export default function AdversariesEnvironmentsPage() {
             emptyMessage="No Adversaries yet — click + New Adversary above to create one."
             itemLabel="Adversary"
             renderTile={(a) => <AdversaryTile a={a} />}
+            renderTileCondensed={(a) => <AdversaryTileCondensed a={a} />}
             renderSpotlight={(a) =>
               editingAdversaryId === a.id ? (
                 <AdversaryForm
@@ -239,6 +264,7 @@ export default function AdversariesEnvironmentsPage() {
             emptyMessage="No Environments yet — click + New Environment above to create one."
             itemLabel="Environment"
             renderTile={(e) => <EnvironmentTile e={e} />}
+            renderTileCondensed={(e) => <EnvironmentTileCondensed e={e} />}
             renderSpotlight={(e) =>
               editingEnvironmentId === e.id ? (
                 <EnvironmentForm

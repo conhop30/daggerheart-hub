@@ -1,3 +1,12 @@
+/* This page's gallery is the "browse many, inspect one" pattern turned up
+   to real scale (hundreds of Adversaries/Environments), so it earns more
+   width than the shared .browse-page default — the browsing area is meant
+   to be the strong point of sizing, especially with Expanded mode's full
+   stat sheets needing real room. */
+.browse-page--wide {
+  max-width: min(1680px, 96vw);
+}
+
 .stat-sheet-spotlight__toolbar {
   display: flex;
   justify-content: flex-end;

@@ -92,18 +92,26 @@ validation. Highlights:
 - **Settings**: Light/Dark/System theme (System tracks the OS preference
   live) and window-size presets, persisted to `localStorage` since it's a
   per-machine UI preference, not game content.
-- **Adversaries & Environments render as a condensed stat-block gallery**,
-  not one full card per row: a compact tile grid (name + a `StatRail`
-  snapshot) paired with a spotlight column that shows the full stat block
-  for whichever tile was last clicked without reflowing the grid, a
-  compressed "Recently Viewed" history (name, tier, and Adversary
-  type/Environment category) for jumping back to a prior selection, and
-  name/description search plus a Tier filter. The generic `StatGallery<T>`
-  component (grid + spotlight + MRU history + search/filter) and `StatRail`
-  (a bordered, hairline-divided stat band replacing rounded pill chips,
-  mirroring the corebook's own boxed stat line under a name) are reusable —
-  this pass applies them to Adversaries and Environments only, the two
-  content types with the most stats per entry.
+- **Adversaries & Environments render as a condensed stat-block gallery**
+  with three viewing modes instead of one fixed layout: **Standard** (the
+  default — compact tiles + a spotlight column showing the full stat block
+  for whichever tile was last clicked, without reflowing the grid),
+  **Condense** (name/tier/type only, maximizing how many entries fit on
+  screen at once), and **Expand** (every matching entry renders as its own
+  full stat sheet inline, opting into more screen space on purpose instead
+  of a single narrow detail column). A compressed "Recently Viewed" history
+  (name, tier, and Adversary type/Environment category) sits pinned above
+  the spotlight's own scroll region — visible at all times, never requiring
+  a scroll to reach it — with name/description search and a Tier filter
+  alongside the mode toggle. The generic `StatGallery<T>` component (tile
+  grid/expanded grid + spotlight + MRU history + search/filter/mode state)
+  and `StatRail` (a bordered, hairline-divided stat band replacing rounded
+  pill chips, mirroring the corebook's own boxed stat line under a name)
+  are reusable — this pass applies them to Adversaries and Environments
+  only, the two content types with the most stats per entry. The page
+  itself runs wider than the app's other browse pages (`min(1680px, 96vw)`
+  vs. the shared 1100px default) since the browsing area is meant to be
+  the strong point of sizing here.
 - **The spotlight view renders a book-accurate stat sheet**, not the app's
   usual dark theme — `AdversarySheet`/`EnvironmentSheet` reproduce the
   corebook's own printed layout (parchment surface, black serif type, an
@@ -346,6 +354,10 @@ Vitest in watch mode while iterating on the store.
       Export as Image button per sheet, and the Adversary type / Environment
       category taxonomy (editable in both forms, backfilled for all 251
       Adversaries and 47 Environments already imported)
+- [x] Condense/Standard/Expand viewing modes for the Adversaries &
+      Environments gallery, a wider page layout, and a "Recently Viewed"
+      history pinned above the spotlight's scroll region instead of
+      requiring a scroll to reach it
 
 **In progress / planned**
 - [ ] Same gallery/spotlight/`StatRail` treatment for the other
