@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { environmentsApi, type Environment } from '../api/environments';
+import { environmentsApi, type Environment, type EnvironmentCategory } from '../api/environments';
 import type { Feature } from '../api/heroClasses';
 import FeatureListEditor from './FeatureListEditor';
 import StringListEditor from './StringListEditor';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
 interface EnvironmentFormProps {
@@ -15,10 +16,13 @@ interface EnvironmentFormProps {
   onCancel: () => void;
 }
 
+const ENVIRONMENT_CATEGORIES: EnvironmentCategory[] = ['EXPLORATION', 'EVENT', 'SOCIAL', 'TRAVERSAL'];
+
 export default function EnvironmentForm({ initial, onSaved, onCancel }: EnvironmentFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
+  const [category, setCategory] = useState<EnvironmentCategory | ''>(initial?.category ?? '');
   const [tier, setTier] = useState(initial?.tier?.toString() ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [impulses, setImpulses] = useState<string[]>(initial?.impulses ?? []);
@@ -41,6 +45,7 @@ export default function EnvironmentForm({ initial, onSaved, onCancel }: Environm
     setError(null);
     const body = {
       name,
+      category: category || null,
       tier: tier ? Number(tier) : undefined,
       description,
       impulses,
@@ -65,6 +70,17 @@ export default function EnvironmentForm({ initial, onSaved, onCancel }: Environm
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Environment'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
+      <label>
+        Category
+        <select value={category} onChange={(e) => setCategory(e.target.value as EnvironmentCategory | '')}>
+          <option value="">Not yet chosen</option>
+          {ENVIRONMENT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {titleCaseEnum(c)}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         Description
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />

@@ -16,6 +16,7 @@ export interface DaggerheartBridge {
   remove: (collection: string, id: string) => Promise<void>;
   exportData: () => Promise<{ canceled: boolean; filePath?: string }>;
   importData: () => Promise<{ canceled: boolean; filePath?: string; importedCount?: number }>;
+  saveImage: (dataUrl: string, defaultName: string) => Promise<{ canceled: boolean; filePath?: string }>;
   getWindowSize: () => Promise<[number, number]>;
   setWindowSize: (width: number, height: number) => Promise<[number, number]>;
 }
@@ -81,6 +82,7 @@ export const apiClient = {
   },
   exportData: async () => unwrap(bridge().exportData()),
   importData: async () => unwrap(bridge().importData()),
+  saveImage: async (dataUrl: string, defaultName: string) => unwrap(bridge().saveImage(dataUrl, defaultName)),
   getWindowSize: async () => unwrap(bridge().getWindowSize()),
   setWindowSize: async (width: number, height: number) => unwrap(bridge().setWindowSize(width, height)),
 };

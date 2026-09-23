@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('daggerheart', {
   remove: (collection, id) => ipcRenderer.invoke('store:remove', collection, id),
   exportData: () => ipcRenderer.invoke('store:export'),
   importData: () => ipcRenderer.invoke('store:import'),
+  saveImage: (dataUrl, defaultName) => ipcRenderer.invoke('file:saveImage', dataUrl, defaultName),
   getWindowSize: () => ipcRenderer.invoke('window:getSize'),
   setWindowSize: (width, height) => ipcRenderer.invoke('window:setSize', { width, height }),
 });

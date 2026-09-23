@@ -5,6 +5,17 @@ import type { Experience } from '../components/ExperienceListEditor';
 
 export type AttackRange = 'MELEE' | 'VERY_CLOSE' | 'CLOSE' | 'FAR' | 'VERY_FAR' | 'OUT_OF_RANGE';
 export type AttackType = 'PHYSICAL' | 'MAGICAL' | 'DIRECT_PHYSICAL' | 'DIRECT_MAGICAL';
+export type AdversaryType =
+  | 'STANDARD'
+  | 'BRUISER'
+  | 'HORDE'
+  | 'LEADER'
+  | 'MINION'
+  | 'RANGED'
+  | 'SKULK'
+  | 'SOCIAL'
+  | 'SOLO'
+  | 'SUPPORT';
 
 export interface FeatureTiers {
   passives: Feature[];
@@ -15,6 +26,9 @@ export interface FeatureTiers {
 export interface Adversary {
   id: string;
   name: string;
+  type: AdversaryType | null;
+  /** Free text for the one type with a book parenthetical, Horde's "(N/HP)". */
+  typeNote: string | null;
   tier: number | null;
   description: string | null;
   motivesAndTactics: string[];
@@ -33,6 +47,8 @@ export interface Adversary {
 
 export interface CreateAdversaryRequest {
   name: string;
+  type?: AdversaryType | null;
+  typeNote?: string | null;
   tier?: number;
   description?: string;
   motivesAndTactics?: string[];

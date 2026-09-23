@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { adversariesApi, type Adversary, type AttackRange, type AttackType } from '../api/adversaries';
+import { adversariesApi, type Adversary, type AdversaryType, type AttackRange, type AttackType } from '../api/adversaries';
 import type { Feature } from '../api/heroClasses';
 import FeatureListEditor from './FeatureListEditor';
 import StringListEditor from './StringListEditor';
@@ -20,11 +20,25 @@ interface AdversaryFormProps {
 
 const ATTACK_RANGES: AttackRange[] = ['MELEE', 'VERY_CLOSE', 'CLOSE', 'FAR', 'VERY_FAR', 'OUT_OF_RANGE'];
 const ATTACK_TYPES: AttackType[] = ['PHYSICAL', 'MAGICAL', 'DIRECT_PHYSICAL', 'DIRECT_MAGICAL'];
+const ADVERSARY_TYPES: AdversaryType[] = [
+  'STANDARD',
+  'BRUISER',
+  'HORDE',
+  'LEADER',
+  'MINION',
+  'RANGED',
+  'SKULK',
+  'SOCIAL',
+  'SOLO',
+  'SUPPORT',
+];
 
 export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
+  const [type, setType] = useState<AdversaryType | ''>(initial?.type ?? '');
+  const [typeNote, setTypeNote] = useState(initial?.typeNote ?? '');
   const [tier, setTier] = useState(initial?.tier?.toString() ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [motivesAndTactics, setMotivesAndTactics] = useState<string[]>(initial?.motivesAndTactics ?? []);
@@ -54,6 +68,8 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
     setError(null);
     const body = {
       name,
+      type: type || null,
+      typeNote: typeNote || null,
       tier: tier ? Number(tier) : undefined,
       description,
       motivesAndTactics,
@@ -83,6 +99,25 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Adversary'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
+      <div className="create-form__row">
+        <label>
+          Type
+          <select value={type} onChange={(e) => setType(e.target.value as AdversaryType | '')}>
+            <option value="">Not yet chosen</option>
+            {ADVERSARY_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {titleCaseEnum(t)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <TextField
+          label="Type Note"
+          value={typeNote}
+          onChange={setTypeNote}
+          placeholder="e.g. (5/HP) for Horde"
+        />
+      </div>
       <label>
         Description
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />

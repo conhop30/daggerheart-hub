@@ -96,14 +96,30 @@ validation. Highlights:
   not one full card per row: a compact tile grid (name + a `StatRail`
   snapshot) paired with a spotlight column that shows the full stat block
   for whichever tile was last clicked without reflowing the grid, a
-  compressed "Recently Viewed" history (name + tier) for jumping back to a
-  prior selection, and name/description search plus a Tier filter. The
-  generic `StatGallery<T>` component (grid + spotlight + MRU history +
-  search/filter) and `StatRail` (a bordered, hairline-divided stat band
-  replacing rounded pill chips, mirroring the corebook's own boxed stat
-  line under a name) are reusable — this pass applies them to Adversaries
-  and Environments only, the two content types with the most stats per
-  entry.
+  compressed "Recently Viewed" history (name, tier, and Adversary
+  type/Environment category) for jumping back to a prior selection, and
+  name/description search plus a Tier filter. The generic `StatGallery<T>`
+  component (grid + spotlight + MRU history + search/filter) and `StatRail`
+  (a bordered, hairline-divided stat band replacing rounded pill chips,
+  mirroring the corebook's own boxed stat line under a name) are reusable —
+  this pass applies them to Adversaries and Environments only, the two
+  content types with the most stats per entry.
+- **The spotlight view renders a book-accurate stat sheet**, not the app's
+  usual dark theme — `AdversarySheet`/`EnvironmentSheet` reproduce the
+  corebook's own printed layout (parchment surface, black serif type, an
+  oxblood accent for the subtitle/section headers, a boxed stat line,
+  italic feature-type tags) via a scoped `StatSheet.css`, a deliberate,
+  intentional exception to the rest of the app's dark UI palette. Each
+  sheet has an **Export as Image** button (`html-to-image` rendering the
+  DOM node to a PNG, saved via the same native save-dialog pattern as
+  Export/Import) so a GM can pull a single Adversary or Environment out as
+  a shareable image. Adversary carries the corebook's own type taxonomy
+  (Standard/Bruiser/Horde/Leader/Minion/Ranged/Skulk/Social/Solo/Support,
+  plus a free-text note for Horde's "(N/HP)" parenthetical) and Environment
+  carries its category (Exploration/Event/Social/Traversal) — both
+  editable in their forms, and backfilled for all 251 imported Adversaries
+  and 47 imported Environments by recovering the type/category word the
+  original PDF parse had left stuck onto the front of each description.
 - Content is seeded in directly from official PDFs rather than hand-typed:
   the **Core** Game Set carries the full 189-card domain reference, 251
   Adversaries, 47 Environments, 152 Weapons, and 39 Armors, all parsed out
@@ -325,6 +341,11 @@ Vitest in watch mode while iterating on the store.
       "Recently Viewed" history (name + tier), name/description search, a
       Tier filter, and a bordered `StatRail` frame replacing the old
       rounded pill chips
+- [x] Book-accurate stat sheet in the spotlight view (parchment/serif/
+      oxblood styling matching the corebook's own printed layout), an
+      Export as Image button per sheet, and the Adversary type / Environment
+      category taxonomy (editable in both forms, backfilled for all 251
+      Adversaries and 47 Environments already imported)
 
 **In progress / planned**
 - [ ] Same gallery/spotlight/`StatRail` treatment for the other

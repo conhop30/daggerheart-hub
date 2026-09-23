@@ -1,9 +1,12 @@
 import { apiClient } from './client';
 import type { FeatureTiers } from './adversaries';
 
+export type EnvironmentCategory = 'EXPLORATION' | 'EVENT' | 'SOCIAL' | 'TRAVERSAL';
+
 export interface Environment {
   id: string;
   name: string;
+  category: EnvironmentCategory | null;
   tier: number | null;
   description: string | null;
   impulses: string[];
@@ -15,6 +18,7 @@ export interface Environment {
 
 export interface CreateEnvironmentRequest {
   name: string;
+  category?: EnvironmentCategory | null;
   tier?: number;
   description?: string;
   impulses?: string[];

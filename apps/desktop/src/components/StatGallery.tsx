@@ -5,6 +5,7 @@ interface HistoryEntry {
   id: string;
   name: string;
   tier: number | null;
+  subtitle: string | null;
 }
 
 const HISTORY_LIMIT = 8;
@@ -14,6 +15,8 @@ interface StatGalleryProps<T> {
   getKey: (item: T) => string;
   getName: (item: T) => string;
   getTier: (item: T) => number | null;
+  /** Optional short tag shown next to history entries — e.g. an Adversary's type or an Environment's category. */
+  getSubtitle?: (item: T) => string | null;
   searchMatch: (item: T, query: string) => boolean;
   /** Compact content shown inside a grid tile — name + a small StatRail, typically. */
   renderTile: (item: T) => ReactNode;
@@ -35,6 +38,7 @@ export function StatGallery<T>({
   getKey,
   getName,
   getTier,
+  getSubtitle,
   searchMatch,
   renderTile,
   renderSpotlight,
@@ -65,7 +69,12 @@ export function StatGallery<T>({
     setHistory((prev) => {
       let next = prev;
       if (selectedId != null && selected) {
-        const entry: HistoryEntry = { id: selectedId, name: getName(selected), tier: getTier(selected) };
+        const entry: HistoryEntry = {
+          id: selectedId,
+          name: getName(selected),
+          tier: getTier(selected),
+          subtitle: getSubtitle ? getSubtitle(selected) : null,
+        };
         next = [entry, ...prev.filter((h) => h.id !== entry.id)];
       }
       return next.filter((h) => h.id !== key).slice(0, HISTORY_LIMIT);
@@ -150,7 +159,10 @@ export function StatGallery<T>({
                 onClick={() => selectFromHistory(h.id)}
               >
                 <span className="stat-gallery__history-name">{h.name}</span>
-                {h.tier != null && <span className="stat-gallery__history-tier">Tier {h.tier}</span>}
+                <span className="stat-gallery__history-tier">
+                  {h.tier != null ? `Tier ${h.tier}` : ''}
+                  {h.subtitle ? ` ${h.subtitle}` : ''}
+                </span>
               </button>
             ))}
           </div>

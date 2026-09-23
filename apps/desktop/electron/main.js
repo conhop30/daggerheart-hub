@@ -192,6 +192,19 @@ ipcMain.handle('store:import', async (event) => {
   return { canceled: false, filePath: filePaths[0], importedCount };
 });
 
+ipcMain.handle('file:saveImage', async (event, dataUrl, defaultName) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    title: 'Export as Image',
+    defaultPath: defaultName || 'export.png',
+    filters: [{ name: 'PNG Image', extensions: ['png'] }],
+  });
+  if (canceled || !filePath) return { canceled: true };
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+  fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+  return { canceled: false, filePath };
+});
+
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => {

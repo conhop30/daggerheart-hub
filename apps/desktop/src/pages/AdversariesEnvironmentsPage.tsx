@@ -1,20 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { adversariesApi, type Adversary } from '../api/adversaries';
 import { environmentsApi, type Environment } from '../api/environments';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
-import { FeatureLines, StringLines } from '../components/ContentCard';
+import { exportNodeAsImage } from '../lib/exportImage';
 import { StatRail } from '../components/StatRail';
 import { StatGallery } from '../components/StatGallery';
 import AdversaryForm from '../components/AdversaryForm';
 import EnvironmentForm from '../components/EnvironmentForm';
+import AdversarySheet from '../components/AdversarySheet';
+import EnvironmentSheet from '../components/EnvironmentSheet';
 import './BrowsePage.css';
-
-function thresholdsValue(a: Adversary): string | null {
-  return a.thresholds.major != null || a.thresholds.severe != null
-    ? `${a.thresholds.major ?? '—'}/${a.thresholds.severe ?? '—'}`
-    : null;
-}
+import './StatSheetSpotlight.css';
 
 function AdversaryTile({ a }: { a: Adversary }) {
   return (
@@ -34,56 +31,35 @@ function AdversaryTile({ a }: { a: Adversary }) {
 }
 
 function AdversarySpotlight({ a, onEdit, onDelete }: { a: Adversary; onEdit: () => void; onDelete: () => void }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    if (!sheetRef.current) return;
+    setExporting(true);
+    try {
+      await exportNodeAsImage(sheetRef.current, a.name);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not export image.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <>
-      <div className="content-card__header">
-        <h3 className="content-card__title">{a.name}</h3>
-        <div className="content-card__actions">
-          <button type="button" className="content-card__action" onClick={onEdit}>
-            Edit
-          </button>
-          <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
-            Delete
-          </button>
-        </div>
+      <div className="stat-sheet-spotlight__toolbar">
+        <button type="button" className="content-card__action" onClick={onEdit}>
+          Edit
+        </button>
+        <button type="button" className="content-card__action" onClick={handleExport} disabled={exporting}>
+          {exporting ? 'Exporting…' : 'Export as Image'}
+        </button>
+        <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+          Delete
+        </button>
       </div>
-      <StatRail
-        items={[
-          { label: 'Tier', value: a.tier },
-          { label: 'Difficulty', value: a.difficulty },
-          { label: 'HP', value: a.hp },
-          { label: 'Stress', value: a.stress },
-          { label: 'Thresh', value: thresholdsValue(a) },
-        ]}
-      />
-      {a.description && <p className="content-card__description">{a.description}</p>}
-      {(a.attackModifier != null || a.attackRange || a.attackType || a.attackDescription) && (
-        <div className="content-card__section">
-          <p className="content-card__section-label">Attack</p>
-          <p className="content-card__description">
-            {a.attackModifier != null && (a.attackModifier >= 0 ? `+${a.attackModifier}` : a.attackModifier)}
-            {a.attackRange && ` · ${titleCaseEnum(a.attackRange)}`}
-            {a.attackType && ` · ${titleCaseEnum(a.attackType)}`}
-            {a.attackDescription && ` — ${a.attackDescription}`}
-          </p>
-        </div>
-      )}
-      <StringLines label="Motives and Tactics" values={a.motivesAndTactics} />
-      {a.experiences.length > 0 && (
-        <div className="content-card__section">
-          <p className="content-card__section-label">Experiences</p>
-          <ul className="content-card__feature-list">
-            {a.experiences.map((e, i) => (
-              <li key={i}>
-                {e.name}: {e.modifier >= 0 ? `+${e.modifier}` : e.modifier}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <FeatureLines label="Passives" features={a.features.passives} />
-      <FeatureLines label="Actions" features={a.features.actions} />
-      <FeatureLines label="Reactions" features={a.features.reactions} />
+      <AdversarySheet a={a} ref={sheetRef} />
     </>
   );
 }
@@ -112,31 +88,35 @@ function EnvironmentSpotlight({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    if (!sheetRef.current) return;
+    setExporting(true);
+    try {
+      await exportNodeAsImage(sheetRef.current, e.name);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not export image.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <>
-      <div className="content-card__header">
-        <h3 className="content-card__title">{e.name}</h3>
-        <div className="content-card__actions">
-          <button type="button" className="content-card__action" onClick={onEdit}>
-            Edit
-          </button>
-          <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
-            Delete
-          </button>
-        </div>
+      <div className="stat-sheet-spotlight__toolbar">
+        <button type="button" className="content-card__action" onClick={onEdit}>
+          Edit
+        </button>
+        <button type="button" className="content-card__action" onClick={handleExport} disabled={exporting}>
+          {exporting ? 'Exporting…' : 'Export as Image'}
+        </button>
+        <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+          Delete
+        </button>
       </div>
-      <StatRail
-        items={[
-          { label: 'Tier', value: e.tier },
-          { label: 'Difficulty', value: e.difficulty },
-        ]}
-      />
-      {e.description && <p className="content-card__description">{e.description}</p>}
-      <StringLines label="Impulses" values={e.impulses} />
-      <StringLines label="Potential Adversaries" values={e.potentialAdversaries} />
-      <FeatureLines label="Passives" features={e.features.passives} />
-      <FeatureLines label="Actions" features={e.features.actions} />
-      <FeatureLines label="Reactions" features={e.features.reactions} />
+      <EnvironmentSheet e={e} ref={sheetRef} />
     </>
   );
 }
@@ -199,6 +179,7 @@ export default function AdversariesEnvironmentsPage() {
             getKey={(a) => a.id}
             getName={(a) => a.name}
             getTier={(a) => a.tier}
+            getSubtitle={(a) => (a.type ? titleCaseEnum(a.type) : null)}
             searchMatch={(a, q) => a.name.toLowerCase().includes(q) || (a.description ?? '').toLowerCase().includes(q)}
             emptyMessage="No Adversaries yet — click + New Adversary above to create one."
             itemLabel="Adversary"
@@ -253,6 +234,7 @@ export default function AdversariesEnvironmentsPage() {
             getKey={(e) => e.id}
             getName={(e) => e.name}
             getTier={(e) => e.tier}
+            getSubtitle={(e) => (e.category ? titleCaseEnum(e.category) : null)}
             searchMatch={(e, q) => e.name.toLowerCase().includes(q) || (e.description ?? '').toLowerCase().includes(q)}
             emptyMessage="No Environments yet — click + New Environment above to create one."
             itemLabel="Environment"

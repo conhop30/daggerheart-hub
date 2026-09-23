@@ -1,0 +1,40 @@
+.stat-sheet-spotlight__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+/* Deliberately not reusing ContentCard.css's .content-card__action here —
+   this page no longer depends on ContentCard at all, and duplicating a
+   handful of button rules is cheaper than an implicit cross-file import. */
+.stat-sheet-spotlight__toolbar .content-card__action {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition:
+    border-color 200ms var(--ease),
+    color 200ms var(--ease);
+}
+
+.stat-sheet-spotlight__toolbar .content-card__action:hover:not(:disabled) {
+  border-color: var(--hope);
+  color: var(--ink);
+}
+
+.stat-sheet-spotlight__toolbar .content-card__action--danger:hover:not(:disabled) {
+  border-color: var(--fear-on-dark);
+  color: var(--fear-on-dark);
+}
+
+.stat-sheet-spotlight__toolbar .content-card__action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

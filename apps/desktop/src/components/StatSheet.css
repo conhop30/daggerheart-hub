@@ -1,0 +1,150 @@
+/* An intentional, scoped exception to the rest of the app's dark UI theme —
+   this recreates the corebook's own printed stat-block page (parchment,
+   black ink, oxblood accent) rather than the app's --panel/--hope/--fear
+   palette, because the whole point is fidelity to the source material when
+   a GM is reading (or exporting) one card at the table. Nothing outside
+   .stat-sheet should ever reference these tokens. */
+.stat-sheet {
+  --sheet-paper: #f1e8d3;
+  --sheet-paper-raised: #e8dcc0;
+  --sheet-ink: #211a12;
+  --sheet-ink-dim: #4a3f2f;
+  --sheet-accent: #7a2b28;
+  --sheet-rule: rgba(33, 26, 18, 0.35);
+  --sheet-box-border: rgba(33, 26, 18, 0.55);
+
+  background: var(--sheet-paper);
+  color: var(--sheet-ink);
+  border: 1px solid var(--sheet-box-border);
+  border-radius: 10px;
+  padding: 1.4rem 1.5rem;
+  font-family: var(--font-display), 'Iowan Old Style', Georgia, serif;
+}
+
+.stat-sheet__name {
+  font-size: 1.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: var(--sheet-ink);
+  margin: 0 0 2px;
+}
+
+.stat-sheet__subtitle {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--sheet-accent);
+  font-size: 0.95rem;
+  margin: 0 0 0.6rem;
+}
+
+.stat-sheet__description {
+  font-style: italic;
+  color: var(--sheet-ink);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+}
+
+.stat-sheet__line {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--sheet-ink);
+  margin: 0 0 0.4rem;
+}
+
+.stat-sheet__line strong {
+  font-weight: 700;
+}
+
+.stat-sheet__rule {
+  border: none;
+  border-top: 1px solid var(--sheet-rule);
+  margin: 0.7rem 0;
+}
+
+.stat-sheet__box {
+  border: 1px solid var(--sheet-box-border);
+  border-radius: 6px;
+  background: var(--sheet-paper-raised);
+  padding: 0.55rem 0.8rem;
+  margin: 0.6rem 0;
+}
+
+.stat-sheet__box-line {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.stat-sheet__box-line strong {
+  font-weight: 700;
+}
+
+.stat-sheet__box-line + .stat-sheet__box-line {
+  margin-top: 2px;
+}
+
+/* A small grid instead of the book's single flowing "Label: value | ..."
+   line — the spotlight column is much narrower than a book page, and a
+   flowing line with " | " separators either strands a pipe at a wrapped
+   line's end or (with a border-based separator) leaves a stray tick where
+   an item wraps alone. A grid sidesteps the problem at any width. */
+.stat-sheet__stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px 0.75rem;
+  margin-bottom: 2px;
+}
+
+.stat-sheet__stat {
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.stat-sheet__stat strong {
+  font-weight: 700;
+}
+
+.stat-sheet__box-line--spaced {
+  margin-top: 0.5rem;
+}
+
+.stat-sheet__features-heading {
+  font-family: var(--font-display), 'Iowan Old Style', Georgia, serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.82rem;
+  color: var(--sheet-accent);
+  margin: 0 0 0.4rem;
+}
+
+.stat-sheet__feature {
+  font-size: 0.89rem;
+  line-height: 1.55;
+  color: var(--sheet-ink);
+  margin: 0 0 0.55rem;
+}
+
+.stat-sheet__feature:last-child {
+  margin-bottom: 0;
+}
+
+.stat-sheet__feature-name {
+  font-style: italic;
+  font-weight: 700;
+}
+
+.stat-sheet__feature-kind {
+  font-style: italic;
+  color: var(--sheet-ink-dim);
+}
+
+.stat-sheet__empty {
+  color: var(--sheet-ink-dim);
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 2rem 1rem;
+  margin: 0;
+}

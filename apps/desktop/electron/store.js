@@ -471,6 +471,12 @@ const adversaries = makeCollection('adversaries', {
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
+    // The corebook's own taxonomy (Standard/Bruiser/Horde/Leader/Minion/
+    // Ranged/Skulk/Social/Solo/Support) — printed as the word right after
+    // "Tier X" in the stat block header. typeNote is free text for the one
+    // type with an extra parenthetical in the book, Horde's "(N/HP)".
+    type: data.type ?? null,
+    typeNote: data.typeNote ?? null,
     tier: data.tier ?? null,
     description: data.description ?? null,
     motivesAndTactics: data.motivesAndTactics ?? [],
@@ -492,6 +498,10 @@ const environments = makeCollection('environments', {
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
+    // The corebook's Environment category (Exploration/Event/Social/
+    // Traversal) — same "word right after Tier X" header convention as
+    // Adversary's type, just a different fixed vocabulary.
+    category: data.category ?? null,
     tier: data.tier ?? null,
     description: data.description ?? null,
     impulses: data.impulses ?? [],
