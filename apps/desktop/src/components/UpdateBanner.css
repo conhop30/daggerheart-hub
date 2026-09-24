@@ -30,15 +30,29 @@
   background: rgba(228, 179, 65, 0.18);
 }
 
-.update-banner__dismiss {
+.update-banner__dismiss,
+.update-banner__later {
   background: none;
   border: none;
   color: var(--muted);
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 6px;
 }
 
-.update-banner__dismiss:hover {
+.update-banner__dismiss:hover,
+.update-banner__later:hover {
   color: var(--ink);
+}
+
+.update-banner__progress {
+  width: 180px;
+  height: 8px;
+  accent-color: var(--hope);
+}
+
+.update-banner__error {
+  color: var(--fear-on-dark);
 }

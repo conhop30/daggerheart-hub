@@ -1,10 +1,19 @@
 // "Is there a newer release than the one I'm running?" — a read-only check
 // against the project's GitHub Releases. Deliberately notify-only: it never
-// downloads or installs anything, so it works with an unsigned installer
-// and there's nothing to go wrong on the user's machine. Kept free of any
-// Electron imports so it can be unit-tested with a fake fetch.
+// downloads or installs anything. It's the fallback behind updater.js for
+// installs that can't replace themselves (dev builds, unsigned macOS) and for
+// releases that don't carry an update manifest. Kept free of any Electron
+// imports so it can be unit-tested with a fake fetch.
+//
+// It reads GitHub's "latest release" redirect
+// (github.com/OWNER/REPO/releases/latest -> .../releases/tag/vX.Y.Z), not the
+// REST API: the API allows only 60 anonymous requests an hour per IP address,
+// which a shared network (a school, an office) can use up before the app ever
+// gets a look in. The redirect has no such limit. A JSON body shaped like the
+// API's `{ tag_name, html_url }` is still understood, which is what the tests
+// and DAGGERHEART_UPDATE_URL fake servers send.
 
-const DEFAULT_URL = 'https://api.github.com/repos/conhop30/daggerheart-hub/releases/latest';
+const DEFAULT_URL = 'https://github.com/conhop30/daggerheart-hub/releases/latest';
 // The only place the app will ever send someone who clicks "Download".
 const RELEASES_PAGE_PREFIX = 'https://github.com/conhop30/daggerheart-hub/releases';
 
@@ -44,16 +53,33 @@ async function checkForUpdate({ currentVersion, fetchImpl = fetch, url = DEFAULT
     try {
       res = await fetchImpl(url, {
         headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'daggerheart-hub-update-check' },
+        redirect: 'manual',
         signal: controller.signal,
       });
     } finally {
       clearTimeout(timer);
     }
-    if (!res.ok) return { currentVersion, updateAvailable: false, error: `HTTP ${res.status}` };
-    const release = await res.json();
-    const latestVersion = String(release.tag_name ?? '').replace(/^v/i, '');
+
+    let tag;
+    let htmlUrl;
+    const location = res.headers?.get?.('location');
+    if (res.status >= 300 && res.status < 400 && location) {
+      // The redirect form: the tag is the last path segment of .../releases/tag/<tag>.
+      const target = new URL(location, url).toString();
+      const match = /\/releases\/tag\/([^/?#]+)/.exec(target);
+      if (!match) return { currentVersion, updateAvailable: false, error: 'No release found' };
+      tag = decodeURIComponent(match[1]);
+      htmlUrl = target;
+    } else {
+      if (!res.ok) return { currentVersion, updateAvailable: false, error: `HTTP ${res.status}` };
+      const release = await res.json();
+      tag = release.tag_name;
+      htmlUrl = release.html_url;
+    }
+
+    const latestVersion = String(tag ?? '').replace(/^v/i, '');
     if (!latestVersion) return { currentVersion, updateAvailable: false, error: 'No tag_name in response' };
-    const pageUrl = isSafeReleaseUrl(release.html_url) ? release.html_url : RELEASES_PAGE_PREFIX;
+    const pageUrl = isSafeReleaseUrl(htmlUrl) ? htmlUrl : RELEASES_PAGE_PREFIX;
     return {
       currentVersion,
       latestVersion,

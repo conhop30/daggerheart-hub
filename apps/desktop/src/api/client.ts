@@ -3,12 +3,20 @@
 // local JSON store in electron/main.js over IPC, not HTTP. See
 // daggerheart-hub-spec.md Section 6 for why (React Native can't embed the
 // Spring Boot backend this used to call, so nothing embeds a backend now).
-export interface UpdateInfo {
+export type UpdatePhase = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'upToDate' | 'error';
+
+/** Where the update flow stands (see electron/updater.js). The main process owns it and pushes changes. */
+export interface UpdateState {
+  phase: UpdatePhase;
   currentVersion: string;
-  updateAvailable: boolean;
   latestVersion?: string;
+  /** Download progress, 0-100, while phase is 'downloading'. */
+  percent?: number;
+  /** True when this install can download and apply the update itself; false means "open the download page". */
+  canInstall: boolean;
+  /** The release page, when the update can't be installed in-app. */
   url?: string;
-  /** Set when the check itself failed (offline, rate-limited...) — not an app error. */
+  /** Why the last check or download failed. */
   error?: string;
 }
 
@@ -37,8 +45,11 @@ export interface DaggerheartBridge {
   importData: () => Promise<{ canceled: boolean; filePath?: string; importedCount?: number }>;
   saveImage: (dataUrl: string, defaultName: string) => Promise<{ canceled: boolean; filePath?: string }>;
   getVersion: () => Promise<string>;
-  checkForUpdate: () => Promise<UpdateInfo>;
-  openReleasePage: (url: string) => Promise<void>;
+  getUpdateState: () => Promise<UpdateState>;
+  checkForUpdates: () => Promise<UpdateState>;
+  downloadUpdate: () => Promise<UpdateState>;
+  installUpdate: () => Promise<UpdateState>;
+  onUpdateState: (callback: (state: UpdateState) => void) => () => void;
   getWindowSize: () => Promise<[number, number]>;
   setWindowSize: (width: number, height: number) => Promise<[number, number]>;
 }
@@ -116,8 +127,16 @@ export const apiClient = {
   importData: async () => unwrap(bridge().importData()),
   saveImage: async (dataUrl: string, defaultName: string) => unwrap(bridge().saveImage(dataUrl, defaultName)),
   getVersion: async () => unwrap(bridge().getVersion()),
-  checkForUpdate: async () => unwrap(bridge().checkForUpdate()),
-  openReleasePage: async (url: string) => unwrap(bridge().openReleasePage(url)),
+  getUpdateState: async () => unwrap(bridge().getUpdateState()),
+  /** Checks for a newer version. Never downloads anything: that's a separate, explicit step. */
+  checkForUpdates: async () => unwrap(bridge().checkForUpdates()),
+  /** Downloads the available update (or opens the download page where the app can't update itself). */
+  downloadUpdate: async () => unwrap(bridge().downloadUpdate()),
+  /** Quits and installs an update that's already been downloaded. */
+  installUpdate: async () => unwrap(bridge().installUpdate()),
+  /** Subscribes to update-state changes; returns an unsubscribe function. A no-op outside Electron. */
+  onUpdateState: (callback: (state: UpdateState) => void): (() => void) =>
+    window.daggerheart ? window.daggerheart.onUpdateState(callback) : () => {},
   getWindowSize: async () => unwrap(bridge().getWindowSize()),
   setWindowSize: async (width: number, height: number) => unwrap(bridge().setWindowSize(width, height)),
 };

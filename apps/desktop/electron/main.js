@@ -11,6 +11,7 @@ const { randomUUID } = require('node:crypto');
 const { Readable } = require('node:stream');
 const store = require('./store.js');
 const updateCheck = require('./updateCheck.js');
+const { createUpdateManager } = require('./updater.js');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -215,22 +216,58 @@ ipcMain.handle('store:import', async (event) => {
   return { canceled: false, filePath: filePaths[0], importedCount };
 });
 
-// Notify-only update check against GitHub Releases (see updateCheck.js).
-// DAGGERHEART_UPDATE_URL exists so tests can point it at a local fake
-// server; real usage never sets it.
-ipcMain.handle('app:checkForUpdate', () =>
-  updateCheck.checkForUpdate({
-    currentVersion: app.getVersion(),
-    url: process.env.DAGGERHEART_UPDATE_URL || updateCheck.DEFAULT_URL,
-  })
-);
+// ---- Updates ----
+// The renderer asks (check), the user opts in (download), and only then does
+// anything install — see updater.js for the flow. Where the app can replace
+// itself this drives electron-updater against the project's GitHub Releases;
+// elsewhere it falls back to the notify-only check in updateCheck.js.
+//
+// DAGGERHEART_UPDATE_URL points that fallback check at a local fake server and
+// DAGGERHEART_FAKE_AUTOUPDATER swaps in a scripted updater; both exist only so
+// the end-to-end tests can exercise the flow without a real release. Real
+// usage sets neither.
+function pickAutoUpdater() {
+  if (process.env.DAGGERHEART_FAKE_AUTOUPDATER) {
+    const { createFakeAutoUpdater } = require('./fakeAutoUpdater.js');
+    return createFakeAutoUpdater(process.env.DAGGERHEART_FAKE_AUTOUPDATER, process.env.DAGGERHEART_FAKE_AUTOUPDATER_FAIL);
+  }
+  if (!app.isPackaged) return null; // a dev build has no installer to replace
+  if (process.platform === 'darwin') return null; // unsigned macOS apps can't update themselves
+  if (process.platform === 'linux' && !process.env.APPIMAGE) return null; // only an AppImage can
+  try {
+    return require('electron-updater').autoUpdater;
+  } catch {
+    return null;
+  }
+}
+
+let updateManager = null;
+function getUpdateManager() {
+  if (!updateManager) {
+    const currentVersion = app.getVersion();
+    updateManager = createUpdateManager({
+      currentVersion,
+      autoUpdater: pickAutoUpdater(),
+      fallbackCheck: () =>
+        updateCheck.checkForUpdate({ currentVersion, url: process.env.DAGGERHEART_UPDATE_URL || updateCheck.DEFAULT_URL }),
+      openReleasePage: async (url) => {
+        if (!updateCheck.isSafeReleaseUrl(url)) throw new Error('Refusing to open a non-release URL.');
+        await shell.openExternal(url);
+      },
+      onState: (state) => {
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send('update:state', state);
+      },
+    });
+  }
+  return updateManager;
+}
+
+ipcMain.handle('update:getState', () => getUpdateManager().getState());
+ipcMain.handle('update:check', () => getUpdateManager().check());
+ipcMain.handle('update:download', () => getUpdateManager().download());
+ipcMain.handle('update:install', () => getUpdateManager().install());
 
 ipcMain.handle('app:getVersion', () => app.getVersion());
-
-ipcMain.handle('app:openReleasePage', async (_event, url) => {
-  if (!updateCheck.isSafeReleaseUrl(url)) throw new Error('Refusing to open a non-release URL.');
-  await shell.openExternal(url);
-});
 
 ipcMain.handle('file:saveImage', async (event, dataUrl, defaultName) => {
   const win = BrowserWindow.fromWebContents(event.sender);

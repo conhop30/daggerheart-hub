@@ -23,8 +23,16 @@ contextBridge.exposeInMainWorld('daggerheart', {
   exportData: () => ipcRenderer.invoke('store:export'),
   importData: () => ipcRenderer.invoke('store:import'),
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
-  checkForUpdate: () => ipcRenderer.invoke('app:checkForUpdate'),
-  openReleasePage: (url) => ipcRenderer.invoke('app:openReleasePage', url),
+  getUpdateState: () => ipcRenderer.invoke('update:getState'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  // Returns an unsubscribe function.
+  onUpdateState: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('update:state', listener);
+    return () => ipcRenderer.removeListener('update:state', listener);
+  },
   saveImage: (dataUrl, defaultName) => ipcRenderer.invoke('file:saveImage', dataUrl, defaultName),
   getWindowSize: () => ipcRenderer.invoke('window:getSize'),
   setWindowSize: (width, height) => ipcRenderer.invoke('window:setSize', { width, height }),

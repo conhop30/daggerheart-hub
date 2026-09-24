@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { apiClient, type UpdateInfo } from '../api/client';
+import { apiClient, type UpdateState } from '../api/client';
 import { isLaunchCheckEnabled, setLaunchCheckEnabled } from '../lib/updatePrefs';
+import { useUpdateState } from '../lib/useUpdateState';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import './SettingsPage.css';
 
@@ -28,26 +29,42 @@ const WINDOW_PRESETS: WindowSizePreset[] = [
   { label: 'Extra Large', width: 1920, height: 1080 },
 ];
 
+function describeUpdate(update: UpdateState): string {
+  switch (update.phase) {
+    case 'checking':
+      return 'Checking…';
+    case 'available':
+      return `Version ${update.latestVersion} is available.${update.error ? " The download didn't finish — try again." : ''}`;
+    case 'downloading':
+      return `Downloading version ${update.latestVersion}… ${update.percent ?? 0}%`;
+    case 'downloaded':
+      return `Version ${update.latestVersion} is ready to install.`;
+    case 'error':
+      return "Couldn't check for updates right now — try again later.";
+    default:
+      return `You're up to date (${update.currentVersion}).`;
+  }
+}
+
 export default function SettingsPage() {
   const { preference, setPreference } = useTheme();
   const [currentSize, setCurrentSize] = useState<[number, number] | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string | null>(null);
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [checking, setChecking] = useState(false);
+  const update = useUpdateState();
+  // The status line only appears once someone has asked; the launch-time check
+  // shouldn't make Settings claim "you're up to date" unprompted.
+  const [asked, setAsked] = useState(false);
   const [launchCheck, setLaunchCheck] = useState(isLaunchCheckEnabled);
+  const checking = update?.phase === 'checking';
 
   async function runUpdateCheck() {
-    setChecking(true);
+    setAsked(true);
     try {
-      const info = await apiClient.checkForUpdate();
-      setVersion(info.currentVersion);
-      setUpdateInfo(info);
+      await apiClient.checkForUpdates();
     } catch {
       // Running outside Electron — nothing to check.
-    } finally {
-      setChecking(false);
     }
   }
 
@@ -136,29 +153,37 @@ export default function SettingsPage() {
       <section className="settings-page__section">
         <h2 className="settings-page__section-title">About &amp; Updates</h2>
         <p className="settings-page__section-hint">
-          {version ? `You're running version ${version}.` : 'Check whether a newer version is out.'} The
-          check only reads the project's public release page on GitHub; nothing is downloaded or installed for you.
+          {version ? `You're running version ${version}.` : 'Check whether a newer version is out.'} When one is,
+          you'll be asked — nothing is downloaded or installed unless you say so.
         </p>
         <div className="settings-page__update-row">
           <button type="button" className="settings-page__option" onClick={runUpdateCheck} disabled={checking}>
             <span className="settings-page__option-label">{checking ? 'Checking…' : 'Check for updates'}</span>
           </button>
-          {updateInfo && (
+          {update && (asked || update.phase === 'downloading' || update.phase === 'downloaded') && (
             <p className="settings-page__update-status" role="status">
-              {updateInfo.error
-                ? "Couldn't reach GitHub right now — try again later."
-                : updateInfo.updateAvailable
-                  ? `Version ${updateInfo.latestVersion} is available.`
-                  : `You're up to date (${updateInfo.currentVersion}).`}
-              {updateInfo.updateAvailable && updateInfo.url && (
+              {describeUpdate(update)}
+              {update.phase === 'available' && (
                 <>
                   {' '}
                   <button
                     type="button"
                     className="settings-page__link"
-                    onClick={() => apiClient.openReleasePage(updateInfo.url!).catch(() => {})}
+                    onClick={() => apiClient.downloadUpdate().catch(() => {})}
                   >
-                    View download
+                    {update.canInstall ? 'Update now' : 'View download'}
+                  </button>
+                </>
+              )}
+              {update.phase === 'downloaded' && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="settings-page__link"
+                    onClick={() => apiClient.installUpdate().catch(() => {})}
+                  >
+                    Restart &amp; install
                   </button>
                 </>
               )}

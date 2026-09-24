@@ -35,13 +35,17 @@ It isn't code-signed, so SmartScreen may ask you to choose "More info" then
 "Run anyway". A fresh install ships with only the 9 Domains and 9 Classes
 seeded from `apps/desktop/seed/` — no published book text is bundled.
 
-From the first release that includes it onward, the app checks GitHub's
-"latest release" once at startup and shows a dismissible banner if a newer
-version exists (Settings → About & Updates has the installed version, a
-manual check, and an off switch). It is notify-only by design: it links to
-the download page and never downloads or installs anything itself, which
-keeps it simple, safe with an unsigned installer, and free of a new
-dependency. Installs from before that release don't have the check.
+**Updates ask first.** At startup the app checks whether a newer version is
+out and, if so, shows a slim notice with **Update now** and **Later**.
+Nothing is downloaded until you choose *Update now*; then it downloads with a
+progress bar and offers **Restart & install** (or installs the next time you
+close the app). *Later* leaves everything exactly as it was and doesn't ask
+again about that version. Settings → About & Updates has the installed
+version, a manual check, and an off switch. Where an install can't replace
+itself (a dev build, an unsigned macOS app, or a release published without
+an update manifest) the same notice still appears but its button opens the
+download page instead. Installs from before this feature don't have it — they
+need one manual update.
 
 ## Tech Stack
 
@@ -56,6 +60,7 @@ dependency. Installs from before that release don't have the check.
 | Unit testing | **Vitest** | Drives `electron/store.js`'s CRUD and validation rules directly (idempotent-by-name creates, rename-collision handling, domain-pair/weapon-burden validation, export/import merge semantics) without ever touching the real on-disk store — each test run gets a throwaway directory via a `DAGGERHEART_STORE_DIR` env override. |
 | End-to-end testing | **Playwright**, via `_electron.launch()` | Drives the *actual* packaged-shape Electron app — a real window, real IPC round trips, a real (throwaway) store file — not a mocked browser page. |
 | Packaging | **electron-builder** | Produces a real NSIS installer on Windows (dmg/AppImage configured for macOS/Linux), verified by installing and running the unpacked build end to end. |
+| Updates | **electron-updater** | Drives the "update now?" flow against GitHub Releases, wrapped in a small unit-tested state machine so the app always asks before downloading. |
 
 ## Architecture
 
@@ -215,14 +220,21 @@ content above, as opposed to authoring it. Delivered in three phases:
 
 **Follow-ups after the three phases:**
 
-- **Carry a session forward.** *New Session* starts blank (suggesting the
-  next "Session N"); *Clone Most Recent* copies the last session's Fear,
-  mode, notes, and every pulled-in Adversary/Environment (with its marked
-  HP/Stress and conditions) into an independent new session and opens it.
-  The loot log is deliberately not copied — it records what was rolled *in*
-  that session. Session and Party-member names are now unique per Campaign
-  rather than across the whole app, so two Campaigns can each have a
-  "Session 1".
+- **A Campaign carries forward across sessions.** Nearly everything follows
+  the Campaign into its later sessions: the Party (names, notes, marked HP/
+  Stress/Hope), pulled-in Adversaries and Environments with what's marked on
+  them, Fear, Campaign / NPC / per-PC notes, the music region, and the loot
+  log. Only a session's name, mode, and **Session Notes** belong to that one
+  session. The rule is the same for every edit and delete: a change made in
+  session N applies to N and every later session and **never rewrites an
+  earlier one** — mark an Ogre's HP or push it out in session 3 and sessions
+  1 and 2 still show what they showed. *New Session* therefore starts with
+  the board as the last session left it (and blank Session Notes, suggesting
+  the next "Session N"); *Clone Most Recent* additionally copies that
+  session's Session Notes and mode. Deleting a session hands whatever it
+  authored to the next one so later sessions don't change. Session and
+  Party-member names are unique per Campaign rather than across the whole
+  app, so two Campaigns can each have a "Session 1".
 - **Campaign banners at a glance.** Each Campaign has a party level (1–10),
   and its banner shows that level and the players' names.
 - **Music library.** A tab under Campaigns: audio files are copied into the
@@ -355,6 +367,39 @@ would make sense later. `SessionView` itself ends up owning almost no state —
 it's a thin shell wiring independent pieces together, so a rewrite of, say,
 the combat grid never touches the notes panel or the Fear track.
 
+**10. "Carry it forward, but never rewrite the past" is a versioning
+problem, not a copying one.** The obvious way to make a new session start
+from the last one is to copy its data. That breaks the moment you edit the
+earlier session (the copy is stale) and can't express "deleting this in
+session 3 shouldn't touch sessions 1–2, but should apply to everything after
+3". So nothing is copied. Each carried item is stored as *versions*
+authored in a particular session, and a session's view is the newest version
+at or before it (`electron/carry.js`, pure functions with their own tests):
+an edit in session N writes a version at N; a delete discards versions from N
+onward and leaves a tombstone at N so an earlier version doesn't inherit
+forward; session-level values like Fear resolve the same way, "own value or
+nearest earlier one". Deleting a *session* is the subtle case — its versions
+are re-homed to the next session, otherwise removing session 2 would silently
+change what session 3 shows. Old records (written before any of this) need no
+migration: a record with no lineage or session is treated as authored at the
+Campaign baseline. The store is unit-tested against the exact scenarios above
+and the Playwright suite drives the same flow through the real app.
+
+**11. A notify-only update check was fine — until "ask me, don't force me."**
+The first update check just linked to the download page. Turning it into a
+real "update now?" flow meant `electron-updater`, whose event stream was wrapped in a
+small state machine (`electron/updater.js`, no Electron imports, unit-tested
+with a fake updater) so the rules are ours: never download unasked, only
+install what was downloaded, and any failure falls back to the plain check
+rather than blocking anything. Two findings from testing it for real: the
+GitHub REST API's anonymous limit (60/hour/IP) is easy to exhaust on a shared
+network — one run of the packaged app got a 403 — so the fallback now reads
+the `releases/latest` redirect, which isn't limited; and a self-update can't
+be driven in CI without a signed, published release, so a scripted stand-in
+covers the UX in Playwright while a one-off run of the real packaged app
+against a local feed confirmed the actual check → opt-in download → verified
+"ready to install" path.
+
 ## Testing
 
 ```
@@ -398,10 +443,12 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
 - [x] Clone-most-recent session, Campaign party level and player names on
       the banner, and a per-region Music library with looping defaults per
       session mode
-- [ ] Persistent "containers" that follow a Campaign across sessions (e.g.
-      standing NPCs, recurring Adversaries, running notes), where removing
-      something in a session drops it from that session onward but leaves
-      earlier sessions untouched — design is scoped but not built
+- [x] Campaign data carried across sessions (Party, board, Fear, Campaign/
+      NPC/PC notes, loot log): edits and deletes apply from a session onward
+      and never rewrite earlier sessions; only Session Notes stay per-session
+- [x] In-app updates that ask first: a notice with Update now / Later,
+      opt-in download with progress, Restart & install (Windows installer and
+      Linux AppImage; falls back to a download link elsewhere)
 - [x] Real corebook + Hope & Fear expansion content imported (Adversaries,
       Environments, Weapons, Armor, Loot, Classes, Ancestries, Communities,
       Transformations) as two independent Game Sets, replacing placeholder
@@ -462,6 +509,17 @@ build and driving it end to end. See items 2 and 3 under
 [Engineering Challenges](#engineering-challenges--how-they-were-solved) for
 the two non-obvious issues that had to be solved to get there, and their
 fixes/workarounds.
+
+**Publishing a release that installed copies can update to.** The in-app
+updater reads an update manifest published *alongside* the installer, so a
+release needs three files, not one: run `npm run electron:build` and attach
+`Daggerheart-Homebrew-Hub-Setup-<version>.exe`, its `.blockmap`, and
+`latest.yml` (all in `apps/desktop/release/`) to the GitHub release, e.g.
+`gh release create v1.2.0 release/Daggerheart-Homebrew-Hub-Setup-1.2.0.exe
+release/Daggerheart-Homebrew-Hub-Setup-1.2.0.exe.blockmap release/latest.yml`.
+Bump `version` in `apps/desktop/package.json` first — that's what the running
+app compares against. (A release without `latest.yml` still gets announced,
+but with a "View download" link instead of "Update now".)
 
 Not yet done: a real application icon (the default Electron icon is used —
 `electron-builder` warns about this but it isn't fatal), and code signing

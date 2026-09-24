@@ -64,3 +64,9 @@
   padding: var(--space-4);
   margin-bottom: var(--space-3);
 }
+
+/* The Party sits above whichever panel (combat or notes) is active. */
+.session-view .party-roster {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
