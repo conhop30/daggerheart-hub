@@ -516,14 +516,23 @@ fixes/workarounds.
 
 **Publishing a release that installed copies can update to.** The in-app
 updater reads an update manifest published *alongside* the installer, so a
-release needs three files, not one: run `npm run electron:build` and attach
-`Daggerheart-Homebrew-Hub-Setup-<version>.exe`, its `.blockmap`, and
-`latest.yml` (all in `apps/desktop/release/`) to the GitHub release, e.g.
-`gh release create v1.2.0 release/Daggerheart-Homebrew-Hub-Setup-1.2.0.exe
-release/Daggerheart-Homebrew-Hub-Setup-1.2.0.exe.blockmap release/latest.yml`.
-Bump `version` in `apps/desktop/package.json` first — that's what the running
-app compares against. (A release without `latest.yml` still gets announced,
-but with a "View download" link instead of "Update now".)
+release needs three files, not one (the installer, its `.blockmap`, and
+`latest.yml`), and forgetting one quietly downgrades installed copies from
+"Update now" to a "View download" link. So there's one command that does it
+correctly:
+
+1. Bump `version` in `apps/desktop/package.json` (that's what the running app
+   compares against), commit, and push.
+2. Write the release notes in a markdown file.
+3. From `apps/desktop`: `npm run release -- --notes path/to/notes.md`.
+
+It builds the installer in the OS temp folder (a OneDrive-synced folder breaks
+the build), checks that all three files exist and agree with `package.json`,
+refuses to run if the tag already exists or there's uncommitted or unpushed
+work, publishes, and then confirms all three landed on the release.
+`npm run release -- --dry-run` does the build and checks without publishing.
+Afterwards, point the download button on the portfolio page at the new
+version.
 
 Not yet done: a real application icon (the default Electron icon is used —
 `electron-builder` warns about this but it isn't fatal), and code signing
