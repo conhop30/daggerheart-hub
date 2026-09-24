@@ -17,9 +17,9 @@ interface CombatPanelProps {
 // in, and persists its own SessionAdversaries/SessionEnvironments — the
 // same "own your own collection" shape PartyRoster already uses for
 // campaignId. What was pulled in during earlier sessions shows here too
-// (marked "Carried over"); changing or pushing out one of those takes effect
-// from this session onward, never in the sessions before it. Swapping this panel out for a redesign later never touches
-// SessionView or AdventuringPanel.
+// (marked "Carried over"); changing one of those takes effect from this session
+// onward, and pushing one out removes it from this session only. Swapping this
+// panel out for a redesign later never touches SessionView or AdventuringPanel.
 export default function CombatPanel({ sessionId }: CombatPanelProps) {
   const [sessionAdversaries, setSessionAdversaries] = useState<SessionAdversary[]>([]);
   const [sessionEnvironments, setSessionEnvironments] = useState<SessionEnvironment[]>([]);

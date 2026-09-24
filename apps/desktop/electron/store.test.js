@@ -1016,14 +1016,26 @@ describe('Carrying data across Sessions', () => {
       expect(store.listPartyMembersBySession(s4.id)).toHaveLength(0);
     });
 
-    it('removing one from an earlier session also removes it from later sessions', async () => {
+    it('removing one only removes it from the session it was removed in', async () => {
       const c = await store.createCampaign({ name: 'The Wildwood' });
       const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
-      const [s1, s2] = await threeSessions(c);
-      await store.updatePartyMember(mira.id, { notes: 'edited later' }, { sessionId: s2.id });
-      await store.removePartyMember(mira.id, { sessionId: s1.id });
-      expect(store.listPartyMembersBySession(s1.id)).toHaveLength(0);
+      const [s1, s2, s3] = await threeSessions(c);
+      await store.removePartyMember(mira.id, { sessionId: s2.id });
+      expect(store.listPartyMembersBySession(s1.id)).toHaveLength(1);
       expect(store.listPartyMembersBySession(s2.id)).toHaveLength(0);
+      // Session 3 was only inheriting her from before, so with session 2 no longer having her she's gone there too.
+      expect(store.listPartyMembersBySession(s3.id)).toHaveLength(0);
+    });
+
+    it('a later session that has its own version of the member is not affected by a removal in an earlier one', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+      const [s1, s2, s3] = await threeSessions(c);
+      await store.updatePartyMember(mira.id, { notes: 'edited in session 3' }, { sessionId: s3.id });
+      await store.removePartyMember(mira.id, { sessionId: s2.id });
+      expect(store.listPartyMembersBySession(s1.id)).toHaveLength(1);
+      expect(store.listPartyMembersBySession(s2.id)).toHaveLength(0);
+      expect(store.listPartyMembersBySession(s3.id).map((m) => m.notes)).toEqual(['edited in session 3']);
     });
 
     it('names are still unique inside a Campaign, across what a session can see', async () => {

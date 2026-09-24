@@ -87,14 +87,26 @@ describe('removeVersions', () => {
     expect(carry.resolveVersions(after, order, 's3')).toEqual([]);
   });
 
-  it('also discards later edits, so the deletion reaches every later session', () => {
+  it('removes it from the session it was deleted in only: a later session with its own version keeps it', () => {
     const versions = [
       { id: 'a', sessionId: 's1', name: 'Ogre', hp: 0 },
       { id: 'b', lineageId: 'a', sessionId: 's3', name: 'Ogre', hp: 5 },
     ];
     const after = carry.removeVersions(versions, order, 'a', 's2', makeId);
     expect(names(carry.resolveVersions(after, order, 's1'))).toEqual(['Ogre']);
-    expect(carry.resolveVersions(after, order, 's3')).toEqual([]);
+    expect(carry.resolveVersions(after, order, 's2')).toEqual([]);
+    expect(carry.resolveVersions(after, order, 's3')).toEqual([expect.objectContaining({ name: 'Ogre', hp: 5 })]);
+  });
+
+  it('deleting in the authoring session drops only that version; a later session with its own copy is untouched', () => {
+    const versions = [
+      { id: 'a', sessionId: 's1', name: 'Ogre', hp: 0 },
+      { id: 'b', lineageId: 'a', sessionId: 's3', name: 'Ogre', hp: 5 },
+    ];
+    const after = carry.removeVersions(versions, order, 'a', 's1', makeId);
+    expect(carry.resolveVersions(after, order, 's1')).toEqual([]);
+    expect(carry.resolveVersions(after, order, 's2')).toEqual([]);
+    expect(names(carry.resolveVersions(after, order, 's3'))).toEqual(['Ogre']);
   });
 });
 

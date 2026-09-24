@@ -42,6 +42,6 @@ export const partyMembersApi = {
   /** Edits from `ctx.sessionId` onward (earlier sessions keep what they had). */
   update: (id: string, body: UpdatePartyMemberRequest, ctx?: SessionContext) =>
     apiClient.update<PartyMember>('partyMembers', id, body, ctx),
-  /** Removes from `ctx.sessionId` onward. */
+  /** Removes the member from `ctx.sessionId` only (earlier sessions keep them). */
   remove: (id: string, ctx?: SessionContext) => apiClient.remove('partyMembers', id, ctx),
 };

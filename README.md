@@ -225,10 +225,11 @@ content above, as opposed to authoring it. Delivered in three phases:
   Stress/Hope), pulled-in Adversaries and Environments with what's marked on
   them, Fear, Campaign / NPC / per-PC notes, the music region, and the loot
   log. Only a session's name, mode, and **Session Notes** belong to that one
-  session. The rule is the same for every edit and delete: a change made in
-  session N applies to N and every later session and **never rewrites an
-  earlier one** — mark an Ogre's HP or push it out in session 3 and sessions
-  1 and 2 still show what they showed. *New Session* therefore starts with
+  session. An edit made in session N applies to N and the sessions after it
+  and **never rewrites an earlier one**. A delete acts only on the session
+  it's made in: push an Ogre out in session 3 and it's gone from session 3
+  (sessions 1 and 2 still show it, and a session created afterward starts
+  from session 3's board, so it doesn't have it either). *New Session* therefore starts with
   the board as the last session left it (and blank Session Notes, suggesting
   the next "Session N"); *Clone Most Recent* additionally copies that
   session's Session Notes and mode. Deleting a session hands whatever it
@@ -375,10 +376,12 @@ session 3 shouldn't touch sessions 1–2, but should apply to everything after
 3". So nothing is copied. Each carried item is stored as *versions*
 authored in a particular session, and a session's view is the newest version
 at or before it (`electron/carry.js`, pure functions with their own tests):
-an edit in session N writes a version at N; a delete discards versions from N
-onward and leaves a tombstone at N so an earlier version doesn't inherit
-forward; session-level values like Fear resolve the same way, "own value or
-nearest earlier one". Deleting a *session* is the subtle case — its versions
+an edit in session N writes a version at N; a delete removes only N's view of
+the item (dropping N's own version and, if an earlier version exists, leaving a
+tombstone at N so N doesn't inherit it) — sessions after N that were merely
+inheriting from N lose it naturally, and nothing is reached into or rewritten;
+session-level values like Fear resolve the same way, "own value or nearest
+earlier one". Deleting a *session* is the subtle case — its versions
 are re-homed to the next session, otherwise removing session 2 would silently
 change what session 3 shows. Old records (written before any of this) need no
 migration: a record with no lineage or session is treated as authored at the
@@ -444,8 +447,9 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       the banner, and a per-region Music library with looping defaults per
       session mode
 - [x] Campaign data carried across sessions (Party, board, Fear, Campaign/
-      NPC/PC notes, loot log): edits and deletes apply from a session onward
-      and never rewrite earlier sessions; only Session Notes stay per-session
+      NPC/PC notes, loot log): edits apply from a session onward and never
+      rewrite earlier sessions, a delete only acts on the session it's made
+      in; only Session Notes stay per-session
 - [x] In-app updates that ask first: a notice with Update now / Later,
       opt-in download with progress, Restart & install (Windows installer and
       Linux AppImage; falls back to a download link elsewhere)

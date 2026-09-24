@@ -7,9 +7,12 @@
 //
 //   - Editing in session N writes a version at N. Sessions before N never see
 //     it; N and every later session do (unless they've written their own).
-//   - Deleting in session N drops the item from N onward: any versions at N or
-//     later are discarded, and if the item existed earlier a tombstone at N
-//     stops it inheriting forward. Earlier sessions are untouched.
+//   - Deleting in session N removes the item from session N only: N's own
+//     version goes away, and if the item existed earlier a tombstone at N stops
+//     N from inheriting it. Earlier sessions are untouched, and so is any later
+//     session that has its own version; later sessions that were merely
+//     inheriting the item from N lose it naturally, because what they inherited
+//     from is gone.
 //   - A version authored at `sessionId: null` is the Campaign baseline — it
 //     sits before every session (a Party member added before any session
 //     exists, for instance).
@@ -105,17 +108,20 @@ function editVersion(versions, order, lineageId, asOfSessionId, patch, makeId) {
 }
 
 /**
- * Deletes an item from `asOfSessionId` onward: versions at that session or
- * later are discarded, and a tombstone is left at that session if an earlier
- * version would otherwise keep showing the item. Returns the new array of
- * versions (the caller replaces its own).
+ * Deletes an item from `asOfSessionId` only. That session's own version (if it
+ * has one) is dropped, and a tombstone is left there if an earlier version
+ * would otherwise keep showing the item in it. Nothing else is touched: earlier
+ * sessions keep the item, and a later session with its own version keeps that
+ * too. Later sessions that were just inheriting from this one stop seeing it,
+ * since there's nothing left to inherit. Returns the new array of versions (the
+ * caller replaces its own).
  */
 function removeVersions(versions, order, lineageId, asOfSessionId, makeId) {
   const asOfPos = positionOf(order, asOfSessionId);
   const current = pickVersion(versions, order, lineageId, asOfPos);
   if (!current || current.deleted) throw new Error(`No record with id ${lineageId}`);
-  const kept = versions.filter((v) => lineageOf(v) !== lineageId || positionOf(order, v.sessionId) < asOfPos);
-  if (kept.some((v) => lineageOf(v) === lineageId)) {
+  const kept = versions.filter((v) => lineageOf(v) !== lineageId || positionOf(order, v.sessionId) !== asOfPos);
+  if (kept.some((v) => lineageOf(v) === lineageId && positionOf(order, v.sessionId) < asOfPos)) {
     kept.push({
       id: makeId(),
       lineageId,
