@@ -7,7 +7,10 @@ contextBridge.exposeInMainWorld('daggerheart', {
   listCardsByDomain: (domainId) => ipcRenderer.invoke('store:listCardsByDomain', domainId),
   listPartyMembersByCampaign: (campaignId) =>
     ipcRenderer.invoke('store:listPartyMembersByCampaign', campaignId),
+  listPartyMembersBySession: (sessionId) => ipcRenderer.invoke('store:listPartyMembersBySession', sessionId),
   listSessionsByCampaign: (campaignId) => ipcRenderer.invoke('store:listSessionsByCampaign', campaignId),
+  addSessionLoot: (sessionId, entry) => ipcRenderer.invoke('store:addSessionLoot', sessionId, entry),
+  removeSessionLoot: (sessionId, entryId) => ipcRenderer.invoke('store:removeSessionLoot', sessionId, entryId),
   listSessionAdversariesBySession: (sessionId) =>
     ipcRenderer.invoke('store:listSessionAdversariesBySession', sessionId),
   listSessionEnvironmentsBySession: (sessionId) =>
@@ -15,8 +18,8 @@ contextBridge.exposeInMainWorld('daggerheart', {
   cloneSession: (sourceId, options) => ipcRenderer.invoke('store:cloneSession', sourceId, options),
   importMusicFiles: (regionId) => ipcRenderer.invoke('music:importFiles', regionId),
   create: (collection, data) => ipcRenderer.invoke('store:create', collection, data),
-  update: (collection, id, patch) => ipcRenderer.invoke('store:update', collection, id, patch),
-  remove: (collection, id) => ipcRenderer.invoke('store:remove', collection, id),
+  update: (collection, id, patch, ctx) => ipcRenderer.invoke('store:update', collection, id, patch, ctx),
+  remove: (collection, id, ctx) => ipcRenderer.invoke('store:remove', collection, id, ctx),
   exportData: () => ipcRenderer.invoke('store:export'),
   importData: () => ipcRenderer.invoke('store:import'),
   getVersion: () => ipcRenderer.invoke('app:getVersion'),

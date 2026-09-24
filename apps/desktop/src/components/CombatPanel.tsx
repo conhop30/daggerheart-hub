@@ -16,7 +16,9 @@ interface CombatPanelProps {
 // Fully self-contained: hand this just a sessionId and it fetches, pulls
 // in, and persists its own SessionAdversaries/SessionEnvironments — the
 // same "own your own collection" shape PartyRoster already uses for
-// campaignId. Swapping this panel out for a redesign later never touches
+// campaignId. What was pulled in during earlier sessions shows here too
+// (marked "Carried over"); changing or pushing out one of those takes effect
+// from this session onward, never in the sessions before it. Swapping this panel out for a redesign later never touches
 // SessionView or AdventuringPanel.
 export default function CombatPanel({ sessionId }: CombatPanelProps) {
   const [sessionAdversaries, setSessionAdversaries] = useState<SessionAdversary[]>([]);
@@ -73,7 +75,7 @@ export default function CombatPanel({ sessionId }: CombatPanelProps) {
   async function handleAdversaryChange(adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) {
     setSessionAdversaries((prev) => prev.map((a) => (a.id === adversary.id ? { ...a, ...patch } : a)));
     try {
-      await sessionAdversariesApi.update(adversary.id, patch);
+      await sessionAdversariesApi.update(adversary.id, patch, { sessionId });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not save that change.');
     }
@@ -82,7 +84,7 @@ export default function CombatPanel({ sessionId }: CombatPanelProps) {
   async function handleAdversaryRemove(adversary: SessionAdversary) {
     setSessionAdversaries((prev) => prev.filter((a) => a.id !== adversary.id));
     try {
-      await sessionAdversariesApi.remove(adversary.id);
+      await sessionAdversariesApi.remove(adversary.id, { sessionId });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not push that Adversary out.');
     }
@@ -91,7 +93,7 @@ export default function CombatPanel({ sessionId }: CombatPanelProps) {
   async function handleEnvironmentChange(environment: SessionEnvironment, patch: UpdateSessionEnvironmentRequest) {
     setSessionEnvironments((prev) => prev.map((e) => (e.id === environment.id ? { ...e, ...patch } : e)));
     try {
-      await sessionEnvironmentsApi.update(environment.id, patch);
+      await sessionEnvironmentsApi.update(environment.id, patch, { sessionId });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not save that change.');
     }
@@ -100,7 +102,7 @@ export default function CombatPanel({ sessionId }: CombatPanelProps) {
   async function handleEnvironmentRemove(environment: SessionEnvironment) {
     setSessionEnvironments((prev) => prev.filter((e) => e.id !== environment.id));
     try {
-      await sessionEnvironmentsApi.remove(environment.id);
+      await sessionEnvironmentsApi.remove(environment.id, { sessionId });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not push that Environment out.');
     }

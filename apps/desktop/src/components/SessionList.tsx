@@ -87,11 +87,20 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
               className="session-list__clone"
               onClick={handleClone}
               disabled={!mostRecent || cloning}
-              title={mostRecent ? `Copy Fear, notes, and the whole board from "${mostRecent.name}"` : 'Nothing to clone yet'}
+              title={
+                mostRecent
+                  ? `Start a new session that also copies the Session Notes and mode from "${mostRecent.name}"`
+                  : 'Nothing to clone yet'
+              }
             >
               Clone Most Recent
             </button>
-            <button type="button" className="session-list__add" onClick={() => setCreating(true)}>
+            <button
+              type="button"
+              className="session-list__add"
+              onClick={() => setCreating(true)}
+              title="Start a new session — the Party, board, Fear and Campaign notes carry over; Session Notes start blank"
+            >
               + New Session
             </button>
           </div>

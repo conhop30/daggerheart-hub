@@ -119,3 +119,23 @@
   margin: 0;
   font-size: 0.85rem;
 }
+
+.loot-roller__carried {
+  font-style: normal;
+  opacity: 0.75;
+}
+
+.loot-roller__log-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  margin-left: var(--space-1);
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.loot-roller__log-remove:hover {
+  color: var(--fear);
+}

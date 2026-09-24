@@ -3,7 +3,7 @@ import { lootApi } from '../api/loot';
 import { consumablesApi } from '../api/consumables';
 import { lootTablesApi, type LootTable } from '../api/lootTables';
 import { consumableTablesApi, type ConsumableTable } from '../api/consumableTables';
-import type { LootLogEntry, LootLogResult } from '../api/sessions';
+import type { LootLogEntry, LootLogResult, NewLootLogEntry } from '../api/sessions';
 import { useApiList } from '../lib/useApiList';
 import { useGameSets } from '../context/GameSetsContext';
 import { RARITIES, type Rarity } from '../lib/lootRarity';
@@ -13,7 +13,11 @@ import './LootRoller.css';
 
 interface LootRollerProps {
   lootLog: LootLogEntry[];
-  onRoll: (entry: LootLogEntry) => void;
+  /** The session being viewed — entries rolled in an earlier one are shown as carried over. */
+  sessionId: string;
+  onRoll: (entry: NewLootLogEntry) => void;
+  /** Hides an entry from this session onward. */
+  onRemove: (entryId: string) => void;
 }
 
 interface RollableTable {
@@ -24,10 +28,10 @@ interface RollableTable {
 
 // Fully self-contained: fetches its own reference data (Loot/Consumable
 // Tables and the items they reference) and only ever hands a finished
-// LootLogEntry back up via onRoll — the parent decides how (and whether)
+// roll back up via onRoll — the parent decides how (and whether)
 // to persist it. That's what lets this exact component be dropped onto any
 // future screen that just needs a "roll and report the result" button.
-export default function LootRoller({ lootLog, onRoll }: LootRollerProps) {
+export default function LootRoller({ lootLog, sessionId, onRoll, onRemove }: LootRollerProps) {
   const { gameSets } = useGameSets();
   const lootTables = useApiList(lootTablesApi.list);
   const consumableTables = useApiList(consumableTablesApi.list);
@@ -150,12 +154,24 @@ export default function LootRoller({ lootLog, onRoll }: LootRollerProps) {
 
       {sortedLog.length > 0 && (
         <div className="loot-roller__log">
-          {sortedLog.map((entry, index) => (
-            <div key={index} className="loot-roller__log-entry">
+          {sortedLog.map((entry) => (
+            <div key={entry.id} className="loot-roller__log-entry">
               <div className="loot-roller__log-header">
-                <span>{titleCaseEnum(entry.rarity)}</span>
+                <span>
+                  {titleCaseEnum(entry.rarity)}
+                  {entry.sessionId !== sessionId && <em className="loot-roller__carried"> &middot; carried over</em>}
+                </span>
                 <span>
                   {entry.poolSize}d12 &rarr; {entry.rollTotal}
+                  <button
+                    type="button"
+                    className="loot-roller__log-remove"
+                    aria-label="Remove from the loot log"
+                    title="Remove from this session onward"
+                    onClick={() => onRemove(entry.id)}
+                  >
+                    &times;
+                  </button>
                 </span>
               </div>
               <ul className="loot-roller__log-results">

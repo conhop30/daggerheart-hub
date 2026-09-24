@@ -52,3 +52,10 @@
   margin-top: var(--space-1);
   padding-top: var(--space-1);
 }
+
+.party-roster__hint {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0 0 var(--space-2);
+}

@@ -90,14 +90,14 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
   test('Adventuring notes save and persist, and a session can be renamed and deleted', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
-    await win.fill('.adventuring-panel__note-field:has-text("General Notes") textarea', 'The party enters the cave.');
+    await win.fill('.adventuring-panel__note-field:has-text("Session Notes") textarea', 'The party enters the cave.');
 
     await win.reload();
     await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
-    await expect(win.locator('.adventuring-panel__note-field:has-text("General Notes") textarea')).toHaveValue(
+    await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue(
       'The party enters the cave.'
     );
 

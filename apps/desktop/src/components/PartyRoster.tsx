@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { partyMembersApi, type PartyMember } from '../api/partyMembers';
 import { ContentCard, ContentCardList } from './ContentCard';
 import PartyMemberForm from './PartyMemberForm';
@@ -8,26 +8,40 @@ import './PartyRoster.css';
 
 interface PartyRosterProps {
   campaignId: string;
+  /**
+   * The session being viewed. The party follows the Campaign from session to
+   * session: changes made here (marking HP, renaming, adding or removing a
+   * member) apply from this session onward and never rewrite earlier ones.
+   * Omitted (the Campaign page), it shows and edits the party as of the most
+   * recent session.
+   */
+  sessionId?: string;
+  /** Called with the roster whenever it loads or changes, so a parent can share it. */
+  onChange?: (members: PartyMember[]) => void;
 }
 
-// The standing roster for a Campaign — reused across every Session run
-// against it (see SessionView's Party panel, Phase 3). Same fetch-by-parent
+// The party for a Campaign, carried across its Sessions. Same fetch-by-parent
 // shape as DomainDetail's Cards list: its own effect keyed on the parent id,
 // not useApiList (which only fetches once on mount and can't refetch on a
 // changing parent).
-export default function PartyRoster({ campaignId }: PartyRosterProps) {
+export default function PartyRoster({ campaignId, sessionId, onChange }: PartyRosterProps) {
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current?.(members);
+  }, [members]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    partyMembersApi
-      .listByCampaign(campaignId)
+    (sessionId ? partyMembersApi.listBySession(sessionId) : partyMembersApi.listByCampaign(campaignId))
       .then((list) => {
         if (cancelled) return;
         setMembers(list);
@@ -42,7 +56,7 @@ export default function PartyRoster({ campaignId }: PartyRosterProps) {
     return () => {
       cancelled = true;
     };
-  }, [campaignId]);
+  }, [campaignId, sessionId]);
 
   function handleSaved(member: PartyMember) {
     setMembers((prev) => upsertById(prev, member));
@@ -53,7 +67,7 @@ export default function PartyRoster({ campaignId }: PartyRosterProps) {
   async function handleDelete(member: PartyMember) {
     if (!window.confirm(`Remove "${member.name}" from the Party? This can't be undone.`)) return;
     try {
-      await partyMembersApi.remove(member.id);
+      await partyMembersApi.remove(member.id, { sessionId });
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not remove the party member.');
@@ -67,7 +81,7 @@ export default function PartyRoster({ campaignId }: PartyRosterProps) {
     // trip to feel responsive.
     setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, trackables: nextTrackables } : m)));
     try {
-      await partyMembersApi.update(member.id, { trackables: nextTrackables });
+      await partyMembersApi.update(member.id, { trackables: nextTrackables }, { sessionId });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not save that change.');
     }
@@ -86,9 +100,20 @@ export default function PartyRoster({ campaignId }: PartyRosterProps) {
 
       {creating && (
         <div className="party-roster__form">
-          <PartyMemberForm campaignId={campaignId} onSaved={handleSaved} onCancel={() => setCreating(false)} />
+          <PartyMemberForm
+            campaignId={campaignId}
+            sessionId={sessionId}
+            onSaved={handleSaved}
+            onCancel={() => setCreating(false)}
+          />
         </div>
       )}
+
+      <p className="party-roster__hint">
+        {sessionId
+          ? 'Changes here apply from this session onward; earlier sessions keep what they had.'
+          : 'Shown as of your most recent session. Changes apply from that session onward.'}
+      </p>
 
       {loading && <p className="party-roster__status">Loading the Party&hellip;</p>}
       {error && <p className="party-roster__status party-roster__status--error">{error}</p>}
@@ -103,6 +128,7 @@ export default function PartyRoster({ campaignId }: PartyRosterProps) {
               <div className="party-roster__form">
                 <PartyMemberForm
                   campaignId={campaignId}
+                  sessionId={sessionId}
                   initial={member}
                   onSaved={handleSaved}
                   onCancel={() => setEditingId(null)}

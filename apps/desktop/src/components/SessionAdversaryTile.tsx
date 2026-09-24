@@ -22,6 +22,7 @@ export default function SessionAdversaryTile({ adversary, onChange, onRemove }: 
       deleteLabel="Push Out"
       meta={
         <>
+          {adversary.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={adversary.tier} />
           <MetaChip label="Difficulty" value={adversary.difficulty} />
           <MetaChip

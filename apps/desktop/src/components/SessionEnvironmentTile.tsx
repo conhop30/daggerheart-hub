@@ -9,8 +9,9 @@ interface SessionEnvironmentTileProps {
 }
 
 // Environments have no HP/Stress in Daggerheart, so this is lighter than
-// SessionAdversaryTile — description, impulses, and a session-scoped notes
-// field are the only things a GM actually touches during play.
+// SessionAdversaryTile — description, impulses, and a notes field are the
+// only things a GM actually touches during play. (These notes travel with the
+// Environment into later sessions; they're not the per-session "Session Notes".)
 export default function SessionEnvironmentTile({ environment, onChange, onRemove }: SessionEnvironmentTileProps) {
   return (
     <ContentCard
@@ -19,6 +20,7 @@ export default function SessionEnvironmentTile({ environment, onChange, onRemove
       deleteLabel="Push Out"
       meta={
         <>
+          {environment.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={environment.tier} />
           <MetaChip label="Difficulty" value={environment.difficulty} />
         </>
@@ -27,7 +29,7 @@ export default function SessionEnvironmentTile({ environment, onChange, onRemove
       {environment.description && <p className="content-card__description">{environment.description}</p>}
       <StringLines label="Impulses" values={environment.impulses} />
       <label className="session-tile__notes-label">
-        Session Notes
+        Notes
         <textarea
           value={environment.notes ?? ''}
           onChange={(e) => onChange({ notes: e.target.value })}

@@ -12,19 +12,27 @@ export interface UpdateInfo {
   error?: string;
 }
 
+/** Which Session an edit or delete is made in (see electron/carry.js). Omit for the Campaign's latest. */
+export interface SessionContext {
+  sessionId?: string | null;
+}
+
 export interface DaggerheartBridge {
   list: (collection: string) => Promise<unknown[]>;
   listSubclassesByParentClass: (parentClassId: string) => Promise<unknown[]>;
   listCardsByDomain: (domainId: string) => Promise<unknown[]>;
   listPartyMembersByCampaign: (campaignId: string) => Promise<unknown[]>;
+  listPartyMembersBySession: (sessionId: string) => Promise<unknown[]>;
   listSessionsByCampaign: (campaignId: string) => Promise<unknown[]>;
+  addSessionLoot: (sessionId: string, entry: unknown) => Promise<unknown>;
+  removeSessionLoot: (sessionId: string, entryId: string) => Promise<unknown>;
   listSessionAdversariesBySession: (sessionId: string) => Promise<unknown[]>;
   listSessionEnvironmentsBySession: (sessionId: string) => Promise<unknown[]>;
   cloneSession: (sourceId: string, options?: { name?: string }) => Promise<unknown>;
   importMusicFiles: (regionId: string) => Promise<{ canceled: boolean; tracks: unknown[] }>;
   create: (collection: string, data: unknown) => Promise<unknown>;
-  update: (collection: string, id: string, patch: unknown) => Promise<unknown>;
-  remove: (collection: string, id: string) => Promise<void>;
+  update: (collection: string, id: string, patch: unknown, ctx?: SessionContext) => Promise<unknown>;
+  remove: (collection: string, id: string, ctx?: SessionContext) => Promise<void>;
   exportData: () => Promise<{ canceled: boolean; filePath?: string }>;
   importData: () => Promise<{ canceled: boolean; filePath?: string; importedCount?: number }>;
   saveImage: (dataUrl: string, defaultName: string) => Promise<{ canceled: boolean; filePath?: string }>;
@@ -81,8 +89,14 @@ export const apiClient = {
     (await unwrap(bridge().listCardsByDomain(domainId))) as T[],
   listPartyMembersByCampaign: async <T>(campaignId: string): Promise<T[]> =>
     (await unwrap(bridge().listPartyMembersByCampaign(campaignId))) as T[],
+  listPartyMembersBySession: async <T>(sessionId: string): Promise<T[]> =>
+    (await unwrap(bridge().listPartyMembersBySession(sessionId))) as T[],
   listSessionsByCampaign: async <T>(campaignId: string): Promise<T[]> =>
     (await unwrap(bridge().listSessionsByCampaign(campaignId))) as T[],
+  addSessionLoot: async <T>(sessionId: string, entry: unknown): Promise<T> =>
+    (await unwrap(bridge().addSessionLoot(sessionId, entry))) as T,
+  removeSessionLoot: async <T>(sessionId: string, entryId: string): Promise<T> =>
+    (await unwrap(bridge().removeSessionLoot(sessionId, entryId))) as T,
   listSessionAdversariesBySession: async <T>(sessionId: string): Promise<T[]> =>
     (await unwrap(bridge().listSessionAdversariesBySession(sessionId))) as T[],
   listSessionEnvironmentsBySession: async <T>(sessionId: string): Promise<T[]> =>
@@ -93,10 +107,10 @@ export const apiClient = {
     (await unwrap(bridge().importMusicFiles(regionId))) as { canceled: boolean; tracks: T[] },
   create: async <T>(collection: string, data: unknown): Promise<T> =>
     (await unwrap(bridge().create(collection, data))) as T,
-  update: async <T>(collection: string, id: string, patch: unknown): Promise<T> =>
-    (await unwrap(bridge().update(collection, id, patch))) as T,
-  remove: async (collection: string, id: string): Promise<void> => {
-    await unwrap(bridge().remove(collection, id));
+  update: async <T>(collection: string, id: string, patch: unknown, ctx?: SessionContext): Promise<T> =>
+    (await unwrap(bridge().update(collection, id, patch, ctx))) as T,
+  remove: async (collection: string, id: string, ctx?: SessionContext): Promise<void> => {
+    await unwrap(bridge().remove(collection, id, ctx));
   },
   exportData: async () => unwrap(bridge().exportData()),
   importData: async () => unwrap(bridge().importData()),

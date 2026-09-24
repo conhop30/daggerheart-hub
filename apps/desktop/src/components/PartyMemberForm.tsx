@@ -7,13 +7,15 @@ import './forms.css';
 
 interface PartyMemberFormProps {
   campaignId: string;
+  /** The session the change is made in (it applies from there onward). Omit for the Campaign's latest. */
+  sessionId?: string;
   /** Pass an existing PartyMember to edit it; omit to create a new one. */
   initial?: PartyMember | null;
   onSaved: (member: PartyMember) => void;
   onCancel: () => void;
 }
 
-export default function PartyMemberForm({ campaignId, initial, onSaved, onCancel }: PartyMemberFormProps) {
+export default function PartyMemberForm({ campaignId, sessionId, initial, onSaved, onCancel }: PartyMemberFormProps) {
   const isEditing = initial != null;
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -26,9 +28,10 @@ export default function PartyMemberForm({ campaignId, initial, onSaved, onCancel
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const body = { campaignId, name, notes, trackables };
     try {
-      const member = isEditing ? await partyMembersApi.update(initial!.id, body) : await partyMembersApi.create(body);
+      const member = isEditing
+        ? await partyMembersApi.update(initial!.id, { name, notes, trackables }, { sessionId })
+        : await partyMembersApi.create({ campaignId, sessionId, name, notes, trackables });
       onSaved(member);
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the party member.`);

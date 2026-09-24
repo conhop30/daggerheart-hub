@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, type SessionContext } from './client';
 
 // A snapshot of a master Environment at pull-in time, not a live reference —
 // see electron/store.js's comment on buildSessionEnvironment for why.
@@ -13,6 +13,8 @@ export interface SessionEnvironment {
   description: string | null;
   impulses: string[];
   notes: string | null;
+  /** True when this was pulled in (or last changed) in an earlier session than the one being viewed. */
+  carried?: boolean;
 }
 
 export interface CreateSessionEnvironmentRequest {
@@ -32,7 +34,7 @@ export const sessionEnvironmentsApi = {
   list: () => apiClient.list<SessionEnvironment>('sessionEnvironments'),
   listBySession: (sessionId: string) => apiClient.listSessionEnvironmentsBySession<SessionEnvironment>(sessionId),
   create: (body: CreateSessionEnvironmentRequest) => apiClient.create<SessionEnvironment>('sessionEnvironments', body),
-  update: (id: string, body: UpdateSessionEnvironmentRequest) =>
-    apiClient.update<SessionEnvironment>('sessionEnvironments', id, body),
-  remove: (id: string) => apiClient.remove('sessionEnvironments', id),
+  update: (id: string, body: UpdateSessionEnvironmentRequest, ctx: SessionContext) =>
+    apiClient.update<SessionEnvironment>('sessionEnvironments', id, body, ctx),
+  remove: (id: string, ctx: SessionContext) => apiClient.remove('sessionEnvironments', id, ctx),
 };

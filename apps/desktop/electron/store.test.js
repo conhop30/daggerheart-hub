@@ -428,7 +428,7 @@ describe('Session', () => {
     expect(c1Sessions).toHaveLength(1);
   });
 
-  it('remove cascades to delete its SessionAdversaries and SessionEnvironments', async () => {
+  it('removing a session hands what it authored to the next session, and drops it with the last one', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
     const c = await store.createCampaign({ name: 'The Wildwood' });
     const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
@@ -444,7 +444,13 @@ describe('Session', () => {
     expect(store.listSessions().find((s) => s.id === session.id)).toBeUndefined();
     expect(store.listSessionAdversariesBySession(session.id)).toHaveLength(0);
     expect(store.listSessionEnvironmentsBySession(session.id)).toHaveLength(0);
-    expect(store.listSessionAdversariesBySession(otherSession.id)).toHaveLength(1);
+    // Session 2 was already showing session 1's Ogre and Cave (they carry), so
+    // deleting session 1 must not make them vanish from it.
+    expect(store.listSessionAdversariesBySession(otherSession.id)).toHaveLength(2);
+    expect(store.listSessionEnvironmentsBySession(otherSession.id)).toHaveLength(1);
+
+    await store.removeSession(otherSession.id);
+    expect(store.listSessionAdversaries()).toHaveLength(0);
   });
 
   it('remove throws for an unknown id', async () => {
@@ -746,7 +752,7 @@ describe('cloneSession', () => {
     return { c, source };
   }
 
-  it('copies fear, mode, notes, and the whole board into a new session', async () => {
+  it('starts from the source Session Notes and mode, with the rest carried forward', async () => {
     const { c, source } = await setup();
     const copy = await store.cloneSession(source.id);
     expect(copy.id).not.toBe(source.id);
@@ -760,10 +766,14 @@ describe('cloneSession', () => {
     expect(store.listSessionEnvironmentsBySession(copy.id)).toHaveLength(1);
   });
 
-  it('does not copy the loot log', async () => {
+  it('carries the loot log forward rather than copying it', async () => {
     const { source } = await setup();
     const copy = await store.cloneSession(source.id);
-    expect(copy.lootLog).toEqual([]);
+    expect(copy.lootLog).toHaveLength(1);
+    expect(copy.lootLog[0].sessionId).toBe(source.id);
+    // Removing it in the clone hides it there only.
+    const after = await store.removeSessionLoot(copy.id, copy.lootLog[0].id);
+    expect(after.lootLog).toHaveLength(0);
     expect(store.listSessions().find((s) => s.id === source.id).lootLog).toHaveLength(1);
   });
 
@@ -886,5 +896,344 @@ describe('Music', () => {
     await expect(store.createSession({ campaignId: c.id, name: 'Session 1', regionId: 'missing' })).rejects.toThrow(
       'No music region'
     );
+  });
+});
+
+describe('Carrying data across Sessions', () => {
+  async function campaignWithSessions(count = 3) {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const sessions = [];
+    for (let i = 1; i <= count; i++) sessions.push(await store.createSession({ campaignId: c.id, name: `Session ${i}` }));
+    return { c, sessions };
+  }
+  const view = (id) => store.listSessions().find((s) => s.id === id);
+
+  describe('session-level values', () => {
+    it('a new session starts with Fear, Campaign notes, NPC notes and region as the last one left them', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+      await store.updateSession(s1.id, { fear: 6, campaignNotes: 'The king is dead.', npcNotes: 'Marn lies.' });
+      const s2 = await store.createSession({ campaignId: c.id, name: 'Session 2' });
+      expect(s2).toMatchObject({ fear: 6, campaignNotes: 'The king is dead.', npcNotes: 'Marn lies.' });
+    });
+
+    it('a change in session N never edits earlier sessions but flows into later ones', async () => {
+      const { sessions } = await campaignWithSessions();
+      await store.updateSession(sessions[0].id, { fear: 3 });
+      await store.updateSession(sessions[1].id, { fear: 8 });
+      expect(view(sessions[0].id).fear).toBe(3);
+      expect(view(sessions[1].id).fear).toBe(8);
+      expect(view(sessions[2].id).fear).toBe(8);
+    });
+
+    it('a correction to an earlier session reaches later sessions that have not set their own', async () => {
+      const { sessions } = await campaignWithSessions();
+      await store.updateSession(sessions[0].id, { fear: 3 });
+      expect(view(sessions[2].id).fear).toBe(3);
+      await store.updateSession(sessions[0].id, { fear: 5 });
+      expect(view(sessions[2].id).fear).toBe(5);
+      await store.updateSession(sessions[1].id, { fear: 9 });
+      await store.updateSession(sessions[0].id, { fear: 1 });
+      expect(view(sessions[2].id).fear).toBe(9);
+    });
+
+    it('Session Notes and mode belong to one session and never carry', async () => {
+      const { sessions } = await campaignWithSessions(2);
+      await store.updateSession(sessions[0].id, { generalNotes: 'Rained all night.', mode: 'combat' });
+      expect(view(sessions[1].id).generalNotes).toBeNull();
+      expect(view(sessions[1].id).mode).toBe('adventuring');
+    });
+
+    it('a note can be cleared in a later session without touching the earlier one', async () => {
+      const { sessions } = await campaignWithSessions(2);
+      await store.updateSession(sessions[0].id, { campaignNotes: 'Secret.' });
+      await store.updateSession(sessions[1].id, { campaignNotes: '' });
+      expect(view(sessions[0].id).campaignNotes).toBe('Secret.');
+      expect(view(sessions[1].id).campaignNotes).toBe('');
+    });
+
+    it('PC notes carry member by member', async () => {
+      const { sessions } = await campaignWithSessions();
+      await store.updateSession(sessions[0].id, {
+        pcNotes: [
+          { partyMemberId: 'p1', text: 'one' },
+          { partyMemberId: 'p2', text: 'two' },
+        ],
+      });
+      await store.updateSession(sessions[1].id, { pcNotes: [{ partyMemberId: 'p1', text: 'ONE' }] });
+      const texts = (id) => Object.fromEntries(view(id).pcNotes.map((n) => [n.partyMemberId, n.text]));
+      expect(texts(sessions[0].id)).toEqual({ p1: 'one', p2: 'two' });
+      expect(texts(sessions[2].id)).toEqual({ p1: 'ONE', p2: 'two' });
+    });
+  });
+
+  describe('Party members', () => {
+    async function threeSessions(c) {
+      const out = [];
+      for (const n of [1, 2, 3]) out.push(await store.createSession({ campaignId: c.id, name: `Session ${n}` }));
+      return out;
+    }
+
+    it('one added before any session shows in every session', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+      const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+      expect(store.listPartyMembersBySession(s1.id).map((m) => m.id)).toEqual([mira.id]);
+    });
+
+    it('marking HP in session 2 leaves session 1 as it was and carries into session 3', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira', trackables: [{ label: 'HP', current: 0, max: 6 }] });
+      const [s1, s2, s3] = await threeSessions(c);
+      const hp = (sid) => store.listPartyMembersBySession(sid)[0].trackables[0].current;
+
+      await store.updatePartyMember(mira.id, { trackables: [{ label: 'HP', current: 4, max: 6 }] }, { sessionId: s2.id });
+
+      expect(hp(s1.id)).toBe(0);
+      expect(hp(s2.id)).toBe(4);
+      expect(hp(s3.id)).toBe(4);
+      expect(store.listPartyMembersBySession(s3.id)[0].id).toBe(mira.id);
+    });
+
+    it('with no session given, an edit lands on the latest session', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+      const [s1, s2] = await threeSessions(c);
+      await store.updatePartyMember(mira.id, { name: 'Miralynn' });
+      expect(store.listPartyMembersBySession(s1.id)[0].name).toBe('Mira');
+      expect(store.listPartyMembersBySession(s2.id)[0].name).toBe('Mira');
+      expect(store.listPartyMembersByCampaign(c.id)[0].name).toBe('Miralynn');
+    });
+
+    it('removing one in session 2 keeps it in session 1 and drops it from 2 and everything after', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+      const [s1, s2] = await threeSessions(c);
+      await store.removePartyMember(mira.id, { sessionId: s2.id });
+      const s4 = await store.createSession({ campaignId: c.id, name: 'Session 4' });
+      expect(store.listPartyMembersBySession(s1.id)).toHaveLength(1);
+      expect(store.listPartyMembersBySession(s2.id)).toHaveLength(0);
+      expect(store.listPartyMembersBySession(s4.id)).toHaveLength(0);
+    });
+
+    it('removing one from an earlier session also removes it from later sessions', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+      const [s1, s2] = await threeSessions(c);
+      await store.updatePartyMember(mira.id, { notes: 'edited later' }, { sessionId: s2.id });
+      await store.removePartyMember(mira.id, { sessionId: s1.id });
+      expect(store.listPartyMembersBySession(s1.id)).toHaveLength(0);
+      expect(store.listPartyMembersBySession(s2.id)).toHaveLength(0);
+    });
+
+    it('names are still unique inside a Campaign, across what a session can see', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+      const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+      const again = await store.createPartyMember({ campaignId: c.id, sessionId: s1.id, name: 'mira' });
+      expect(again.id).toBe(mira.id);
+      const bram = await store.createPartyMember({ campaignId: c.id, sessionId: s1.id, name: 'Bram' });
+      const renamed = await store.updatePartyMember(bram.id, { name: 'Mira' }, { sessionId: s1.id });
+      expect(renamed.name).toBe('Bram');
+    });
+
+    it('rejects a session that belongs to a different Campaign', async () => {
+      const a = await store.createCampaign({ name: 'A' });
+      const b = await store.createCampaign({ name: 'B' });
+      const sb = await store.createSession({ campaignId: b.id, name: 'Session 1' });
+      await expect(store.createPartyMember({ campaignId: a.id, sessionId: sb.id, name: 'Mira' })).rejects.toThrow(
+        'No session with id'
+      );
+    });
+
+    it('a member created in session 2 does not exist in session 1', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const [s1, s2] = await threeSessions(c);
+      await store.createPartyMember({ campaignId: c.id, sessionId: s2.id, name: 'Late Joiner' });
+      expect(store.listPartyMembersBySession(s1.id)).toHaveLength(0);
+      expect(store.listPartyMembersBySession(s2.id)).toHaveLength(1);
+    });
+  });
+
+  describe('Adversaries and Environments', () => {
+    async function board() {
+      const gs = await store.createGameSet({ name: 'Core' });
+      const ogre = await store.createAdversary({ name: 'Ogre', tier: 1, difficulty: 12, hp: 8, gameSetId: gs.id });
+      const bog = await store.createEnvironment({ name: 'Bog', tier: 1, difficulty: 10, gameSetId: gs.id });
+      const { c, sessions } = await campaignWithSessions();
+      return { ogre, bog, c, sessions };
+    }
+
+    it('a combatant pulled in during session 1 is still on the board in session 2, marked HP and all', async () => {
+      const { ogre, sessions } = await board();
+      const pulled = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
+      await store.updateSessionAdversary(pulled.id, { hpMarked: 3 }, { sessionId: sessions[0].id });
+      const seen = store.listSessionAdversariesBySession(sessions[1].id);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({ id: pulled.id, hpMarked: 3, carried: true });
+    });
+
+    it('a combatant pulled in during session 2 is not on the board of session 1', async () => {
+      const { ogre, sessions } = await board();
+      await store.createSessionAdversary({ sessionId: sessions[1].id, adversaryId: ogre.id });
+      expect(store.listSessionAdversariesBySession(sessions[0].id)).toHaveLength(0);
+      expect(store.listSessionAdversariesBySession(sessions[2].id)).toHaveLength(1);
+    });
+
+    it('damage dealt in session 2 does not rewrite session 1, and session 3 inherits it', async () => {
+      const { ogre, sessions } = await board();
+      const pulled = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
+      await store.updateSessionAdversary(pulled.id, { hpMarked: 5 }, { sessionId: sessions[1].id });
+      const hp = (i) => store.listSessionAdversariesBySession(sessions[i].id)[0].hpMarked;
+      expect([hp(0), hp(1), hp(2)]).toEqual([0, 5, 5]);
+    });
+
+    it('pushing one out in session 2 leaves session 1 alone and removes it from 2 and 3', async () => {
+      const { ogre, bog, sessions } = await board();
+      const pulled = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
+      await store.createSessionEnvironment({ sessionId: sessions[0].id, environmentId: bog.id });
+      await store.removeSessionAdversary(pulled.id, { sessionId: sessions[1].id });
+      expect(store.listSessionAdversariesBySession(sessions[0].id)).toHaveLength(1);
+      expect(store.listSessionAdversariesBySession(sessions[1].id)).toHaveLength(0);
+      expect(store.listSessionAdversariesBySession(sessions[2].id)).toHaveLength(0);
+      expect(store.listSessionEnvironmentsBySession(sessions[2].id)).toHaveLength(1);
+    });
+
+    it('two pulled-in copies of the same Adversary stay independent', async () => {
+      const { ogre, sessions } = await board();
+      const a = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id, label: 'Ogre A' });
+      const b = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id, label: 'Ogre B' });
+      expect(a.id).not.toBe(b.id);
+      await store.removeSessionAdversary(a.id, { sessionId: sessions[1].id });
+      expect(store.listSessionAdversariesBySession(sessions[2].id).map((x) => x.label)).toEqual(['Ogre B']);
+    });
+
+    it('rejects an edit made in a session outside the Campaign', async () => {
+      const { ogre, sessions } = await board();
+      const other = await store.createCampaign({ name: 'Other' });
+      const foreign = await store.createSession({ campaignId: other.id, name: 'Session 1' });
+      const pulled = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
+      await expect(store.updateSessionAdversary(pulled.id, { hpMarked: 1 }, { sessionId: foreign.id })).rejects.toThrow(
+        'No session with id'
+      );
+    });
+
+    it('records written before carrying existed (no lineage, no campaignId) still show in later sessions', async () => {
+      const { c, sessions } = await board();
+      const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+      raw.sessionAdversaries.push({
+        id: 'legacy-1',
+        sessionId: sessions[0].id,
+        adversaryId: 'x',
+        label: 'Old Ogre',
+        name: 'Ogre',
+        hpMarked: 2,
+        conditions: [],
+      });
+      raw.partyMembers.push({ id: 'legacy-pm', campaignId: c.id, name: 'Old Hand', notes: null, trackables: [] });
+      fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify(raw));
+      store.__resetCacheForTests();
+
+      expect(store.listSessionAdversariesBySession(sessions[2].id).map((a) => a.id)).toEqual(['legacy-1']);
+      expect(store.listSessionAdversariesBySession(sessions[0].id)).toHaveLength(1);
+      expect(store.listPartyMembersBySession(sessions[0].id).map((m) => m.id)).toEqual(['legacy-pm']);
+      await store.updateSessionAdversary('legacy-1', { hpMarked: 4 }, { sessionId: sessions[1].id });
+      expect(store.listSessionAdversariesBySession(sessions[0].id)[0].hpMarked).toBe(2);
+      expect(store.listSessionAdversariesBySession(sessions[2].id)[0].hpMarked).toBe(4);
+    });
+  });
+
+  describe('Loot log', () => {
+    const roll = (total) => ({ rolledAt: `t${total}`, rarity: 'COMMON', poolSize: 1, rollTotal: total, results: [] });
+
+    it('loot rolled in session 2 shows in later sessions and not in earlier ones', async () => {
+      const { sessions } = await campaignWithSessions();
+      await store.addSessionLoot(sessions[1].id, roll(5));
+      expect(view(sessions[0].id).lootLog).toHaveLength(0);
+      expect(view(sessions[1].id).lootLog).toHaveLength(1);
+      expect(view(sessions[2].id).lootLog).toHaveLength(1);
+      expect(view(sessions[2].id).lootLog[0].id).toBeTruthy();
+    });
+
+    it('removing an entry in session 2 keeps it in session 1 and hides it from 2 onward', async () => {
+      const { sessions } = await campaignWithSessions();
+      const withEntry = await store.addSessionLoot(sessions[0].id, roll(7));
+      await store.removeSessionLoot(sessions[1].id, withEntry.lootLog[0].id);
+      expect(view(sessions[0].id).lootLog).toHaveLength(1);
+      expect(view(sessions[1].id).lootLog).toHaveLength(0);
+      expect(view(sessions[2].id).lootLog).toHaveLength(0);
+    });
+
+    it('removing an entry rolled in that very session drops it entirely', async () => {
+      const { sessions } = await campaignWithSessions(2);
+      const withEntry = await store.addSessionLoot(sessions[0].id, roll(2));
+      await store.removeSessionLoot(sessions[0].id, withEntry.lootLog[0].id);
+      expect(view(sessions[1].id).lootLog).toHaveLength(0);
+    });
+
+    it('rejects removing an entry the session cannot see', async () => {
+      const { sessions } = await campaignWithSessions(2);
+      const withEntry = await store.addSessionLoot(sessions[1].id, roll(2));
+      await expect(store.removeSessionLoot(sessions[0].id, withEntry.lootLog[0].id)).rejects.toThrow('No loot entry');
+    });
+
+    it('a log that predates entry ids gets ids on load, so old entries can be removed', async () => {
+      const c = await store.createCampaign({ name: 'The Wildwood' });
+      const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+      const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+      raw.sessions[0].lootLog = [roll(9)];
+      fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify(raw));
+      store.__resetCacheForTests();
+      const [entry] = view(s1.id).lootLog;
+      expect(entry.id).toBeTruthy();
+      await store.removeSessionLoot(s1.id, entry.id);
+      expect(view(s1.id).lootLog).toHaveLength(0);
+    });
+  });
+
+  describe('deleting a Session', () => {
+    it('keeps what later sessions were showing: fear, notes, loot, party and board', async () => {
+      const gs = await store.createGameSet({ name: 'Core' });
+      const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+      const { c, sessions } = await campaignWithSessions();
+      await store.updateSession(sessions[1].id, { fear: 9, campaignNotes: 'Set in session 2' });
+      await store.addSessionLoot(sessions[1].id, { rolledAt: 't', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] });
+      const pm = await store.createPartyMember({ campaignId: c.id, sessionId: sessions[1].id, name: 'Late Joiner' });
+      const adv = await store.createSessionAdversary({ sessionId: sessions[1].id, adversaryId: ogre.id });
+
+      await store.removeSession(sessions[1].id);
+
+      const after = view(sessions[2].id);
+      expect(after).toMatchObject({ fear: 9, campaignNotes: 'Set in session 2' });
+      expect(after.lootLog).toHaveLength(1);
+      expect(store.listPartyMembersBySession(sessions[2].id).map((m) => m.id)).toEqual([pm.id]);
+      expect(store.listSessionAdversariesBySession(sessions[2].id).map((a) => a.id)).toEqual([adv.id]);
+      // ...and session 1 still never saw any of it.
+      expect(view(sessions[0].id).fear).toBe(0);
+      expect(store.listPartyMembersBySession(sessions[0].id)).toHaveLength(0);
+    });
+
+    it('a later session that set its own value keeps it', async () => {
+      const { sessions } = await campaignWithSessions();
+      await store.updateSession(sessions[1].id, { fear: 9 });
+      await store.updateSession(sessions[2].id, { fear: 2 });
+      await store.removeSession(sessions[1].id);
+      expect(view(sessions[2].id).fear).toBe(2);
+    });
+
+    it('deleting the Campaign removes every version of everything', async () => {
+      const gs = await store.createGameSet({ name: 'Core' });
+      const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+      const { c, sessions } = await campaignWithSessions();
+      const pm = await store.createPartyMember({ campaignId: c.id, sessionId: sessions[0].id, name: 'Mira' });
+      await store.updatePartyMember(pm.id, { notes: 'v2' }, { sessionId: sessions[1].id });
+      const adv = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
+      await store.removeSessionAdversary(adv.id, { sessionId: sessions[2].id });
+      await store.removeCampaign(c.id);
+      const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+      expect(raw.partyMembers).toEqual([]);
+      expect(raw.sessionAdversaries).toEqual([]);
+      expect(raw.sessions).toEqual([]);
+    });
   });
 });

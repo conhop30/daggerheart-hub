@@ -159,7 +159,10 @@ ipcMain.handle('store:listCardsByDomain', (_event, domainId) => store.listCardsB
 ipcMain.handle('store:listPartyMembersByCampaign', (_event, campaignId) =>
   store.listPartyMembersByCampaign(campaignId)
 );
+ipcMain.handle('store:listPartyMembersBySession', (_event, sessionId) => store.listPartyMembersBySession(sessionId));
 ipcMain.handle('store:listSessionsByCampaign', (_event, campaignId) => store.listSessionsByCampaign(campaignId));
+ipcMain.handle('store:addSessionLoot', (_event, sessionId, entry) => store.addSessionLoot(sessionId, entry));
+ipcMain.handle('store:removeSessionLoot', (_event, sessionId, entryId) => store.removeSessionLoot(sessionId, entryId));
 ipcMain.handle('store:cloneSession', (_event, sourceId, options) => store.cloneSession(sourceId, options));
 ipcMain.handle('store:listSessionAdversariesBySession', (_event, sessionId) =>
   store.listSessionAdversariesBySession(sessionId)
@@ -168,8 +171,11 @@ ipcMain.handle('store:listSessionEnvironmentsBySession', (_event, sessionId) =>
   store.listSessionEnvironmentsBySession(sessionId)
 );
 ipcMain.handle('store:create', (_event, collection, data) => lookup(CREATE, collection)(data));
-ipcMain.handle('store:update', (_event, collection, id, patch) => lookup(UPDATE, collection)(id, patch));
-ipcMain.handle('store:remove', (_event, collection, id) => lookup(REMOVE, collection)(id));
+// `ctx` ({ sessionId }) says which Session an edit or delete is made in - only
+// the carried-forward collections (Party members, pulled-in Adversaries/
+// Environments) look at it; everything else ignores the extra argument.
+ipcMain.handle('store:update', (_event, collection, id, patch, ctx) => lookup(UPDATE, collection)(id, patch, ctx));
+ipcMain.handle('store:remove', (_event, collection, id, ctx) => lookup(REMOVE, collection)(id, ctx));
 
 ipcMain.handle('window:getSize', (event) => BrowserWindow.fromWebContents(event.sender).getSize());
 

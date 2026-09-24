@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, type SessionContext } from './client';
 import type { AttackRange, AttackType } from './adversaries';
 import type { Thresholds } from '../components/ThresholdsInput';
 
@@ -22,6 +22,8 @@ export interface SessionAdversary {
   hpMarked: number;
   stressMarked: number;
   conditions: string[];
+  /** True when this was pulled in (or last changed) in an earlier session than the one being viewed. */
+  carried?: boolean;
 }
 
 export interface CreateSessionAdversaryRequest {
@@ -42,7 +44,7 @@ export const sessionAdversariesApi = {
   list: () => apiClient.list<SessionAdversary>('sessionAdversaries'),
   listBySession: (sessionId: string) => apiClient.listSessionAdversariesBySession<SessionAdversary>(sessionId),
   create: (body: CreateSessionAdversaryRequest) => apiClient.create<SessionAdversary>('sessionAdversaries', body),
-  update: (id: string, body: UpdateSessionAdversaryRequest) =>
-    apiClient.update<SessionAdversary>('sessionAdversaries', id, body),
-  remove: (id: string) => apiClient.remove('sessionAdversaries', id),
+  update: (id: string, body: UpdateSessionAdversaryRequest, ctx: SessionContext) =>
+    apiClient.update<SessionAdversary>('sessionAdversaries', id, body, ctx),
+  remove: (id: string, ctx: SessionContext) => apiClient.remove('sessionAdversaries', id, ctx),
 };

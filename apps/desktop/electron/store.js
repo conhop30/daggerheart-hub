@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
+const carry = require('./carry.js');
 
 // Read lazily (not frozen into a top-level const) so tests can point this
 // at a throwaway directory via DAGGERHEART_STORE_DIR without needing to
@@ -138,6 +139,11 @@ function readStoreFromDisk() {
     if (!Array.isArray(store[key])) store[key] = [];
   }
   ensureDefaultRegion(store);
+  // Loot log entries predate ids; carrying them forward (and removing one
+  // from a later session on) needs each to be addressable.
+  for (const session of store.sessions) {
+    for (const entry of session.lootLog ?? []) if (!entry.id) entry.id = randomUUID();
+  }
   return store;
 }
 
@@ -403,24 +409,32 @@ function updateSubclass(id, patch) {
 // share a scope value — e.g. a Session name only has to be unique within its
 // Campaign, so two Campaigns can each have a "Session 1". Without it, names
 // are unique across the whole collection.
-function makeCollection(key, { buildRecord, validate, scope } = {}) {
+//
+// Two optional hooks for records that aren't stored exactly as they're shown:
+// `mergeExtra(existing, patch, merged)` adjusts the merged record before it's
+// saved (a Session merges its per-member notes rather than replacing them),
+// and `present(store, record)` turns a stored record into what callers see
+// (a Session shows its Fear/notes as carried forward from earlier sessions).
+function makeCollection(key, { buildRecord, validate, scope, mergeExtra, present } = {}) {
   const sameScope = (data) => (r) => !scope || scope(r) === scope(data);
   const findDuplicate = (store, data, ignoreId) =>
     store[key].find((r) => r.id !== ignoreId && sameScope(data)(r) && r.name.toLowerCase() === data.name.toLowerCase());
+  const show = (store, record) => (present ? present(store, record) : record);
 
   function list() {
-    return getCache()[key];
+    const store = getCache();
+    return store[key].map((r) => show(store, r));
   }
 
   function create(data) {
     return mutate((store) => {
       requireName(data);
       const existing = findDuplicate(store, data);
-      if (existing) return existing;
+      if (existing) return show(store, existing);
       if (validate) validate(store, data);
       const record = buildRecord(data);
       store[key].push(record);
-      return record;
+      return show(store, record);
     });
   }
 
@@ -429,10 +443,11 @@ function makeCollection(key, { buildRecord, validate, scope } = {}) {
       const existing = store[key].find((r) => r.id === id);
       if (!existing) throw new Error(`No record with id ${id}`);
       const merged = mergePatch(existing, patch);
+      if (mergeExtra) mergeExtra(existing, patch, merged);
       if (validate) validate(store, merged);
       if (patch.name !== undefined && findDuplicate(store, merged, id)) merged.name = existing.name;
       Object.assign(existing, merged);
-      return existing;
+      return show(store, existing);
     });
   }
 
@@ -691,14 +706,120 @@ const transformations = makeCollection('transformations', {
   }),
 });
 
+// ---- Carry-forward across sessions ----
+// A Campaign's data follows it from session to session (see carry.js for the
+// rules): Party members, pulled-in Adversaries/Environments, Fear, Campaign
+// and NPC notes, per-PC notes, the music region, and the loot log all carry;
+// only a Session's own name, mode, and "Session Notes" stay put. Editing or
+// deleting inside session N reaches N and everything after it, never the
+// sessions before.
+
+const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments'];
+const CARRIED_SESSION_FIELDS = ['fear', 'regionId', 'campaignNotes', 'npcNotes'];
+
+function sessionOrder(store, campaignId) {
+  return store.sessions.filter((s) => s.campaignId === campaignId).map((s) => s.id);
+}
+
+function latestSessionId(store, campaignId) {
+  const order = sessionOrder(store, campaignId);
+  return order.length ? order[order.length - 1] : null;
+}
+
+// Party members carry their campaignId; a session-level record's Campaign is
+// its session's. (Older stores never wrote campaignId on the latter.)
+function campaignIdOfVersion(store, v) {
+  return v.campaignId ?? store.sessions.find((s) => s.id === v.sessionId)?.campaignId ?? null;
+}
+
+function versionsOf(store, key, campaignId) {
+  return store[key].filter((v) => campaignIdOfVersion(store, v) === campaignId);
+}
+
+// Which session an edit/delete is made "in": the one the caller says they're
+// viewing, else the Campaign's latest (or the baseline when it has none yet).
+function editSession(store, campaignId, ctx) {
+  const order = sessionOrder(store, campaignId);
+  const requested = ctx && ctx.sessionId ? ctx.sessionId : null;
+  if (requested === null) return { order, sessionId: order.length ? order[order.length - 1] : null };
+  if (!order.includes(requested)) throw new Error(`No session with id ${requested} in that campaign`);
+  return { order, sessionId: requested };
+}
+
+const lineageOfVersion = (v) => v.lineageId ?? v.id;
+
+function makeVersionedCollection(key, { context, build, uniqueByName = false }) {
+  const viewsAsOf = (store, campaignId, sessionId) =>
+    carry.resolveVersions(versionsOf(store, key, campaignId), sessionOrder(store, campaignId), sessionId);
+
+  function list() {
+    const store = getCache();
+    return store.campaigns.flatMap((c) => viewsAsOf(store, c.id, latestSessionId(store, c.id)));
+  }
+  function listByCampaign(campaignId) {
+    const store = getCache();
+    return viewsAsOf(store, campaignId, latestSessionId(store, campaignId));
+  }
+  function listBySession(sessionId) {
+    const store = getCache();
+    const session = store.sessions.find((s) => s.id === sessionId);
+    return session ? viewsAsOf(store, session.campaignId, sessionId) : [];
+  }
+
+  function create(data) {
+    return mutate((store) => {
+      if (uniqueByName) requireName(data);
+      const { campaignId, sessionId } = context(store, data);
+      if (uniqueByName) {
+        const taken = viewsAsOf(store, campaignId, sessionId).find((v) => v.name.toLowerCase() === data.name.toLowerCase());
+        if (taken) return taken;
+      }
+      const record = build(store, data, { campaignId, sessionId });
+      store[key].push(record);
+      return { ...record, carried: false };
+    });
+  }
+
+  function update(id, patch, ctx) {
+    return mutate((store) => {
+      const first = store[key].find((v) => lineageOfVersion(v) === id);
+      if (!first) throw new Error(`No record with id ${id}`);
+      const campaignId = campaignIdOfVersion(store, first);
+      const { order, sessionId } = editSession(store, campaignId, ctx);
+      const safePatch = { ...patch };
+      // Same rule as makeCollection: renaming onto another member's name is skipped, not rejected.
+      if (uniqueByName && safePatch.name !== undefined) {
+        const clash = viewsAsOf(store, campaignId, sessionId).find(
+          (v) => v.id !== id && v.name.toLowerCase() === String(safePatch.name).toLowerCase()
+        );
+        if (clash) delete safePatch.name;
+      }
+      carry.editVersion(store[key], order, id, sessionId, safePatch, randomUUID);
+      return viewsAsOf(store, campaignId, sessionId).find((v) => v.id === id);
+    });
+  }
+
+  function remove(id, ctx) {
+    return mutate((store) => {
+      const first = store[key].find((v) => lineageOfVersion(v) === id);
+      if (!first) throw new Error(`No record with id ${id}`);
+      const campaignId = campaignIdOfVersion(store, first);
+      const { order, sessionId } = editSession(store, campaignId, ctx);
+      store[key] = carry.removeVersions(store[key], order, id, sessionId, randomUUID);
+    });
+  }
+
+  return { list, listByCampaign, listBySession, create, update, remove };
+}
+
 // ---- Campaigns ----
 // The container for the Session Builder feature: a standing Party (the
-// PartyMember roster below) and, later, the Sessions run against it.
-// Unlike most collections, deleting a Campaign cascades to its children —
-// they have no other reachable gallery/list the way e.g. Card does off of
-// Domain, so an orphaned PartyMember or Session would be permanently stuck
-// with no UI path to it. removeSession cascades the same way to that
-// Session's own SessionAdversaries/SessionEnvironments.
+// PartyMember roster below) and the Sessions run against it. Unlike most
+// collections, deleting a Campaign cascades to its children — they have no
+// other reachable gallery/list the way e.g. Card does off of Domain, so an
+// orphaned PartyMember or Session would be permanently stuck with no UI path
+// to it. removeSession moves what it authored to the next session instead
+// (see below).
 
 // The party's level, shown at a glance on the Campaign banner. Daggerheart
 // characters run level 1-10, so clamp into that range (same normalize-then-
@@ -725,53 +846,59 @@ function removeCampaign(id) {
     const index = store.campaigns.findIndex((c) => c.id === id);
     if (index === -1) throw new Error(`No campaign with id ${id}`);
     store.campaigns.splice(index, 1);
-    store.partyMembers = store.partyMembers.filter((p) => p.campaignId !== id);
     const sessionIds = new Set(store.sessions.filter((s) => s.campaignId === id).map((s) => s.id));
+    for (const key of VERSIONED) {
+      store[key] = store[key].filter((v) => v.campaignId !== id && !sessionIds.has(v.sessionId));
+    }
     store.sessions = store.sessions.filter((s) => s.campaignId !== id);
-    store.sessionAdversaries = store.sessionAdversaries.filter((sa) => !sessionIds.has(sa.sessionId));
-    store.sessionEnvironments = store.sessionEnvironments.filter((se) => !sessionIds.has(se.sessionId));
   });
 }
 
 // ---- Party Members ----
-// A standing roster per Campaign, reused across every Session run against
-// it. Deliberately lightweight: name + notes plus a fully freeform
-// trackables list (label/current/max) rather than a fixed HP/Stress/Hope
-// schema, so a table can track whatever it wants without the store caring
-// what "HP" means.
+// A standing roster per Campaign, carried across its Sessions. Deliberately
+// lightweight: name + notes plus a fully freeform trackables list (label/
+// current/max) rather than a fixed HP/Stress/Hope schema, so a table can
+// track whatever it wants without the store caring what "HP" means. Marking
+// HP in session 3 shows in session 3 onward, not in sessions 1-2.
 //
-// Name uniqueness is scoped to the Campaign (see makeCollection's `scope`),
-// so two Campaigns can each have a same-named PC.
+// Name uniqueness is scoped to the Campaign (two Campaigns can each have a
+// same-named PC). Called with no session, edits land on the Campaign's latest
+// session (or the baseline, before any session exists).
 
-function validatePartyMember(store, data) {
-  if (!store.campaigns.some((c) => c.id === data.campaignId)) {
-    throw new Error(`No campaign with id ${data.campaignId}`);
-  }
-}
-
-const partyMembers = makeCollection('partyMembers', {
-  validate: validatePartyMember,
-  scope: (r) => r.campaignId,
-  buildRecord: (data) => ({
+const partyMembers = makeVersionedCollection('partyMembers', {
+  uniqueByName: true,
+  context(store, data) {
+    if (!store.campaigns.some((c) => c.id === data.campaignId)) {
+      throw new Error(`No campaign with id ${data.campaignId}`);
+    }
+    const { sessionId } = editSession(store, data.campaignId, { sessionId: data.sessionId });
+    return { campaignId: data.campaignId, sessionId };
+  },
+  build: (_store, data, { campaignId, sessionId }) => ({
     id: randomUUID(),
+    campaignId,
+    sessionId,
     name: data.name,
-    campaignId: data.campaignId,
     notes: data.notes ?? null,
     trackables: data.trackables ?? [],
   }),
 });
 
-function listPartyMembersByCampaign(campaignId) {
-  return getCache().partyMembers.filter((p) => p.campaignId === campaignId);
-}
+const listPartyMembersByCampaign = partyMembers.listByCampaign;
+const listPartyMembersBySession = partyMembers.listBySession;
 
 // ---- Sessions ----
-// A persistent, resumable run of a Campaign: Fear (0-12), a combat/
-// adventuring mode, notes, and a loot log. Built with makeCollection like
-// Campaign itself — a Session genuinely has a user-given name ("The Ambush
-// at Dawn") and idempotent-by-name create is an acceptable, already-
+// A persistent, resumable run of a Campaign: a combat/adventuring mode, a
+// "Session Notes" scratchpad, and everything that carries forward (Fear,
+// Campaign/NPC/PC notes, music region, loot log). Built with makeCollection
+// like Campaign itself — a Session genuinely has a user-given name ("The
+// Ambush at Dawn") and idempotent-by-name create is an acceptable, already-
 // familiar behavior here, scoped to the Campaign so two Campaigns can each
 // have a "Session 1".
+//
+// A carried field is stored on a session only when it was set *in* that
+// session (`hasOwnProperty`); every read resolves the rest from earlier
+// sessions — see presentSession.
 
 const SESSION_MODES = ['adventuring', 'combat'];
 
@@ -796,166 +923,194 @@ function validateSession(store, data) {
   }
 }
 
+// What callers see of a stored session: its own fields plus the carried ones
+// resolved from this session back through earlier ones.
+function presentSession(store, session) {
+  const inCampaign = store.sessions.filter((s) => s.campaignId === session.campaignId);
+  const index = inCampaign.findIndex((s) => s.id === session.id);
+  const { lootRemoved: _removed, ...own } = session;
+  return {
+    ...own,
+    fear: carry.resolveScalar(inCampaign, index, 'fear', 0),
+    regionId: carry.resolveScalar(inCampaign, index, 'regionId', null),
+    campaignNotes: carry.resolveScalar(inCampaign, index, 'campaignNotes', null),
+    npcNotes: carry.resolveScalar(inCampaign, index, 'npcNotes', null),
+    pcNotes: carry.resolvePcNotes(inCampaign, index),
+    lootLog: carry.resolveLootLog(inCampaign, index),
+  };
+}
+
+// A PC-notes patch names only the members whose notes changed; the rest keep
+// whatever they carry from earlier sessions.
+function mergePcNotes(existing, incoming) {
+  const merged = existing.filter((n) => !incoming.some((i) => i.partyMemberId === n.partyMemberId));
+  return [...merged, ...incoming];
+}
+
 const sessions = makeCollection('sessions', {
   validate: validateSession,
   scope: (r) => r.campaignId,
-  buildRecord: (data) => ({
-    id: randomUUID(),
-    campaignId: data.campaignId,
-    name: data.name,
-    fear: data.fear ?? 0,
-    mode: data.mode ?? 'adventuring',
-    regionId: data.regionId ?? null,
-    generalNotes: data.generalNotes ?? null,
-    npcNotes: data.npcNotes ?? null,
-    pcNotes: data.pcNotes ?? [],
-    lootLog: data.lootLog ?? [],
-  }),
+  present: presentSession,
+  mergeExtra(existing, patch, merged) {
+    merged.pcNotes = patch.pcNotes !== undefined ? mergePcNotes(existing.pcNotes ?? [], patch.pcNotes) : (existing.pcNotes ?? []);
+    // The loot log has its own add/remove calls (addSessionLoot/removeSessionLoot).
+    merged.lootLog = existing.lootLog ?? [];
+    merged.lootRemoved = existing.lootRemoved ?? [];
+  },
+  buildRecord: (data) => {
+    const record = {
+      id: randomUUID(),
+      campaignId: data.campaignId,
+      name: data.name,
+      mode: data.mode ?? 'adventuring',
+      generalNotes: data.generalNotes ?? null,
+      pcNotes: data.pcNotes ?? [],
+      lootLog: (data.lootLog ?? []).map((e) => ({ ...e, id: e.id ?? randomUUID() })),
+      lootRemoved: [],
+    };
+    for (const field of CARRIED_SESSION_FIELDS) if (data[field] !== undefined) record[field] = data[field];
+    return record;
+  },
 });
 
+function listSessionsByCampaign(campaignId) {
+  const store = getCache();
+  return store.sessions.filter((s) => s.campaignId === campaignId).map((s) => presentSession(store, s));
+}
+
+// Rolled loot joins the log from this session onward; removing an entry hides
+// it from this session onward (an entry rolled in this very session is simply
+// dropped) — sessions before it are never touched.
+function addSessionLoot(sessionId, entry) {
+  return mutate((store) => {
+    const session = store.sessions.find((s) => s.id === sessionId);
+    if (!session) throw new Error(`No session with id ${sessionId}`);
+    session.lootLog = [...(session.lootLog ?? []), { ...entry, id: randomUUID() }];
+    return presentSession(store, session);
+  });
+}
+
+function removeSessionLoot(sessionId, entryId) {
+  return mutate((store) => {
+    const session = store.sessions.find((s) => s.id === sessionId);
+    if (!session) throw new Error(`No session with id ${sessionId}`);
+    if (!presentSession(store, session).lootLog.some((e) => e.id === entryId)) {
+      throw new Error(`No loot entry with id ${entryId}`);
+    }
+    const own = (session.lootLog ?? []).findIndex((e) => e.id === entryId);
+    if (own >= 0) session.lootLog.splice(own, 1);
+    else session.lootRemoved = [...(session.lootRemoved ?? []), entryId];
+    return presentSession(store, session);
+  });
+}
+
+// Deleting a Session must not change what the *later* ones show, so anything
+// it authored (versions, carried fields, notes, loot) moves to the session
+// right after it — unless that session already set its own. With no later
+// session it just goes away.
 function removeSession(id) {
   return mutate((store) => {
     const index = store.sessions.findIndex((s) => s.id === id);
     if (index === -1) throw new Error(`No session with id ${id}`);
-    store.sessions.splice(index, 1);
-    store.sessionAdversaries = store.sessionAdversaries.filter((sa) => sa.sessionId !== id);
-    store.sessionEnvironments = store.sessionEnvironments.filter((se) => se.sessionId !== id);
-  });
-}
+    const session = store.sessions[index];
+    const order = sessionOrder(store, session.campaignId);
+    const next = store.sessions.find((s) => s.id === order[order.indexOf(id) + 1]);
 
-function listSessionsByCampaign(campaignId) {
-  return getCache().sessions.filter((s) => s.campaignId === campaignId);
+    for (const key of VERSIONED) store[key] = carry.rehomeVersions(store[key], order, id);
+
+    if (next) {
+      const has = (s, field) => Object.prototype.hasOwnProperty.call(s, field);
+      for (const field of CARRIED_SESSION_FIELDS) {
+        if (has(session, field) && !has(next, field)) next[field] = session[field];
+      }
+      next.pcNotes = mergePcNotes(session.pcNotes ?? [], next.pcNotes ?? []);
+      next.lootLog = [...(session.lootLog ?? []), ...(next.lootLog ?? [])];
+      next.lootRemoved = [...new Set([...(session.lootRemoved ?? []), ...(next.lootRemoved ?? [])])];
+    }
+    store.sessions.splice(index, 1);
+  });
 }
 
 // ---- Session Adversaries / Session Environments ----
-// Deliberately NOT built with makeCollection. Pulling the same Adversary
-// into a session twice (two Ogres) must create two independent records —
-// makeCollection's idempotent-by-name create would collapse the second
-// pull-in into the first instead of inserting a new one — and there's no
-// user-supplied "name" to key that on anyway, since name is snapshotted
-// from the master record. Every create here just inserts, the same
-// reasoning as GameSet.
+// Versioned (see carry.js), not built with makeCollection. Pulling the same
+// Adversary into a session twice (two Ogres) must create two independent
+// items — idempotent-by-name create would collapse the second pull-in into
+// the first — and there's no user-supplied "name" to key that on anyway,
+// since name is snapshotted from the master record. So every create just
+// inserts, the same reasoning as GameSet.
 //
 // These are snapshots, not live references: the master Adversary/
-// Environment is only ever looked up at create time (inside the
-// buildX functions below), so editing or even deleting the master later
-// can never disturb a session already in progress. Daggerheart tracks
-// HP/Stress as *marked boxes* during play, not a countdown, hence
-// hpMarked/stressMarked starting at 0 against a snapshotted hpMax/stressMax.
+// Environment is only ever looked up at create time (inside the build
+// functions below), so editing or even deleting the master later can never
+// disturb a session already in progress. Daggerheart tracks HP/Stress as
+// *marked boxes* during play, not a countdown, hence hpMarked/stressMarked
+// starting at 0 against a snapshotted hpMax/stressMax. A pulled-in combatant
+// stays on the board in later sessions (with whatever was marked) until
+// someone pushes it out from some session on.
 
-function buildSessionAdversary(store, data) {
-  const adversary = store.adversaries.find((a) => a.id === data.adversaryId);
-  if (!adversary) throw new Error(`No adversary with id ${data.adversaryId}`);
-  return {
-    id: randomUUID(),
-    sessionId: data.sessionId,
-    adversaryId: data.adversaryId,
-    label: data.label && data.label.trim() ? data.label.trim() : adversary.name,
-    name: adversary.name,
-    tier: adversary.tier,
-    difficulty: adversary.difficulty,
-    thresholds: adversary.thresholds,
-    hpMax: adversary.hp,
-    stressMax: adversary.stress,
-    attackModifier: adversary.attackModifier,
-    attackDescription: adversary.attackDescription,
-    attackRange: adversary.attackRange,
-    attackType: adversary.attackType,
-    hpMarked: 0,
-    stressMarked: 0,
-    conditions: [],
-  };
+function sessionContext(store, data) {
+  const session = store.sessions.find((s) => s.id === data.sessionId);
+  if (!session) throw new Error(`No session with id ${data.sessionId}`);
+  return { campaignId: session.campaignId, sessionId: session.id };
 }
 
-function listSessionAdversaries() {
-  return getCache().sessionAdversaries;
-}
-function listSessionAdversariesBySession(sessionId) {
-  return getCache().sessionAdversaries.filter((sa) => sa.sessionId === sessionId);
-}
-function createSessionAdversary(data) {
-  return mutate((store) => {
-    if (!store.sessions.some((s) => s.id === data.sessionId)) {
-      throw new Error(`No session with id ${data.sessionId}`);
-    }
-    const record = buildSessionAdversary(store, data);
-    store.sessionAdversaries.push(record);
-    return record;
-  });
-}
-function updateSessionAdversary(id, patch) {
-  return mutate((store) => {
-    const existing = store.sessionAdversaries.find((r) => r.id === id);
-    if (!existing) throw new Error(`No record with id ${id}`);
-    Object.assign(existing, mergePatch(existing, patch));
-    return existing;
-  });
-}
-function removeSessionAdversary(id) {
-  return mutate((store) => {
-    const index = store.sessionAdversaries.findIndex((r) => r.id === id);
-    if (index === -1) throw new Error(`No record with id ${id}`);
-    store.sessionAdversaries.splice(index, 1);
-  });
-}
+const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
+  context: sessionContext,
+  build(store, data, { campaignId, sessionId }) {
+    const adversary = store.adversaries.find((a) => a.id === data.adversaryId);
+    if (!adversary) throw new Error(`No adversary with id ${data.adversaryId}`);
+    return {
+      id: randomUUID(),
+      campaignId,
+      sessionId,
+      adversaryId: data.adversaryId,
+      label: data.label && data.label.trim() ? data.label.trim() : adversary.name,
+      name: adversary.name,
+      tier: adversary.tier,
+      difficulty: adversary.difficulty,
+      thresholds: adversary.thresholds,
+      hpMax: adversary.hp,
+      stressMax: adversary.stress,
+      attackModifier: adversary.attackModifier,
+      attackDescription: adversary.attackDescription,
+      attackRange: adversary.attackRange,
+      attackType: adversary.attackType,
+      hpMarked: 0,
+      stressMarked: 0,
+      conditions: [],
+    };
+  },
+});
 
-function buildSessionEnvironment(store, data) {
-  const environment = store.environments.find((e) => e.id === data.environmentId);
-  if (!environment) throw new Error(`No environment with id ${data.environmentId}`);
-  return {
-    id: randomUUID(),
-    sessionId: data.sessionId,
-    environmentId: data.environmentId,
-    label: data.label && data.label.trim() ? data.label.trim() : environment.name,
-    name: environment.name,
-    tier: environment.tier,
-    difficulty: environment.difficulty,
-    description: environment.description,
-    impulses: environment.impulses,
-    notes: data.notes ?? null,
-  };
-}
+const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
+  context: sessionContext,
+  build(store, data, { campaignId, sessionId }) {
+    const environment = store.environments.find((e) => e.id === data.environmentId);
+    if (!environment) throw new Error(`No environment with id ${data.environmentId}`);
+    return {
+      id: randomUUID(),
+      campaignId,
+      sessionId,
+      environmentId: data.environmentId,
+      label: data.label && data.label.trim() ? data.label.trim() : environment.name,
+      name: environment.name,
+      tier: environment.tier,
+      difficulty: environment.difficulty,
+      description: environment.description,
+      impulses: environment.impulses,
+      notes: data.notes ?? null,
+    };
+  },
+});
 
-function listSessionEnvironments() {
-  return getCache().sessionEnvironments;
-}
-function listSessionEnvironmentsBySession(sessionId) {
-  return getCache().sessionEnvironments.filter((se) => se.sessionId === sessionId);
-}
-function createSessionEnvironment(data) {
-  return mutate((store) => {
-    if (!store.sessions.some((s) => s.id === data.sessionId)) {
-      throw new Error(`No session with id ${data.sessionId}`);
-    }
-    const record = buildSessionEnvironment(store, data);
-    store.sessionEnvironments.push(record);
-    return record;
-  });
-}
-function updateSessionEnvironment(id, patch) {
-  return mutate((store) => {
-    const existing = store.sessionEnvironments.find((r) => r.id === id);
-    if (!existing) throw new Error(`No record with id ${id}`);
-    Object.assign(existing, mergePatch(existing, patch));
-    return existing;
-  });
-}
-function removeSessionEnvironment(id) {
-  return mutate((store) => {
-    const index = store.sessionEnvironments.findIndex((r) => r.id === id);
-    if (index === -1) throw new Error(`No record with id ${id}`);
-    store.sessionEnvironments.splice(index, 1);
-  });
-}
-
-// ---- Cloning a Session ----
-// "Clone most recent session" for the next night's game: copies the whole
-// board as it stood — Fear, mode, notes, and every pulled-in Adversary/
-// Environment with its marked HP/Stress and conditions — into a new
-// independent Session. The loot log is deliberately NOT copied: it's a
-// record of what was rolled *in that session*, not state to carry forward.
-// Everything is deep-copied with fresh ids, so editing or deleting either
-// session afterward never touches the other.
+// ---- Starting the next Session ----
+// "New Session" is just createSession: everything that carries is inherited
+// automatically, so it starts with the Party, the board, Fear, and notes as
+// the previous session left them, and a blank "Session Notes".
+//
+// "Clone Most Recent" additionally copies that session's Session Notes and
+// mode — the one-off state a plain new session leaves blank. It always lands
+// at the end of the timeline, so it carries forward from the latest session.
 
 function nextSessionName(name, taken) {
   const numbered = name.match(/^(.*?)(\d+)\s*$/);
@@ -976,19 +1131,17 @@ function cloneSession(sourceId, { name } = {}) {
     if (!source) throw new Error(`No session with id ${sourceId}`);
     const taken = new Set(store.sessions.filter((s) => s.campaignId === source.campaignId).map((s) => s.name.toLowerCase()));
     const copy = {
-      ...structuredClone(source),
       id: randomUUID(),
+      campaignId: source.campaignId,
       name: name && name.trim() ? name.trim() : nextSessionName(source.name, taken),
+      mode: source.mode,
+      generalNotes: source.generalNotes ?? null,
+      pcNotes: [],
       lootLog: [],
+      lootRemoved: [],
     };
     store.sessions.push(copy);
-    const cloneChildren = (list) =>
-      list
-        .filter((r) => r.sessionId === sourceId)
-        .map((r) => ({ ...structuredClone(r), id: randomUUID(), sessionId: copy.id }));
-    store.sessionAdversaries.push(...cloneChildren(store.sessionAdversaries));
-    store.sessionEnvironments.push(...cloneChildren(store.sessionEnvironments));
-    return copy;
+    return presentSession(store, copy);
   });
 }
 
@@ -1226,6 +1379,7 @@ module.exports = {
   updatePartyMember: partyMembers.update,
   removePartyMember: partyMembers.remove,
   listPartyMembersByCampaign,
+  listPartyMembersBySession,
   listLootTables: lootTables.list,
   createLootTable: lootTables.create,
   updateLootTable: lootTables.update,
@@ -1239,17 +1393,19 @@ module.exports = {
   updateSession: sessions.update,
   removeSession,
   listSessionsByCampaign,
+  addSessionLoot,
+  removeSessionLoot,
   cloneSession,
-  listSessionAdversaries,
-  createSessionAdversary,
-  updateSessionAdversary,
-  removeSessionAdversary,
-  listSessionAdversariesBySession,
-  listSessionEnvironments,
-  createSessionEnvironment,
-  updateSessionEnvironment,
-  removeSessionEnvironment,
-  listSessionEnvironmentsBySession,
+  listSessionAdversaries: sessionAdversaries.list,
+  createSessionAdversary: sessionAdversaries.create,
+  updateSessionAdversary: sessionAdversaries.update,
+  removeSessionAdversary: sessionAdversaries.remove,
+  listSessionAdversariesBySession: sessionAdversaries.listBySession,
+  listSessionEnvironments: sessionEnvironments.list,
+  createSessionEnvironment: sessionEnvironments.create,
+  updateSessionEnvironment: sessionEnvironments.update,
+  removeSessionEnvironment: sessionEnvironments.remove,
+  listSessionEnvironmentsBySession: sessionEnvironments.listBySession,
   listMusicRegions,
   createMusicRegion: musicRegions.create,
   updateMusicRegion,
