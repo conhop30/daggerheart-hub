@@ -141,7 +141,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   return (
     <div className="home">
       <header className="home__header">
-        <h1 className="home__title">Daggerheart Homebrew Hub</h1>
+        <h1 className="home__title">Daggerheart Brewery</h1>
         <p className="home__subtitle">Build your own Classes, Domains, Adversaries, and more.</p>
         <div className="home__backup">
           <button type="button" className="home__backup-button" onClick={handleExport} disabled={backupBusy}>

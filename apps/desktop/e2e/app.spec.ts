@@ -49,7 +49,7 @@ test.describe('Electron app', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept()); // auto-accept window.confirm from delete buttons
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   });
 
   test.afterEach(async () => {
@@ -212,7 +212,7 @@ test.describe('Electron app', () => {
     await expect(win.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await expect(win.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 
@@ -244,7 +244,7 @@ test.describe('Plain browser tab (no Electron)', () => {
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
     await page.goto('http://localhost:5183');
-    await page.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await page.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
 
     const rootHtml = await page.evaluate(() => document.getElementById('root')?.innerHTML ?? '');
     expect(rootHtml.length).toBeGreaterThan(50);

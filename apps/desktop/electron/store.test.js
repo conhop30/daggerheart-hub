@@ -603,11 +603,11 @@ describe('Export / Import', () => {
   });
 
   it('rejects a non-object payload', async () => {
-    await expect(store.importSnapshot(null)).rejects.toThrow('not a valid Daggerheart Hub export');
+    await expect(store.importSnapshot(null)).rejects.toThrow('not a valid Daggerheart Brewery export');
   });
 
   it('rejects a payload whose collection is not an array', async () => {
-    await expect(store.importSnapshot({ domains: 'nope' })).rejects.toThrow('not a valid Daggerheart Hub export');
+    await expect(store.importSnapshot({ domains: 'nope' })).rejects.toThrow('not a valid Daggerheart Brewery export');
   });
 
   it('upserts by id: an existing id is overwritten, a new id is added', async () => {

@@ -98,7 +98,7 @@ export default function SubclassForm({
           <option value="">Not yet chosen</option>
           {SPELLCAST_TRAITS.map((trait) => (
             <option key={trait} value={trait}>
-              {trait === 'NONE' ? 'None (genuinely has no spellcast trait)' : trait}
+              {trait === 'NONE' ? 'None (actually has no spellcast trait)' : trait}
             </option>
           ))}
         </select>

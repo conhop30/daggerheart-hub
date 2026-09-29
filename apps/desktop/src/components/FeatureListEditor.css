@@ -12,12 +12,18 @@
 .feature-editor__row {
   display: grid;
   grid-template-columns: auto 1fr 2fr auto;
-  align-items: center;
+  align-items: start;
   gap: var(--space-1);
   margin-bottom: var(--space-1);
+  padding-top: 2px;
   border-top: 2px solid transparent;
   border-bottom: 2px solid transparent;
   transition: border-color 150ms var(--ease);
+}
+
+.feature-editor__row .drag-handle,
+.feature-editor__row .feature-editor__remove {
+  margin-top: 0.35rem;
 }
 
 .feature-editor__row--single {
@@ -50,13 +56,43 @@
   opacity: 0.4;
 }
 
-.feature-editor__row input {
-  background: var(--void);
-  border: 1px solid var(--hairline);
+/* "Official" book-page look: no boxed field, just text sitting on the page.
+   A hairline only appears under the row on hover/focus, as an editability
+   hint rather than a permanent form-control border. Selectors are qualified
+   with the .feature-editor wrapper (not just .feature-editor__row) so this
+   reliably outranks forms.css's ".create-form textarea" — same specificity
+   otherwise, so which one wins would depend on CSS import order. */
+.feature-editor .feature-editor__row input,
+.feature-editor .feature-editor__row textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
   color: var(--ink);
-  padding: 0.4rem 0.55rem;
+  padding: 0.4rem 0.15rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
+  line-height: 1.45;
+  transition: border-color 150ms var(--ease);
+}
+
+.feature-editor .feature-editor__row input:hover,
+.feature-editor .feature-editor__row textarea:hover {
+  border-bottom-color: var(--hairline);
+}
+
+.feature-editor .feature-editor__row input:focus,
+.feature-editor .feature-editor__row input:focus-visible,
+.feature-editor .feature-editor__row textarea:focus,
+.feature-editor .feature-editor__row textarea:focus-visible {
+  outline: none;
+  border-bottom-color: var(--hope);
+}
+
+.feature-editor .feature-editor__row textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 1.9rem;
+  font-family: var(--font-body);
 }
 
 .feature-editor__remove {

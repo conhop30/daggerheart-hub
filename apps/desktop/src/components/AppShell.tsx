@@ -48,7 +48,7 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
     <div className="app-shell">
       <nav className="app-shell__bar">
         <button type="button" className="app-shell__brand" onClick={() => onNavigate('home')}>
-          Daggerheart Hub
+          Daggerheart Brewery
         </button>
         <div className="app-shell__nav">
           {NAV_LINKS.map((link) => (
@@ -79,15 +79,19 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
   );
 }
 
+// A real gear/cog — the previous glyph was straight sun-rays around a
+// circle, which read as a dark-mode toggle rather than Settings.
 function SettingsGlyph() {
   return (
     <svg className="app-shell__settings-glyph" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
       <path
-        d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.7 6.3l-1.7 1.7M8 16l-1.7 1.7M17.7 17.7L16 16M8 8 6.3 6.3"
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+        fill="none"
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.4"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

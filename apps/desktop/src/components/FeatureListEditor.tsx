@@ -1,4 +1,5 @@
 import type { Feature } from '../api/heroClasses';
+import AutoGrowTextarea from './AutoGrowTextarea';
 import { useDragReorder } from '../lib/useDragReorder';
 import './FeatureListEditor.css';
 
@@ -41,8 +42,7 @@ export default function FeatureListEditor({ label, features, onChange }: Feature
             value={feature.name}
             onChange={(e) => update(index, 'name', e.target.value)}
           />
-          <input
-            type="text"
+          <AutoGrowTextarea
             placeholder="Description"
             value={feature.description ?? ''}
             onChange={(e) => update(index, 'description', e.target.value)}

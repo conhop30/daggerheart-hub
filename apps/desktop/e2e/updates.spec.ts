@@ -51,7 +51,7 @@ test.describe('Update check (notify-only fallback)', () => {
     // A per-test profile dir keeps localStorage (the dismissed-version / opt-out prefs) from leaking between tests.
     app = await electron.launch({ args: [path.resolve('.'), `--user-data-dir=${path.join(tempDir, 'profile')}`], env });
     win = await app.firstWindow();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   }
 
   test('shows a banner when a newer release exists, and dismissing it sticks for that version', async () => {
@@ -65,7 +65,7 @@ test.describe('Update check (notify-only fallback)', () => {
     await expect(banner).toHaveCount(0);
 
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub');
+    await win.waitForSelector('text=Daggerheart Brewery');
     await win.waitForTimeout(1500); // long enough for the launch check to have finished
     await expect(win.locator('.update-banner')).toHaveCount(0);
   });
@@ -106,7 +106,7 @@ test.describe('Update check (notify-only fallback)', () => {
     await win.click('.app-shell__settings');
     await win.uncheck('text=Check for updates when the app starts');
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub');
+    await win.waitForSelector('text=Daggerheart Brewery');
     await win.waitForTimeout(1500);
     await expect(win.locator('.update-banner')).toHaveCount(0);
   });
@@ -157,7 +157,7 @@ test.describe('Update flow (asks before updating)', () => {
     delete env.ELECTRON_RUN_AS_NODE;
     app = await electron.launch({ args: [path.resolve('.'), `--user-data-dir=${path.join(tempDir, 'profile')}`], env });
     win = await app.firstWindow();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   }
 
   const installCalled = () =>
@@ -189,7 +189,7 @@ test.describe('Update flow (asks before updating)', () => {
     await expect(win.locator('.update-banner')).toHaveCount(0);
 
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub');
+    await win.waitForSelector('text=Daggerheart Brewery');
     await win.waitForTimeout(1500);
     await expect(win.locator('.update-banner')).toHaveCount(0); // not nagged again for the same version
     expect(await installCalled()).toBe(false);

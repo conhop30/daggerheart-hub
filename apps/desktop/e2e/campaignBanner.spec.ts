@@ -18,7 +18,7 @@ test.describe('Campaign banner and carrying a session forward', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
   });
 

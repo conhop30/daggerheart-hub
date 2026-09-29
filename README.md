@@ -1,4 +1,4 @@
-# Daggerheart Homebrew Hub
+# Daggerheart Brewery
 
 A local-first Electron desktop app for authoring and running homebrew
 content for **Daggerheart**, Darrington Press's tabletop RPG. It covers both

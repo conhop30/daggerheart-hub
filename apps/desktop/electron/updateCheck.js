@@ -52,7 +52,7 @@ async function checkForUpdate({ currentVersion, fetchImpl = fetch, url = DEFAULT
     let res;
     try {
       res = await fetchImpl(url, {
-        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'daggerheart-hub-update-check' },
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'daggerheart-brewery-update-check' },
         redirect: 'manual',
         signal: controller.signal,
       });

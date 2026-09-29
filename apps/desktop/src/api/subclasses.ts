@@ -2,7 +2,7 @@ import { apiClient } from './client';
 import type { Feature } from './heroClasses';
 
 // null on a Subclass/FoundationFeature means "not yet chosen"; NONE means
-// "genuinely has no spellcast trait."
+// "actually has no spellcast trait."
 export type SpellcastTrait =
   | 'STRENGTH'
   | 'FINESSE'

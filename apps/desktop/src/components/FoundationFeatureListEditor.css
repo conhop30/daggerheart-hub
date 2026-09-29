@@ -1,19 +1,56 @@
 .foundation-feature-editor__row {
   display: grid;
   grid-template-columns: auto 1fr 2fr 0.9fr auto;
-  align-items: center;
+  align-items: start;
   gap: var(--space-1);
   margin-bottom: var(--space-1);
+  padding-top: 2px;
   border-top: 2px solid transparent;
   border-bottom: 2px solid transparent;
   transition: border-color 150ms var(--ease);
+}
+
+.foundation-feature-editor__row .drag-handle,
+.foundation-feature-editor__row .feature-editor__remove {
+  margin-top: 0.35rem;
 }
 
 .foundation-feature-editor__row.is-drag-over {
   border-top-color: var(--hope);
 }
 
+/* Same borderless "book page" look as FeatureListEditor.css — duplicated
+   here rather than shared because this row uses its own class. */
 .foundation-feature-editor__row input,
+.foundation-feature-editor__row textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--ink);
+  padding: 0.4rem 0.15rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  transition: border-color 150ms var(--ease);
+}
+
+.foundation-feature-editor__row input:hover,
+.foundation-feature-editor__row textarea:hover {
+  border-bottom-color: var(--hairline);
+}
+
+.foundation-feature-editor__row input:focus,
+.foundation-feature-editor__row textarea:focus {
+  outline: none;
+  border-bottom-color: var(--hope);
+}
+
+.foundation-feature-editor__row textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 1.9rem;
+}
+
 .foundation-feature-editor__row select {
   background: var(--void);
   border: 1px solid var(--hairline);
@@ -21,4 +58,5 @@
   padding: 0.4rem 0.55rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
+  margin-top: 0.15rem;
 }

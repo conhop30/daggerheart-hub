@@ -17,6 +17,11 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1320,
     height: 880,
+    // The packaged Windows exe/installer gets its icon from build.win.icon
+    // (electron-builder embeds it) — this is what sets the taskbar/title-bar
+    // icon for an unpackaged dev run, which otherwise falls back to
+    // Electron's own default icon.
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -194,8 +199,8 @@ ipcMain.handle('window:setSize', (event, { width, height }) => {
 ipcMain.handle('store:export', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: 'Export Daggerheart Hub data',
-    defaultPath: 'daggerheart-hub-export.json',
+    title: 'Export Daggerheart Brewery data',
+    defaultPath: 'daggerheart-brewery-export.json',
     filters: [{ name: 'JSON', extensions: ['json'] }],
   });
   if (canceled || !filePath) return { canceled: true };
@@ -206,7 +211,7 @@ ipcMain.handle('store:export', async (event) => {
 ipcMain.handle('store:import', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: 'Import Daggerheart Hub data',
+    title: 'Import Daggerheart Brewery data',
     filters: [{ name: 'JSON', extensions: ['json'] }],
     properties: ['openFile'],
   });

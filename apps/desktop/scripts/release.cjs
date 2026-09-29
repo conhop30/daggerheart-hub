@@ -26,7 +26,7 @@ const notesFile = notesIndex >= 0 ? args[notesIndex + 1] : null;
 const root = path.resolve(__dirname, '..');
 const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 const tag = `v${version}`;
-const installer = `Daggerheart-Homebrew-Hub-Setup-${version}.exe`;
+const installer = `Daggerheart-Brewery-Setup-${version}.exe`;
 const outDir = path.join(os.tmpdir(), `dh-release-${version}`);
 const REPO = 'conhop30/daggerheart-hub';
 
@@ -90,7 +90,7 @@ if (dryRun) {
 const upload = files.map((name) => `"${path.join(outDir, name)}"`);
 const created = run('gh', [
   'release', 'create', tag, ...upload,
-  '--repo', REPO, '--target', 'main', '--title', `"Daggerheart Homebrew Hub ${version}"`, '--notes-file', `"${notesFile}"`,
+  '--repo', REPO, '--target', 'main', '--title', `"Daggerheart Brewery ${version}"`, '--notes-file', `"${notesFile}"`,
 ]);
 if (!created.ok) fail('gh release create failed.');
 

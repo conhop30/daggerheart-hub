@@ -108,7 +108,7 @@ export default function SettingsPage() {
 
       <section className="settings-page__section">
         <h2 className="settings-page__section-title">Appearance</h2>
-        <p className="settings-page__section-hint">Choose how Daggerheart Hub looks.</p>
+        <p className="settings-page__section-hint">Choose how Daggerheart Brewery looks.</p>
         <div className="settings-page__options">
           {THEME_OPTIONS.map((option) => (
             <button

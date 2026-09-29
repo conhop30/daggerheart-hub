@@ -18,7 +18,7 @@ test.describe('Campaigns & Party', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
   });
 
@@ -65,7 +65,7 @@ test.describe('Campaigns & Party', () => {
     await expect(card.locator('.stat-stepper__value')).toHaveText('5 / 6');
     // Reload to confirm the optimistic update actually persisted, not just local state.
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
     await expect(win.locator('.content-card', { hasText: 'Fenn' }).locator('.stat-stepper__value')).toHaveText('5 / 6');

@@ -18,7 +18,7 @@ test.describe('Loot & Consumable Tables', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Equipment")');
   });
 
@@ -65,7 +65,7 @@ test.describe('Loot & Consumable Tables', () => {
 
     // Reload to confirm the entry actually persisted, not just local state.
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Equipment")');
     await win
       .locator('.content-card', { hasText: "Adventurer's Cache" })

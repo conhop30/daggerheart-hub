@@ -43,7 +43,7 @@ test.describe('Music library and session playback', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   });
 
   test.afterEach(async () => {
@@ -98,7 +98,7 @@ test.describe('Music library and session playback', () => {
     expect(options).toEqual(['Use the Everywhere default', 'Sea Surf']);
 
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await openMusicTab();
     await win.click('.music-library__region:has-text("The Sunken Coast")');
     await expect(win.locator('select[aria-label="Combat default"]')).toHaveValue(/.+/);
@@ -216,7 +216,7 @@ test.describe('Music library and session playback', () => {
     await win.click('button[aria-label="Pause music"]');
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();

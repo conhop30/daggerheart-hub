@@ -1,4 +1,5 @@
 import type { FoundationFeature, SpellcastTrait } from '../api/subclasses';
+import AutoGrowTextarea from './AutoGrowTextarea';
 import { useDragReorder } from '../lib/useDragReorder';
 import './FeatureListEditor.css';
 import './FoundationFeatureListEditor.css';
@@ -56,8 +57,7 @@ export default function FoundationFeatureListEditor({ features, onChange }: Foun
             value={feature.name}
             onChange={(e) => update(index, 'name', e.target.value)}
           />
-          <input
-            type="text"
+          <AutoGrowTextarea
             placeholder="Description"
             value={feature.description ?? ''}
             onChange={(e) => update(index, 'description', e.target.value)}

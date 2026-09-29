@@ -891,7 +891,7 @@ const listPartyMembersBySession = partyMembers.listBySession;
 // A persistent, resumable run of a Campaign: a combat/adventuring mode, a
 // "Session Notes" scratchpad, and everything that carries forward (Fear,
 // Campaign/NPC/PC notes, music region, loot log). Built with makeCollection
-// like Campaign itself — a Session genuinely has a user-given name ("The
+// like Campaign itself — a Session always has a user-given name ("The
 // Ambush at Dawn") and idempotent-by-name create is an acceptable, already-
 // familiar behavior here, scoped to the Campaign so two Campaigns can each
 // have a "Session 1".
@@ -1280,11 +1280,11 @@ function exportSnapshot() {
 function importSnapshot(incoming) {
   return mutate((store) => {
     if (!incoming || typeof incoming !== 'object') {
-      throw new Error('That file is not a valid Daggerheart Hub export.');
+      throw new Error('That file is not a valid Daggerheart Brewery export.');
     }
     for (const key of COLLECTIONS) {
       if (incoming[key] !== undefined && !Array.isArray(incoming[key])) {
-        throw new Error(`That file is not a valid Daggerheart Hub export (bad "${key}").`);
+        throw new Error(`That file is not a valid Daggerheart Brewery export (bad "${key}").`);
       }
     }
 

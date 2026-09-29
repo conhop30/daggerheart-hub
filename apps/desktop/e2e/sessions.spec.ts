@@ -18,7 +18,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   });
 
   test.afterEach(async () => {
@@ -73,7 +73,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     // localStorage, so this only passes if the IPC round trips actually
     // persisted to disk.
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
@@ -93,7 +93,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.fill('.adventuring-panel__note-field:has-text("Session Notes") textarea', 'The party enters the cave.');
 
     await win.reload();
-    await win.waitForSelector('text=Daggerheart Homebrew Hub', { timeout: 15000 });
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
