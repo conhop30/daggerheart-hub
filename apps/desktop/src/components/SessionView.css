@@ -70,3 +70,28 @@
   margin-top: var(--space-4);
   margin-bottom: var(--space-4);
 }
+
+/* The right-hand "side window" the music panel lives in — collapses to a
+   single column (sidebar below main) on narrower widths rather than
+   squeezing both into something unreadable. */
+.session-view__layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.session-view__sidebar {
+  position: sticky;
+  top: var(--space-3);
+}
+
+@media (max-width: 880px) {
+  .session-view__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .session-view__sidebar {
+    position: static;
+  }
+}

@@ -1,7 +1,7 @@
 const VOLUME_KEY = 'daggerheart-music-volume';
 
-// Shared between MusicPlayer (Session playback) and MusicLibrary (preview),
-// so setting the volume once holds everywhere audio plays in the app.
+// Shared between MusicContext (Session/floating playback) and MusicLibrary
+// (preview), so setting the volume once holds everywhere audio plays.
 export function loadVolume(): number {
   try {
     const stored = Number(window.localStorage.getItem(VOLUME_KEY));

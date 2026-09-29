@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PartyMember } from '../api/partyMembers';
 import { sessionsApi, type Session, type UpdateSessionRequest } from '../api/sessions';
 import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
 import ModeToggle from './ModeToggle';
-import MusicPlayer from './MusicPlayer';
+import SessionMusicPanel from './SessionMusicPanel';
 import CombatPanel from './CombatPanel';
 import AdventuringPanel from './AdventuringPanel';
 import PartyRoster from './PartyRoster';
+import { useMusicContext } from '../context/MusicContext';
 import './SessionView.css';
 
 interface SessionViewProps {
@@ -34,6 +35,21 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   // the notes panel below lists the same members.
   const [members, setMembers] = useState<PartyMember[]>([]);
 
+  const { setSession: setMusicSession, setViewingSessionId, clearIfSession } = useMusicContext();
+
+  // Keeps the shared music context pointed at this Session's mode/region
+  // (so it resolves the right track and the sidebar/floating players agree
+  // with what's actually playing) — the context is what survives navigating
+  // away, this effect is just what keeps it in sync while here.
+  useEffect(() => {
+    setMusicSession({ campaignId, sessionId: session.id, sessionName: session.name, mode: session.mode, regionId: session.regionId ?? null });
+  }, [campaignId, session.id, session.name, session.mode, session.regionId, setMusicSession]);
+
+  useEffect(() => {
+    setViewingSessionId(session.id);
+    return () => setViewingSessionId(null);
+  }, [session.id, setViewingSessionId]);
+
   async function persist(patch: UpdateSessionRequest) {
     try {
       const saved = await sessionsApi.update(session.id, patch);
@@ -47,6 +63,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
     if (!window.confirm(`Delete "${session.name}"? This can't be undone.`)) return;
     try {
       await sessionsApi.remove(session.id);
+      clearIfSession(session.id);
       onSessionDeleted(session.id);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not delete the Session.');
@@ -89,21 +106,24 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
         </div>
       )}
 
-      <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
-      <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
-      <MusicPlayer
-        mode={session.mode}
-        regionId={session.regionId ?? null}
-        onRegionChange={(regionId) => persist({ regionId })}
-      />
+      <div className="session-view__layout">
+        <div className="session-view__main">
+          <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
+          <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
 
-      <PartyRoster campaignId={campaignId} sessionId={session.id} onChange={setMembers} />
+          <PartyRoster campaignId={campaignId} sessionId={session.id} onChange={setMembers} />
 
-      {session.mode === 'combat' ? (
-        <CombatPanel sessionId={session.id} />
-      ) : (
-        <AdventuringPanel session={session} members={members} onSessionSaved={onSessionSaved} />
-      )}
+          {session.mode === 'combat' ? (
+            <CombatPanel sessionId={session.id} />
+          ) : (
+            <AdventuringPanel session={session} members={members} onSessionSaved={onSessionSaved} />
+          )}
+        </div>
+
+        <aside className="session-view__sidebar">
+          <SessionMusicPanel regionId={session.regionId ?? null} onRegionChange={(regionId) => persist({ regionId })} />
+        </aside>
+      </div>
     </div>
   );
 }

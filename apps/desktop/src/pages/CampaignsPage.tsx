@@ -10,7 +10,18 @@ import SessionView from '../components/SessionView';
 import { useApiList } from '../lib/useApiList';
 import './CampaignsPage.css';
 
-export default function CampaignsPage() {
+export interface SessionJumpRequest {
+  campaignId: string;
+  sessionId: string;
+}
+
+interface CampaignsPageProps {
+  /** Set by the floating music player's "Back to Session" button — see App.tsx. */
+  jumpToSession?: SessionJumpRequest | null;
+  onJumpHandled?: () => void;
+}
+
+export default function CampaignsPage({ jumpToSession, onJumpHandled }: CampaignsPageProps) {
   const { items: campaigns, loading, error, upsert, remove } = useApiList<Campaign>(campaignsApi.list);
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -20,6 +31,31 @@ export default function CampaignsPage() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tab, setTab] = useState<'campaigns' | 'music'>('campaigns');
+
+  // Jumping straight to a Session from the floating music player (which can
+  // be reached from any page) bypasses the normal gallery -> Campaign ->
+  // Session drill-down, so it fetches that Campaign's Sessions itself rather
+  // than relying on `sessions` already being loaded.
+  useEffect(() => {
+    if (!jumpToSession || campaigns.length === 0) return;
+    let cancelled = false;
+    sessionsApi
+      .listByCampaign(jumpToSession.campaignId)
+      .then((list) => {
+        if (cancelled) return;
+        const target = list.find((s) => s.id === jumpToSession.sessionId);
+        if (target) {
+          setSelectedCampaignId(jumpToSession.campaignId);
+          setSelectedSession(target);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) onJumpHandled?.();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jumpToSession, campaigns.length, onJumpHandled]);
 
   // The banners summarize the party and sessions, both of which are edited
   // inside a Campaign's own pages — so refetch each time the gallery comes

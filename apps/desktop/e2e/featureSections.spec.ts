@@ -35,7 +35,7 @@ test.describe('Feature sections (Evolution + homebrew sections)', () => {
     const evolutions = win.locator('.feature-sections__section', { hasText: 'Evolutions' });
     await evolutions.locator('.feature-editor__add').click();
     await evolutions.locator('input[placeholder="Name"]').fill('Molting');
-    await evolutions.locator('input[placeholder="Description"]').fill('When defeated, it sheds its skin.');
+    await evolutions.locator('textarea[placeholder="Description"]').fill('When defeated, it sheds its skin.');
 
     // A homebrew section is added by name, with no code change.
     await win.fill('.feature-sections__add input', 'Lair Actions');
@@ -43,7 +43,7 @@ test.describe('Feature sections (Evolution + homebrew sections)', () => {
     const lair = win.locator('.feature-sections__section', { hasText: 'Lair Actions' });
     await lair.locator('.feature-editor__add').click();
     await lair.locator('input[placeholder="Name"]').fill('Tremor');
-    await lair.locator('input[placeholder="Description"]').fill('The floor shakes.');
+    await lair.locator('textarea[placeholder="Description"]').fill('The floor shakes.');
 
     await win.click('button:has-text("Create Adversary")');
     await win.locator('.stat-gallery__tile', { hasText: 'Shapeshifter' }).click();

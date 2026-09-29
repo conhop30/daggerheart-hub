@@ -188,7 +188,7 @@ test.describe('Music library and session playback', () => {
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
 
     const now = win.locator('[data-testid="now-playing"]');
-    const audio = win.locator('.music-player audio');
+    const audio = win.locator('audio');
     await expect(now).toHaveText('Calm Road');
 
     // Merely opening a session never starts audio.
@@ -235,6 +235,6 @@ test.describe('Music library and session playback', () => {
 
     await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
     await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
-    await expect(win.locator('.music-player__hint')).toContainText('Campaigns');
+    await expect(win.locator('.session-music-panel__hint')).toContainText('Campaigns');
   });
 });
