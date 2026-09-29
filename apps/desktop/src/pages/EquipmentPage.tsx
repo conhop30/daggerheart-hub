@@ -13,7 +13,62 @@ import ArmorForm from '../components/ArmorForm';
 import SimpleNameDescriptionForm from '../components/SimpleNameDescriptionForm';
 import TableDetail from '../components/TableDetail';
 import { RARITIES } from '../lib/lootRarity';
+import { loadEquipmentView, saveEquipmentView, type EquipmentView } from '../lib/equipmentView';
+import { useTagFilters, type FilterDimension } from '../lib/useTagFilters';
+import TagFilterBar from '../components/TagFilterBar';
+import EquipmentTable, { type EquipmentTableColumn } from '../components/EquipmentTable';
+import '../components/ModeToggle.css';
 import './BrowsePage.css';
+
+// Matches MetaChip's own null/undefined/'' -> "no value" convention, so an
+// unset field reads the same way in both views.
+function dash(value: string | number | null | undefined): string | number {
+  return value === null || value === undefined || value === '' ? '—' : value;
+}
+
+const WEAPON_FILTERS: FilterDimension<Weapon>[] = [
+  { key: 'tier', label: 'Tier', getValue: (w) => w.tier },
+  { key: 'slot', label: 'Slot', getValue: (w) => w.weaponSlot, formatValue: titleCaseEnum },
+  { key: 'burden', label: 'Burden', getValue: (w) => w.burden, formatValue: titleCaseEnum },
+  { key: 'trait', label: 'Trait', getValue: (w) => w.trait, formatValue: titleCaseEnum },
+  { key: 'damageType', label: 'Damage Type', getValue: (w) => w.damageType, formatValue: titleCaseEnum },
+];
+
+const ARMOR_FILTERS: FilterDimension<Armor>[] = [{ key: 'tier', label: 'Tier', getValue: (a) => a.tier }];
+
+const WEAPON_COLUMNS: EquipmentTableColumn<Weapon>[] = [
+  { key: 'name', label: 'Name', render: (w) => w.name, width: '1.4fr' },
+  { key: 'slot', label: 'Slot', render: (w) => titleCaseEnum(w.weaponSlot) },
+  { key: 'tier', label: 'Tier', render: (w) => dash(w.tier), align: 'center', width: '0.6fr' },
+  { key: 'burden', label: 'Burden', render: (w) => titleCaseEnum(w.burden) },
+  { key: 'damage', label: 'Damage', render: (w) => dash(w.damage), align: 'center' },
+  { key: 'trait', label: 'Trait', render: (w) => dash(w.trait && titleCaseEnum(w.trait)) },
+  { key: 'type', label: 'Type', render: (w) => dash(w.damageType && titleCaseEnum(w.damageType)) },
+  { key: 'feature', label: 'Feature', render: (w) => dash(w.feature), width: '2fr' },
+];
+
+const ARMOR_COLUMNS: EquipmentTableColumn<Armor>[] = [
+  { key: 'name', label: 'Name', render: (a) => a.name, width: '1.4fr' },
+  { key: 'tier', label: 'Tier', render: (a) => dash(a.tier), align: 'center', width: '0.6fr' },
+  { key: 'baseScore', label: 'Base Score', render: (a) => dash(a.baseScore), align: 'center' },
+  {
+    key: 'thresholds',
+    label: 'Thresholds',
+    align: 'center',
+    render: (a) => `${dash(a.thresholds.major)} / ${dash(a.thresholds.severe)}`,
+  },
+  { key: 'feature', label: 'Feature', render: (a) => dash(a.feature), width: '2fr' },
+];
+
+const LOOT_COLUMNS: EquipmentTableColumn<Loot>[] = [
+  { key: 'name', label: 'Name', render: (l) => l.name, width: '1fr' },
+  { key: 'description', label: 'Description', render: (l) => dash(l.description), width: '2.5fr' },
+];
+
+const CONSUMABLE_COLUMNS: EquipmentTableColumn<Consumable>[] = [
+  { key: 'name', label: 'Name', render: (c) => c.name, width: '1fr' },
+  { key: 'description', label: 'Description', render: (c) => dash(c.description), width: '2.5fr' },
+];
 
 function WeaponCard({ w, onEdit, onDelete }: { w: Weapon; onEdit: () => void; onDelete: () => void }) {
   return (
@@ -108,6 +163,15 @@ export default function EquipmentPage() {
   const consumables = useApiList(consumablesApi.list);
   const lootTables = useApiList(lootTablesApi.list);
   const consumableTables = useApiList(consumableTablesApi.list);
+
+  const [view, setView] = useState<EquipmentView>(loadEquipmentView);
+  function changeView(next: EquipmentView) {
+    setView(next);
+    saveEquipmentView(next);
+  }
+
+  const weaponFilters = useTagFilters(weapons.items, WEAPON_FILTERS);
+  const armorFilters = useTagFilters(armors.items, ARMOR_FILTERS);
 
   const [editingWeaponId, setEditingWeaponId] = useState<string | null>(null);
   const [editingArmorId, setEditingArmorId] = useState<string | null>(null);
@@ -231,9 +295,32 @@ export default function EquipmentPage() {
     );
   }
 
+  const editingWeapon = weapons.items.find((w) => w.id === editingWeaponId) ?? null;
+  const editingArmor = armors.items.find((a) => a.id === editingArmorId) ?? null;
+  const editingLoot = loot.items.find((l) => l.id === editingLootId) ?? null;
+  const editingConsumable = consumables.items.find((c) => c.id === editingConsumableId) ?? null;
+
   return (
     <div className="browse-page">
-      <h1 className="browse-page__title">Equipment</h1>
+      <div className="browse-page__header">
+        <h1 className="browse-page__title">Equipment</h1>
+        <div className="mode-toggle" role="group" aria-label="View">
+          <button
+            type="button"
+            className={`mode-toggle__option${view === 'cards' ? ' mode-toggle__option--active' : ''}`}
+            onClick={() => changeView('cards')}
+          >
+            Cards
+          </button>
+          <button
+            type="button"
+            className={`mode-toggle__option${view === 'table' ? ' mode-toggle__option--active' : ''}`}
+            onClick={() => changeView('table')}
+          >
+            Condensed
+          </button>
+        </div>
+      </div>
 
       <div className="browse-page__section">
         <div className="browse-page__section-header">
@@ -259,30 +346,72 @@ export default function EquipmentPage() {
             />
           </div>
         )}
+        {view === 'table' && editingWeapon && (
+          <div className="browse-page__inline-form">
+            <WeaponForm
+              weaponSlot={editingWeapon.weaponSlot}
+              initial={editingWeapon}
+              onSaved={(saved) => {
+                weapons.upsert(saved);
+                setEditingWeaponId(null);
+              }}
+              onCancel={() => setEditingWeaponId(null)}
+            />
+          </div>
+        )}
         {weapons.loading && <p className="browse-page__status">Loading Weapons&hellip;</p>}
         {weapons.error && <p className="browse-page__status browse-page__status--error">{weapons.error}</p>}
-        {!weapons.loading && !weapons.error && (
-          <ContentCardList
-            items={weapons.items}
-            emptyMessage="No Weapons yet — click + New Primary or + New Secondary above to create one."
-            getKey={(w) => w.id}
-            renderItem={(w) =>
-              editingWeaponId === w.id ? (
-                <WeaponForm
-                  weaponSlot={w.weaponSlot}
-                  initial={w}
-                  onSaved={(saved) => {
-                    weapons.upsert(saved);
-                    setEditingWeaponId(null);
-                  }}
-                  onCancel={() => setEditingWeaponId(null)}
-                />
-              ) : (
-                <WeaponCard w={w} onEdit={() => setEditingWeaponId(w.id)} onDelete={() => handleDeleteWeapon(w)} />
-              )
-            }
+        {!weapons.loading && !weapons.error && weapons.items.length > 0 && (
+          <TagFilterBar
+            dimensions={weaponFilters.dimensions}
+            onToggle={weaponFilters.toggle}
+            onClear={weaponFilters.clear}
+            hasActiveFilters={weaponFilters.hasActiveFilters}
           />
         )}
+        {!weapons.loading &&
+          !weapons.error &&
+          (view === 'cards' ? (
+            <ContentCardList
+              items={weaponFilters.filtered}
+              emptyMessage={
+                weaponFilters.hasActiveFilters
+                  ? 'No Weapons match those filters.'
+                  : 'No Weapons yet — click + New Primary or + New Secondary above to create one.'
+              }
+              getKey={(w) => w.id}
+              renderItem={(w) =>
+                editingWeaponId === w.id ? (
+                  <WeaponForm
+                    weaponSlot={w.weaponSlot}
+                    initial={w}
+                    onSaved={(saved) => {
+                      weapons.upsert(saved);
+                      setEditingWeaponId(null);
+                    }}
+                    onCancel={() => setEditingWeaponId(null)}
+                  />
+                ) : (
+                  <WeaponCard w={w} onEdit={() => setEditingWeaponId(w.id)} onDelete={() => handleDeleteWeapon(w)} />
+                )
+              }
+            />
+          ) : (
+            !editingWeapon && (
+              <EquipmentTable
+                columns={WEAPON_COLUMNS}
+                items={weaponFilters.filtered}
+                getKey={(w) => w.id}
+                onEdit={(w) => setEditingWeaponId(w.id)}
+                onDelete={handleDeleteWeapon}
+                emptyMessage={
+                  weaponFilters.hasActiveFilters
+                    ? 'No Weapons match those filters.'
+                    : 'No Weapons yet — click + New Primary or + New Secondary above to create one.'
+                }
+              />
+            )
+          ))}
       </div>
 
       <div className="browse-page__section">
@@ -303,29 +432,66 @@ export default function EquipmentPage() {
             />
           </div>
         )}
+        {view === 'table' && editingArmor && (
+          <div className="browse-page__inline-form">
+            <ArmorForm
+              initial={editingArmor}
+              onSaved={(saved) => {
+                armors.upsert(saved);
+                setEditingArmorId(null);
+              }}
+              onCancel={() => setEditingArmorId(null)}
+            />
+          </div>
+        )}
         {armors.loading && <p className="browse-page__status">Loading Armor&hellip;</p>}
         {armors.error && <p className="browse-page__status browse-page__status--error">{armors.error}</p>}
-        {!armors.loading && !armors.error && (
-          <ContentCardList
-            items={armors.items}
-            emptyMessage="No Armor yet — click + New Armor above to create one."
-            getKey={(a) => a.id}
-            renderItem={(a) =>
-              editingArmorId === a.id ? (
-                <ArmorForm
-                  initial={a}
-                  onSaved={(saved) => {
-                    armors.upsert(saved);
-                    setEditingArmorId(null);
-                  }}
-                  onCancel={() => setEditingArmorId(null)}
-                />
-              ) : (
-                <ArmorCard a={a} onEdit={() => setEditingArmorId(a.id)} onDelete={() => handleDeleteArmor(a)} />
-              )
-            }
+        {!armors.loading && !armors.error && armors.items.length > 0 && (
+          <TagFilterBar
+            dimensions={armorFilters.dimensions}
+            onToggle={armorFilters.toggle}
+            onClear={armorFilters.clear}
+            hasActiveFilters={armorFilters.hasActiveFilters}
           />
         )}
+        {!armors.loading &&
+          !armors.error &&
+          (view === 'cards' ? (
+            <ContentCardList
+              items={armorFilters.filtered}
+              emptyMessage={
+                armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
+              }
+              getKey={(a) => a.id}
+              renderItem={(a) =>
+                editingArmorId === a.id ? (
+                  <ArmorForm
+                    initial={a}
+                    onSaved={(saved) => {
+                      armors.upsert(saved);
+                      setEditingArmorId(null);
+                    }}
+                    onCancel={() => setEditingArmorId(null)}
+                  />
+                ) : (
+                  <ArmorCard a={a} onEdit={() => setEditingArmorId(a.id)} onDelete={() => handleDeleteArmor(a)} />
+                )
+              }
+            />
+          ) : (
+            !editingArmor && (
+              <EquipmentTable
+                columns={ARMOR_COLUMNS}
+                items={armorFilters.filtered}
+                getKey={(a) => a.id}
+                onEdit={(a) => setEditingArmorId(a.id)}
+                onDelete={handleDeleteArmor}
+                emptyMessage={
+                  armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
+                }
+              />
+            )
+          ))}
       </div>
 
       <div className="browse-page__section">
@@ -350,33 +516,62 @@ export default function EquipmentPage() {
             />
           </div>
         )}
+        {view === 'table' && editingLoot && (
+          <div className="browse-page__inline-form">
+            <SimpleNameDescriptionForm
+              title="Loot"
+              submitLabel="Create Loot"
+              initial={editingLoot}
+              create={lootApi.create}
+              update={lootApi.update}
+              onSaved={(saved) => {
+                loot.upsert(saved);
+                setEditingLootId(null);
+              }}
+              onCancel={() => setEditingLootId(null)}
+            />
+          </div>
+        )}
         {loot.loading && <p className="browse-page__status">Loading Loot&hellip;</p>}
         {loot.error && <p className="browse-page__status browse-page__status--error">{loot.error}</p>}
-        {!loot.loading && !loot.error && (
-          <ContentCardList
-            items={loot.items}
-            emptyMessage="No Loot yet — click + New Loot above to create one."
-            getKey={(l) => l.id}
-            renderItem={(l) =>
-              editingLootId === l.id ? (
-                <SimpleNameDescriptionForm
-                  title="Loot"
-                  submitLabel="Create Loot"
-                  initial={l}
-                  create={lootApi.create}
-                  update={lootApi.update}
-                  onSaved={(saved) => {
-                    loot.upsert(saved);
-                    setEditingLootId(null);
-                  }}
-                  onCancel={() => setEditingLootId(null)}
-                />
-              ) : (
-                <NameDescriptionCard item={l} onEdit={() => setEditingLootId(l.id)} onDelete={() => handleDeleteLoot(l)} />
-              )
-            }
-          />
-        )}
+        {!loot.loading &&
+          !loot.error &&
+          (view === 'cards' ? (
+            <ContentCardList
+              items={loot.items}
+              emptyMessage="No Loot yet — click + New Loot above to create one."
+              getKey={(l) => l.id}
+              renderItem={(l) =>
+                editingLootId === l.id ? (
+                  <SimpleNameDescriptionForm
+                    title="Loot"
+                    submitLabel="Create Loot"
+                    initial={l}
+                    create={lootApi.create}
+                    update={lootApi.update}
+                    onSaved={(saved) => {
+                      loot.upsert(saved);
+                      setEditingLootId(null);
+                    }}
+                    onCancel={() => setEditingLootId(null)}
+                  />
+                ) : (
+                  <NameDescriptionCard item={l} onEdit={() => setEditingLootId(l.id)} onDelete={() => handleDeleteLoot(l)} />
+                )
+              }
+            />
+          ) : (
+            !editingLoot && (
+              <EquipmentTable
+                columns={LOOT_COLUMNS}
+                items={loot.items}
+                getKey={(l) => l.id}
+                onEdit={(l) => setEditingLootId(l.id)}
+                onDelete={handleDeleteLoot}
+                emptyMessage="No Loot yet — click + New Loot above to create one."
+              />
+            )
+          ))}
       </div>
 
       <div className="browse-page__section">
@@ -401,37 +596,66 @@ export default function EquipmentPage() {
             />
           </div>
         )}
+        {view === 'table' && editingConsumable && (
+          <div className="browse-page__inline-form">
+            <SimpleNameDescriptionForm
+              title="Consumable"
+              submitLabel="Create Consumable"
+              initial={editingConsumable}
+              create={consumablesApi.create}
+              update={consumablesApi.update}
+              onSaved={(saved) => {
+                consumables.upsert(saved);
+                setEditingConsumableId(null);
+              }}
+              onCancel={() => setEditingConsumableId(null)}
+            />
+          </div>
+        )}
         {consumables.loading && <p className="browse-page__status">Loading Consumables&hellip;</p>}
         {consumables.error && <p className="browse-page__status browse-page__status--error">{consumables.error}</p>}
-        {!consumables.loading && !consumables.error && (
-          <ContentCardList
-            items={consumables.items}
-            emptyMessage="No Consumables yet — click + New Consumable above to create one."
-            getKey={(c) => c.id}
-            renderItem={(c) =>
-              editingConsumableId === c.id ? (
-                <SimpleNameDescriptionForm
-                  title="Consumable"
-                  submitLabel="Create Consumable"
-                  initial={c}
-                  create={consumablesApi.create}
-                  update={consumablesApi.update}
-                  onSaved={(saved) => {
-                    consumables.upsert(saved);
-                    setEditingConsumableId(null);
-                  }}
-                  onCancel={() => setEditingConsumableId(null)}
-                />
-              ) : (
-                <NameDescriptionCard
-                  item={c}
-                  onEdit={() => setEditingConsumableId(c.id)}
-                  onDelete={() => handleDeleteConsumable(c)}
-                />
-              )
-            }
-          />
-        )}
+        {!consumables.loading &&
+          !consumables.error &&
+          (view === 'cards' ? (
+            <ContentCardList
+              items={consumables.items}
+              emptyMessage="No Consumables yet — click + New Consumable above to create one."
+              getKey={(c) => c.id}
+              renderItem={(c) =>
+                editingConsumableId === c.id ? (
+                  <SimpleNameDescriptionForm
+                    title="Consumable"
+                    submitLabel="Create Consumable"
+                    initial={c}
+                    create={consumablesApi.create}
+                    update={consumablesApi.update}
+                    onSaved={(saved) => {
+                      consumables.upsert(saved);
+                      setEditingConsumableId(null);
+                    }}
+                    onCancel={() => setEditingConsumableId(null)}
+                  />
+                ) : (
+                  <NameDescriptionCard
+                    item={c}
+                    onEdit={() => setEditingConsumableId(c.id)}
+                    onDelete={() => handleDeleteConsumable(c)}
+                  />
+                )
+              }
+            />
+          ) : (
+            !editingConsumable && (
+              <EquipmentTable
+                columns={CONSUMABLE_COLUMNS}
+                items={consumables.items}
+                getKey={(c) => c.id}
+                onEdit={(c) => setEditingConsumableId(c.id)}
+                onDelete={handleDeleteConsumable}
+                emptyMessage="No Consumables yet — click + New Consumable above to create one."
+              />
+            )
+          ))}
       </div>
 
       <div className="browse-page__section">

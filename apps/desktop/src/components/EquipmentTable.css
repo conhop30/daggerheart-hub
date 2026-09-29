@@ -1,0 +1,79 @@
+/* A CSS-grid table: .equipment-table is the grid (grid-template-columns set
+   inline per instance, since column counts/widths differ per section), and
+   each row is `display: contents` so its cells become direct grid items —
+   that's what lets a plain <div role="row"> wrapper exist for semantics
+   without breaking the column alignment grid columns need. */
+.equipment-table {
+  display: grid;
+  column-gap: var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.equipment-table__row {
+  display: contents;
+}
+
+.equipment-table__cell {
+  display: flex;
+  align-items: center;
+  padding: 0.45rem var(--space-2);
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--hairline);
+  min-width: 0;
+}
+
+.equipment-table__row:last-child .equipment-table__cell {
+  border-bottom: none;
+}
+
+.equipment-table__cell--head {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: var(--panel-raised);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.equipment-table__cell--right {
+  justify-content: flex-end;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.equipment-table__cell--center {
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.equipment-table__row:nth-child(odd) .equipment-table__cell:not(.equipment-table__cell--head) {
+  background: var(--panel);
+}
+
+.equipment-table__actions {
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.equipment-table__actions button {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  white-space: nowrap;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.equipment-table__actions button:hover {
+  border-color: var(--hope);
+  color: var(--ink);
+}
