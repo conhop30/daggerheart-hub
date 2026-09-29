@@ -2,26 +2,10 @@ import { useState } from 'react';
 import { communitiesApi, type Community } from '../api/communities';
 import { ancestriesApi, type Ancestry } from '../api/ancestries';
 import { useApiList } from '../lib/useApiList';
-import { ContentCard, ContentCardList, FeatureLines } from '../components/ContentCard';
+import { ContentCardList } from '../components/ContentCard';
+import EntryCard from '../components/EntryCard';
 import NamedFeatureForm from '../components/NamedFeatureForm';
 import './BrowsePage.css';
-
-function NamedFeatureCard({
-  item,
-  onEdit,
-  onDelete,
-}: {
-  item: Community | Ancestry;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <ContentCard title={item.name} onEdit={onEdit} onDelete={onDelete}>
-      {item.description && <p className="content-card__description">{item.description}</p>}
-      <FeatureLines features={item.features} />
-    </ContentCard>
-  );
-}
 
 export default function HeritagePage() {
   const communities = useApiList(communitiesApi.list);
@@ -99,7 +83,7 @@ export default function HeritagePage() {
                   onCancel={() => setEditingCommunityId(null)}
                 />
               ) : (
-                <NamedFeatureCard
+                <EntryCard
                   item={c}
                   onEdit={() => setEditingCommunityId(c.id)}
                   onDelete={() => handleDeleteCommunity(c)}
@@ -154,7 +138,7 @@ export default function HeritagePage() {
                   onCancel={() => setEditingAncestryId(null)}
                 />
               ) : (
-                <NamedFeatureCard
+                <EntryCard
                   item={a}
                   onEdit={() => setEditingAncestryId(a.id)}
                   onDelete={() => handleDeleteAncestry(a)}

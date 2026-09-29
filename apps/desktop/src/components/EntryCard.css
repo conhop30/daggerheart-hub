@@ -1,0 +1,129 @@
+/* Direction C — see EquipmentTable.css for the same treatment applied to a
+   table. No card box: a thin accent bar is the only boundary between
+   entries, separated by hairline rules rather than backgrounds. */
+.entry-card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.entry-card__bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--hope);
+  flex-shrink: 0;
+}
+
+.entry-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.entry-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+}
+
+.entry-card__toggle {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  transition: border-color 160ms var(--ease);
+}
+
+.entry-card__toggle:hover {
+  border-color: var(--hope);
+}
+
+.entry-card__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.entry-card__action {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  white-space: nowrap;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.entry-card__action:hover {
+  border-color: var(--hope);
+  color: var(--ink);
+}
+
+.entry-card__action--danger:hover {
+  border-color: #d9776a;
+  color: #d9776a;
+}
+
+.entry-card__tagline {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--hope-on-dark);
+}
+
+.entry-card__description {
+  margin: 14px 0 12px;
+  max-width: 62ch;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--ink-dim);
+}
+
+.entry-card__features {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 6px var(--space-2);
+  max-width: 62ch;
+}
+
+/* Each feature is a row of two grid items (label, value) — `display:
+   contents` lifts its two <span> children straight into the parent grid
+   instead of boxing them into a single 90px-wide cell of their own. */
+.entry-card__feature-row {
+  display: contents;
+}
+
+.entry-card__feature-label {
+  padding-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.entry-card__feature-value {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+.entry-card__feature-value strong {
+  color: var(--ink);
+}

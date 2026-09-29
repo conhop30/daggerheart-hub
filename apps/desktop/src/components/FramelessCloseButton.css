@@ -1,16 +1,15 @@
+/* Sits in the nav bar next to the Settings gear (see AppShell.tsx) — it
+   used to float as its own `position: fixed` button in the viewport's
+   corner, which overlapped the gear once the nav bar was there too. */
 .frameless-close {
-  position: fixed;
-  top: var(--space-2);
-  right: var(--space-2);
-  z-index: 1000;
-  width: 34px;
-  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   border: 1px solid var(--hairline);
-  background: var(--panel);
+  background: none;
   color: var(--muted);
   transition:
     color 160ms var(--ease),
@@ -19,8 +18,8 @@
 }
 
 .frameless-close svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
 .frameless-close:hover {

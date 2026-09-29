@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { transformationsApi, type Transformation } from '../api/transformations';
 import { useApiList } from '../lib/useApiList';
-import { ContentCard, ContentCardList, FeatureLines } from '../components/ContentCard';
+import { ContentCardList } from '../components/ContentCard';
+import EntryCard from '../components/EntryCard';
 import NamedFeatureForm from '../components/NamedFeatureForm';
 import './BrowsePage.css';
 
@@ -65,10 +66,7 @@ export default function OptionalMechanicsPage() {
                 onCancel={() => setEditingId(null)}
               />
             ) : (
-              <ContentCard title={t.name} onEdit={() => setEditingId(t.id)} onDelete={() => handleDelete(t)}>
-                {t.description && <p className="content-card__description">{t.description}</p>}
-                <FeatureLines features={t.features} />
-              </ContentCard>
+              <EntryCard item={t} onEdit={() => setEditingId(t.id)} onDelete={() => handleDelete(t)} />
             )
           }
         />

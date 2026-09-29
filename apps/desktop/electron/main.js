@@ -13,6 +13,34 @@ const store = require('./store.js');
 const updateCheck = require('./updateCheck.js');
 const { createUpdateManager } = require('./updater.js');
 
+// Whatever size/mode the window was last left at is what the next launch
+// should open with — kept in its own small JSON file (not data.json; this
+// is a per-machine UI preference, not campaign content) next to the store,
+// so import/export and the "no published book content" data file stay
+// untouched by it.
+function getWindowPrefsPath() {
+  return path.join(store.getStoreDir(), 'window.json');
+}
+
+function loadWindowPrefs() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(getWindowPrefsPath(), 'utf-8'));
+    return { width: raw.width ?? 1320, height: raw.height ?? 880, frameless: raw.frameless ?? false };
+  } catch {
+    return { width: 1320, height: 880, frameless: false };
+  }
+}
+
+function saveWindowPrefs(patch) {
+  try {
+    fs.mkdirSync(store.getStoreDir(), { recursive: true });
+    const next = { ...loadWindowPrefs(), ...patch };
+    fs.writeFileSync(getWindowPrefsPath(), JSON.stringify(next), 'utf-8');
+  } catch {
+    // Best-effort — the app just falls back to the last-known/default size next launch.
+  }
+}
+
 // `frame` (and, in practice, `fullscreen`) can only be set when a
 // BrowserWindow is created — Electron has no "hide the OS chrome" call on an
 // existing window on Windows/Linux — so switching frameless mode on or off
@@ -21,10 +49,21 @@ const { createUpdateManager } = require('./updater.js');
 // URL/file so the renderer (which needs to know whether to draw its own
 // close button, since there's no OS one to fall back to) can read it back
 // without a race against an IPC round trip on startup.
-function createWindow({ frameless = false } = {}) {
+//
+// `options.frameless` left undefined (the initial app.whenReady() launch,
+// or macOS's `activate` with no windows left) means "use whatever was saved
+// last" — an explicit true/false (the Settings toggle, via
+// window:setFrameless) is a deliberate choice, which is saved right away
+// instead of waiting for a resize event that a fullscreen window may never
+// produce.
+function createWindow(options = {}) {
+  const prefs = loadWindowPrefs();
+  const frameless = options.frameless ?? prefs.frameless;
+  if (options.frameless !== undefined) saveWindowPrefs({ frameless: options.frameless });
+
   const win = new BrowserWindow({
-    width: 1320,
-    height: 880,
+    width: prefs.width,
+    height: prefs.height,
     frame: !frameless,
     fullscreen: frameless,
     // The packaged Windows exe/installer gets its icon from build.win.icon
@@ -37,6 +76,20 @@ function createWindow({ frameless = false } = {}) {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  // Debounced so dragging a resize handle doesn't hit disk on every pixel —
+  // only frameless's own fullscreen isn't saved as a "size" (it's just
+  // whatever the monitor happens to be, not a size worth restoring into a
+  // future framed launch).
+  let resizeTimer = null;
+  win.on('resize', () => {
+    if (frameless) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const [width, height] = win.getSize();
+      saveWindowPrefs({ width, height });
+    }, 400);
   });
 
   const query = frameless ? '?frameless=1' : '';

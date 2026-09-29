@@ -8,6 +8,8 @@ export interface EquipmentTableColumn<T> {
   align?: 'left' | 'right' | 'center';
   /** Widens/narrows the column relative to the others — passed straight through as a CSS grid track. */
   width?: string;
+  /** Renders this column's cells in the display serif, as the row's primary identifier (the Name column). */
+  emphasize?: boolean;
 }
 
 interface EquipmentTableProps<T> {
@@ -56,7 +58,7 @@ export default function EquipmentTable<T>({
             <span
               key={col.key}
               role="cell"
-              className={`equipment-table__cell equipment-table__cell--${col.align ?? 'left'}`}
+              className={`equipment-table__cell equipment-table__cell--${col.align ?? 'left'}${col.emphasize ? ' equipment-table__cell--emphasize' : ''}`}
             >
               {col.render(item)}
             </span>

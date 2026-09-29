@@ -37,7 +37,7 @@ const WEAPON_FILTERS: FilterDimension<Weapon>[] = [
 const ARMOR_FILTERS: FilterDimension<Armor>[] = [{ key: 'tier', label: 'Tier', getValue: (a) => a.tier }];
 
 const WEAPON_COLUMNS: EquipmentTableColumn<Weapon>[] = [
-  { key: 'name', label: 'Name', render: (w) => w.name, width: '1.4fr' },
+  { key: 'name', label: 'Name', render: (w) => w.name, width: '1.4fr', emphasize: true },
   { key: 'slot', label: 'Slot', render: (w) => titleCaseEnum(w.weaponSlot) },
   { key: 'tier', label: 'Tier', render: (w) => dash(w.tier), align: 'center', width: '0.6fr' },
   { key: 'burden', label: 'Burden', render: (w) => titleCaseEnum(w.burden) },
@@ -48,7 +48,7 @@ const WEAPON_COLUMNS: EquipmentTableColumn<Weapon>[] = [
 ];
 
 const ARMOR_COLUMNS: EquipmentTableColumn<Armor>[] = [
-  { key: 'name', label: 'Name', render: (a) => a.name, width: '1.4fr' },
+  { key: 'name', label: 'Name', render: (a) => a.name, width: '1.4fr', emphasize: true },
   { key: 'tier', label: 'Tier', render: (a) => dash(a.tier), align: 'center', width: '0.6fr' },
   { key: 'baseScore', label: 'Base Score', render: (a) => dash(a.baseScore), align: 'center' },
   {
@@ -61,12 +61,12 @@ const ARMOR_COLUMNS: EquipmentTableColumn<Armor>[] = [
 ];
 
 const LOOT_COLUMNS: EquipmentTableColumn<Loot>[] = [
-  { key: 'name', label: 'Name', render: (l) => l.name, width: '1fr' },
+  { key: 'name', label: 'Name', render: (l) => l.name, width: '1fr', emphasize: true },
   { key: 'description', label: 'Description', render: (l) => dash(l.description), width: '2.5fr' },
 ];
 
 const CONSUMABLE_COLUMNS: EquipmentTableColumn<Consumable>[] = [
-  { key: 'name', label: 'Name', render: (c) => c.name, width: '1fr' },
+  { key: 'name', label: 'Name', render: (c) => c.name, width: '1fr', emphasize: true },
   { key: 'description', label: 'Description', render: (c) => dash(c.description), width: '2.5fr' },
 ];
 

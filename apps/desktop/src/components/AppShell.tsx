@@ -71,9 +71,9 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
         >
           <SettingsGlyph />
         </button>
+        <FramelessCloseButton />
       </nav>
       <UpdateBanner />
-      <FramelessCloseButton />
       <div className="app-shell__page" key={view}>
         {children}
       </div>

@@ -1,15 +1,15 @@
-/* A CSS-grid table: .equipment-table is the grid (grid-template-columns set
-   inline per instance, since column counts/widths differ per section), and
-   each row is `display: contents` so its cells become direct grid items —
-   that's what lets a plain <div role="row"> wrapper exist for semantics
-   without breaking the column alignment grid columns need. */
+/* Direction C ("Structured Panel"): one confident accent rule under the
+   header instead of a bordered grid — no outer box, no vertical lines, no
+   per-row border. Rows are told apart by zebra tint and a hover highlight
+   only. .equipment-table is the grid (grid-template-columns set inline per
+   instance, since column counts/widths differ per section), and each row
+   is `display: contents` so its cells become direct grid items — that's
+   what lets a plain <div role="row"> wrapper exist for semantics without
+   breaking the column alignment grid columns need. */
 .equipment-table {
   display: grid;
-  column-gap: var(--space-2);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  margin-bottom: var(--space-2);
+  column-gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .equipment-table__row {
@@ -19,24 +19,28 @@
 .equipment-table__cell {
   display: flex;
   align-items: center;
-  padding: 0.45rem var(--space-2);
+  padding: 0.8rem 0.2rem;
   font-size: 0.85rem;
-  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-dim);
   min-width: 0;
-}
-
-.equipment-table__row:last-child .equipment-table__cell {
-  border-bottom: none;
 }
 
 .equipment-table__cell--head {
   font-family: var(--font-mono);
   font-size: 0.68rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-  background: var(--panel-raised);
-  border-bottom: 1px solid var(--hairline);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  padding-top: 0;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid var(--hope);
+}
+
+.equipment-table__cell--emphasize {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--ink);
 }
 
 .equipment-table__cell--right {
@@ -51,8 +55,12 @@
   font-family: var(--font-mono);
 }
 
-.equipment-table__row:nth-child(odd) .equipment-table__cell:not(.equipment-table__cell--head) {
+.equipment-table__row:not(.equipment-table__row--head):nth-child(even) .equipment-table__cell {
   background: var(--panel);
+}
+
+.equipment-table__row:not(.equipment-table__row--head):hover .equipment-table__cell {
+  background: var(--panel-raised);
 }
 
 .equipment-table__actions {
@@ -63,10 +71,11 @@
 .equipment-table__actions button {
   background: none;
   border: 1px solid var(--hairline);
+  border-radius: 999px;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  padding: 2px 8px;
+  padding: 3px 10px;
   white-space: nowrap;
   transition:
     border-color 160ms var(--ease),
