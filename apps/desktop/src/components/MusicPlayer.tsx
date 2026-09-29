@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EVERYWHERE_REGION_ID, musicApi, trackUrl, type MusicRegion, type MusicTrack } from '../api/music';
 import type { SessionMode } from '../api/sessions';
 import { resolveDefaultTrack } from '../lib/music';
+import { loadVolume, saveVolume } from '../lib/musicVolume';
 import './MusicPlayer.css';
 
 interface MusicPlayerProps {
@@ -9,18 +10,6 @@ interface MusicPlayerProps {
   /** The session's chosen region; null = Everywhere. */
   regionId: string | null;
   onRegionChange: (regionId: string | null) => void;
-}
-
-const VOLUME_KEY = 'daggerheart-music-volume';
-
-function loadVolume(): number {
-  try {
-    const stored = Number(window.localStorage.getItem(VOLUME_KEY));
-    if (Number.isFinite(stored) && stored > 0 && stored <= 1) return stored;
-  } catch {
-    // localStorage can be unavailable; the default is fine.
-  }
-  return 0.6;
 }
 
 // The Session's music bar. Self-contained like CombatPanel: it fetches the
@@ -73,11 +62,7 @@ export default function MusicPlayer({ mode, regionId, onRegionChange }: MusicPla
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
-    try {
-      window.localStorage.setItem(VOLUME_KEY, String(volume));
-    } catch {
-      // Not persisting the volume is harmless.
-    }
+    saveVolume(volume);
   }, [volume]);
 
   // A detached <audio> can keep playing after its component unmounts, so stop

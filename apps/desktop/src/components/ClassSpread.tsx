@@ -21,6 +21,7 @@ export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps
   const [subclasses, setSubclasses] = useState<Subclass[]>([]);
   const [selectedSubclassId, setSelectedSubclassId] = useState<string | null>(null);
   const [editingSubclass, setEditingSubclass] = useState(false);
+  const [creatingSubclass, setCreatingSubclass] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +30,7 @@ export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps
     setLoading(true);
     setError(null);
     setEditingSubclass(false);
+    setCreatingSubclass(false);
     subclassesApi
       .listByParentClass(heroClass.id)
       .then((list) => {
@@ -60,6 +62,7 @@ export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps
     setSubclasses((prev) => upsertById(prev, updated));
     setSelectedSubclassId(updated.id);
     setEditingSubclass(false);
+    setCreatingSubclass(false);
   }
 
   return (
@@ -97,11 +100,16 @@ export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps
         {loading && <p className="spread-subclass-status">Loading Subclasses&hellip;</p>}
         {error && <p className="spread-subclass-status spread-subclass-status--error">{error}</p>}
 
-        {!loading && !error && subclasses.length === 0 && (
-          <p className="spread-subclass-status">No Subclasses yet for {heroClass.name}.</p>
+        {!loading && !error && subclasses.length === 0 && !creatingSubclass && (
+          <div className="spread-subclass-empty">
+            <p className="spread-subclass-status">No Subclasses yet for {heroClass.name}.</p>
+            <button type="button" className="spread-edit-trigger" onClick={() => setCreatingSubclass(true)}>
+              + Subclass
+            </button>
+          </div>
         )}
 
-        {!loading && !error && subclasses.length > 0 && !editingSubclass && (
+        {!loading && !error && subclasses.length > 0 && !editingSubclass && !creatingSubclass && (
           <>
             <div className="spread-subclass-tabs">
               {subclasses.map((sub) => (
@@ -114,6 +122,13 @@ export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps
                   {sub.name}
                 </button>
               ))}
+              <button
+                type="button"
+                className="spread-sub-tab spread-sub-tab--add"
+                onClick={() => setCreatingSubclass(true)}
+              >
+                + Subclass
+              </button>
             </div>
 
             {selectedSubclass && (
@@ -133,6 +148,15 @@ export default function ClassSpread({ heroClass, domainsById }: ClassSpreadProps
             initial={selectedSubclass}
             onSaved={handleSubclassSaved}
             onCancel={() => setEditingSubclass(false)}
+          />
+        )}
+
+        {!loading && !error && creatingSubclass && (
+          <SubclassForm
+            parentClassId={heroClass.id}
+            parentClassName={heroClass.name}
+            onSaved={handleSubclassSaved}
+            onCancel={() => setCreatingSubclass(false)}
           />
         )}
       </div>

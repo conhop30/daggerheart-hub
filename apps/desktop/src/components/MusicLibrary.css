@@ -85,8 +85,24 @@
 
 .music-library__header-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.music-library__volume {
+  display: flex;
+  align-items: center;
   gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.music-library__volume input {
+  accent-color: var(--hope);
 }
 
 .music-library__hint {

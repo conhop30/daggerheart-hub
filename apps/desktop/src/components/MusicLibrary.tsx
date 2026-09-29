@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { EVERYWHERE_REGION_ID, musicApi, trackUrl, type MusicRegion, type MusicTrack } from '../api/music';
 import { defaultCandidates } from '../lib/music';
+import { loadVolume, saveVolume } from '../lib/musicVolume';
 import './MusicLibrary.css';
 
 // The Campaigns > Music tab: a small library filed into user-made "regions",
@@ -22,6 +23,7 @@ export default function MusicLibrary() {
   // One shared element for previewing tracks in the library.
   const previewRef = useRef<HTMLAudioElement>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [volume, setVolume] = useState(loadVolume);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +69,11 @@ export default function MusicLibrary() {
       audio.pause();
     }
   }, [previewTrack?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (previewRef.current) previewRef.current.volume = volume;
+    saveVolume(volume);
+  }, [volume]);
 
   function fail(err: unknown, fallback: string) {
     window.alert(err instanceof Error ? err.message : fallback);
@@ -239,6 +246,18 @@ export default function MusicLibrary() {
             <h2 className="music-library__title">{selected.name}</h2>
           )}
           <div className="music-library__header-actions">
+            <label className="music-library__volume">
+              Preview volume
+              <input
+                type="range"
+                min={0.05}
+                max={1}
+                step={0.05}
+                value={volume}
+                aria-label="Preview volume"
+                onChange={(e) => setVolume(Number(e.target.value))}
+              />
+            </label>
             {!selected.isDefault && (
               <>
                 <button
