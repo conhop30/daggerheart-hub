@@ -81,7 +81,7 @@ Enums are written as `Enum(...)`. Relationships are written as `→ TypeName`.
 - Name: String
 - Oneliner: String
 - ParentClass → Class (required)
-- SpellcastTrait: nullable Enum(Strength, Finesse, Knowledge, Presence, Agility, Instinct, None) — null represents "not yet chosen" during editing; None is a real, distinct value meaning "genuinely has no spellcast trait"
+- SpellcastTrait: nullable Enum(Strength, Finesse, Knowledge, Presence, Agility, Instinct, None) — null represents "not yet chosen" during editing; None is a real, distinct value meaning "actually has no spellcast trait"
 - FoundationFeatures: Dict(Name: String, Description: String, SpellcastTrait: nullable Enum — optional per-feature override)
 - SpecializationFeatures: Dict(Name: String, Description: String)
 - MasteryFeatures: Dict(Name: String, Description: String)

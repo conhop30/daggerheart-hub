@@ -55,7 +55,7 @@ need one manual update.
 | UI | **React 18 + TypeScript** | Component-driven UI with types enforced end-to-end, from the store's data shapes through the IPC bridge to the components that render them. |
 | Build tool | **Vite 5** | Fast dev server + HMR during UI iteration, and the same config's transform pipeline is reused by Vitest for unit tests. |
 | Data layer | **A single JSON file, no database engine or ORM** | `electron/store.js` is plain Node — synchronous CRUD + validation functions operating on an in-memory cache that's flushed to `~/.daggerheart-hub/data.json`. No SQLite, no Prisma/TypeORM. Chosen specifically so the same data-layer approach can be ported to a future React Native mobile client, which can't embed a JVM (ruling out the original Spring Boot backend) or a native SQLite driver the same way Electron can. |
-| State management | **Component state + one React Context** | No Redux/Zustand. Almost all state is local to the page that owns it (the same drill-down pattern used throughout: gallery → detail → nested list). The one exception is `GameSetsProvider`, a root-mounted context for the handful of values (Game Sets) that genuinely need to be visible from every form at once. |
+| State management | **Component state + two React Contexts** | No Redux/Zustand. Almost all state is local to the page that owns it (the same drill-down pattern used throughout: gallery → detail → nested list). `GameSetsProvider` is a root-mounted context for the handful of values (Game Sets) that need to be visible from every form at once; `MusicProvider` is a second one that owns the single app-wide `<audio>` element and playback state, so Session music survives navigating away instead of unmounting with the view that started it. |
 | Styling | **Plain CSS with custom-property design tokens** | No Tailwind/MUI dependency. Light/dark theming is two value sets under the same CSS variable names (`tokens.css`), swapped via a `data-theme` attribute — component CSS never needed to change when theming was added. |
 | Unit testing | **Vitest** | Drives `electron/store.js`'s CRUD and validation rules directly (idempotent-by-name creates, rename-collision handling, domain-pair/weapon-burden validation, export/import merge semantics) without ever touching the real on-disk store — each test run gets a throwaway directory via a `DAGGERHEART_STORE_DIR` env override. |
 | End-to-end testing | **Playwright**, via `_electron.launch()` | Drives the *actual* packaged-shape Electron app — a real window, real IPC round trips, a real (throwaway) store file — not a mocked browser page. |
@@ -246,6 +246,15 @@ content above, as opposed to authoring it. Delivered in three phases:
   mode changes. Audio is served to the renderer over a small custom
   `dhmedia://` protocol that answers byte-range requests by hand, since a
   looping `<audio>` element can't seek on a source that can't.
+- **Music survives leaving the Session.** The player used to live inside
+  `SessionView` and stop the moment you navigated away — unmounting a
+  React component unmounts its `<audio>` element with it. Playback state
+  moved into a root-mounted `MusicProvider` (see Tech Stack) instead, so a
+  Session's music panel and a bottom-right floating mini-player (Play/Pause,
+  volume, and a "Back to Session" button that jumps straight back to it from
+  anywhere) are just two different views onto the same context, and only
+  the mini-player unmounts when you leave.
+
 ## Engineering Challenges & How They Were Solved
 
 **1. The original architecture couldn't reach a future mobile client.**
@@ -293,7 +302,7 @@ Promise existed to attach it to. A synchronous throw inside a `useEffect`
 with no error boundary anywhere in the tree causes React to unmount
 *everything*, not just the failing component — hence the blank page with no
 console-visible explanation. Fixed by making every `apiClient` method
-genuinely `async`, turning the throw into a rejected Promise the existing
+actually `async`, turning the throw into a rejected Promise the existing
 `.catch()` handlers could actually see. A permanent regression test was
 added that runs against a plain Chromium tab instead of Electron (every
 prior Playwright test ran inside Electron, so none of them could have
@@ -472,6 +481,25 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       Environments gallery, a wider page layout, and a "Recently Viewed"
       history pinned above the spotlight's scroll region instead of
       requiring a scroll to reach it
+- [x] Renamed the app to **Daggerheart Brewery** and gave it a real,
+      hand-drawn application icon (a tankard pouring mist, in the app's own
+      Hope-gold/Fear-violet palette) in place of Electron's default one
+- [x] A condensed, filterable table view for Weapons/Armor/Loot/Consumables
+      on the Equipment page — a dense reference table styled after the
+      corebook's own equipment tables, with toggleable filter pills per tag
+      (Tier, Slot, Burden, Trait, Damage Type)
+- [x] Session music no longer stops when you navigate away — moved into a
+      root-mounted context with a floating mini-player and a "Back to
+      Session" jump; see [Engineering Challenges](#engineering-challenges--how-they-were-solved)
+- [x] A frameless fullscreen mode (Settings > Window), with its own in-app
+      close control since there's no OS one to fall back to
+- [x] Settings: a real gear icon (the old glyph read as a dark-mode toggle),
+      and a centered/padded layout matching every other page
+- [x] Class/Subclass Feature descriptions are now auto-growing textareas
+      with a borderless "book page" look instead of a single-line input
+- [x] A "+Subclass" affordance next to a Class's subclass tabs (and its
+      empty state), and a volume slider on the Music Library's own preview
+      player (the Session player already had one)
 
 **In progress / planned**
 - [ ] Same gallery/spotlight/`StatRail` treatment for the other
@@ -480,9 +508,8 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       Environments first
 - [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
       plain list views — every other content type already got this treatment)
-- [ ] A real application icon and code-signing certificate for the packaged
-      installer (currently uses Electron's default icon and a self-signed
-      test cert)
+- [ ] A code-signing certificate for the packaged installer (still
+      self-signed — SmartScreen shows the "unknown publisher" warning)
 - [ ] Corebook Loot/Consumables and Hope & Fear Consumables — the source
       tables' two-column layout defeated automated text-extraction parsing
       accurately enough to trust; needs a manual pass or a different
