@@ -36,4 +36,6 @@ contextBridge.exposeInMainWorld('daggerheart', {
   saveImage: (dataUrl, defaultName) => ipcRenderer.invoke('file:saveImage', dataUrl, defaultName),
   getWindowSize: () => ipcRenderer.invoke('window:getSize'),
   setWindowSize: (width, height) => ipcRenderer.invoke('window:setSize', { width, height }),
+  setFramelessMode: (enabled) => ipcRenderer.invoke('window:setFrameless', enabled),
+  quitApp: () => ipcRenderer.invoke('app:quit'),
 });

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import UpdateBanner from './UpdateBanner';
+import FramelessCloseButton from './FramelessCloseButton';
 import './AppShell.css';
 
 export type View =
@@ -72,6 +73,7 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
         </button>
       </nav>
       <UpdateBanner />
+      <FramelessCloseButton />
       <div className="app-shell__page" key={view}>
         {children}
       </div>

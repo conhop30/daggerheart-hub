@@ -52,6 +52,8 @@ export interface DaggerheartBridge {
   onUpdateState: (callback: (state: UpdateState) => void) => () => void;
   getWindowSize: () => Promise<[number, number]>;
   setWindowSize: (width: number, height: number) => Promise<[number, number]>;
+  setFramelessMode: (enabled: boolean) => Promise<void>;
+  quitApp: () => Promise<void>;
 }
 
 declare global {
@@ -139,4 +141,8 @@ export const apiClient = {
     window.daggerheart ? window.daggerheart.onUpdateState(callback) : () => {},
   getWindowSize: async () => unwrap(bridge().getWindowSize()),
   setWindowSize: async (width: number, height: number) => unwrap(bridge().setWindowSize(width, height)),
+  /** Recreates the window frameless+fullscreen (or back to normal) — see electron/main.js. */
+  setFramelessMode: async (enabled: boolean) => unwrap(bridge().setFramelessMode(enabled)),
+  /** Quits the app outright — the only way to close it while frameless, since there's no OS close button. */
+  quitApp: async () => unwrap(bridge().quitApp()),
 };

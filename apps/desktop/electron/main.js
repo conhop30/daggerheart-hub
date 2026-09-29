@@ -13,10 +13,20 @@ const store = require('./store.js');
 const updateCheck = require('./updateCheck.js');
 const { createUpdateManager } = require('./updater.js');
 
-function createWindow() {
+// `frame` (and, in practice, `fullscreen`) can only be set when a
+// BrowserWindow is created — Electron has no "hide the OS chrome" call on an
+// existing window on Windows/Linux — so switching frameless mode on or off
+// (see window:setFrameless below) recreates the window rather than mutating
+// it. The frameless flag is passed through as a query string on the loaded
+// URL/file so the renderer (which needs to know whether to draw its own
+// close button, since there's no OS one to fall back to) can read it back
+// without a race against an IPC round trip on startup.
+function createWindow({ frameless = false } = {}) {
   const win = new BrowserWindow({
     width: 1320,
     height: 880,
+    frame: !frameless,
+    fullscreen: frameless,
     // The packaged Windows exe/installer gets its icon from build.win.icon
     // (electron-builder embeds it) — this is what sets the taskbar/title-bar
     // icon for an unpackaged dev run, which otherwise falls back to
@@ -29,12 +39,14 @@ function createWindow() {
     },
   });
 
+  const query = frameless ? '?frameless=1' : '';
   if (app.isPackaged) {
-    win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), frameless ? { search: 'frameless=1' } : {});
   } else {
     // Must match vite.config.ts's server.port exactly.
-    win.loadURL(`http://localhost:${process.env.DAGGERHEART_DEV_PORT || 5183}`);
+    win.loadURL(`http://localhost:${process.env.DAGGERHEART_DEV_PORT || 5183}${query}`);
   }
+  return win;
 }
 
 const LIST = {
@@ -184,6 +196,21 @@ ipcMain.handle('store:update', (_event, collection, id, patch, ctx) => lookup(UP
 ipcMain.handle('store:remove', (_event, collection, id, ctx) => lookup(REMOVE, collection)(id, ctx));
 
 ipcMain.handle('window:getSize', (event) => BrowserWindow.fromWebContents(event.sender).getSize());
+
+// Toggles the frameless-fullscreen mode from Settings. See createWindow's
+// comment for why this recreates the window instead of mutating it. The new
+// window is created before the old one closes so window-all-closed never
+// sees a zero-window gap and quits the app out from under this.
+ipcMain.handle('window:setFrameless', (event, enabled) => {
+  const oldWin = BrowserWindow.fromWebContents(event.sender);
+  createWindow({ frameless: enabled });
+  // Deferred so this handler's (empty) reply reaches the calling renderer
+  // before its window is torn down — closing synchronously here can race
+  // Electron's own IPC-reply delivery to a webContents mid-destruction.
+  setImmediate(() => oldWin.close());
+});
+
+ipcMain.handle('app:quit', () => app.quit());
 
 ipcMain.handle('window:setSize', (event, { width, height }) => {
   const win = BrowserWindow.fromWebContents(event.sender);

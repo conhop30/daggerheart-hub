@@ -51,6 +51,14 @@ export default function SettingsPage() {
   const [currentSize, setCurrentSize] = useState<[number, number] | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The window itself (not just this component) is recreated to toggle
+  // frameless mode — see apiClient.setFramelessMode — so there's no in-memory
+  // state to read this back from after a toggle; the reloaded page's own URL
+  // (set by electron/main.js) is the source of truth instead.
+  const [frameless, setFrameless] = useState(
+    () => new URLSearchParams(window.location.search).get('frameless') === '1'
+  );
+  const [applyingFrameless, setApplyingFrameless] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
   const update = useUpdateState();
   // The status line only appears once someone has asked; the launch-time check
@@ -88,6 +96,20 @@ export default function SettingsPage() {
       cancelled = true;
     };
   }, []);
+
+  async function applyFrameless(enabled: boolean) {
+    setApplyingFrameless(true);
+    setFrameless(enabled);
+    try {
+      // This recreates the window; the current one closes shortly after,
+      // so there's no useful state to come back and update here.
+      await apiClient.setFramelessMode(enabled);
+    } catch (err) {
+      setFrameless(!enabled);
+      setError(err instanceof Error ? err.message : 'Could not change window mode.');
+      setApplyingFrameless(false);
+    }
+  }
 
   async function applyPreset(preset: WindowSizePreset) {
     setApplying(preset.label);
@@ -148,6 +170,15 @@ export default function SettingsPage() {
           ))}
         </div>
         {error && <p className="settings-page__error">{error}</p>}
+        <label className="settings-page__checkbox">
+          <input
+            type="checkbox"
+            checked={frameless}
+            onChange={(e) => applyFrameless(e.target.checked)}
+            disabled={applyingFrameless}
+          />
+          Frameless fullscreen mode (no title bar — use the close button that appears in the corner to quit)
+        </label>
       </section>
 
       <section className="settings-page__section">
