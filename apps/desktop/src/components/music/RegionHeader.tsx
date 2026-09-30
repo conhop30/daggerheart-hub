@@ -11,7 +11,7 @@ interface RegionHeaderProps {
 }
 
 // The selected region's title (inline-editable), Rename/Delete (hidden for
-// the built-in Everywhere region), and the dialog-based "+ Add Music" entry
+// the built-in Global region), and the dialog-based "+ Add Music" entry
 // point.
 export default function RegionHeader({ region, importing, onRename, onDelete, onAddFiles }: RegionHeaderProps) {
   const [renaming, setRenaming] = useState(false);
@@ -67,7 +67,7 @@ export default function RegionHeader({ region, importing, onRename, onDelete, on
 
       {region.isDefault && (
         <p className="region-header__hint">
-          Everywhere is the fallback: a region without its own default, or a session with no region, plays these.
+          Global is the fallback: a region without its own default, or a session with no region, plays these.
         </p>
       )}
     </div>

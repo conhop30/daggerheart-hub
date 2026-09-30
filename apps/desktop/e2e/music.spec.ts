@@ -67,7 +67,7 @@ test.describe('Music library and session playback', () => {
 
   test('add files, file them into regions, set defaults, and it all persists', async () => {
     await openMusicTab();
-    await expect(win.locator('.region-list__region--active')).toContainText('Everywhere');
+    await expect(win.locator('.region-list__region--active')).toContainText('Global');
     await expect(win.locator('.track-list__empty')).toContainText('No music in this region yet');
 
     await pickFiles('Calm Road', 'War Drums', 'Sea Surf');
@@ -87,7 +87,7 @@ test.describe('Music library and session playback', () => {
     await win.click('.region-list__inline-form button:has-text("Add")');
     await expect(win.locator('.region-header__title')).toHaveText('The Sunken Coast');
 
-    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.click('.region-list__region:has-text("Global")');
     await win.locator('.track-list__track', { hasText: 'Sea Surf' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Sea Surf to region"]', { label: 'The Sunken Coast' });
     await win.click('.region-list__region:has-text("The Sunken Coast")');
@@ -96,14 +96,14 @@ test.describe('Music library and session playback', () => {
 
     // A region can only pick from its own tracks.
     const options = await win.locator('select[aria-label="Combat default"] option').allTextContents();
-    expect(options).toEqual(['Use the Everywhere default', 'Sea Surf']);
+    expect(options).toEqual(['Use the Global default', 'Sea Surf']);
 
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await openMusicTab();
     await win.click('.region-list__region:has-text("The Sunken Coast")');
     await expect(win.locator('select[aria-label="Combat default"]')).toHaveValue(/.+/);
-    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.click('.region-list__region:has-text("Global")');
     await expect(win.locator('.track-list__track')).toHaveCount(2);
   });
 
@@ -128,12 +128,12 @@ test.describe('Music library and session playback', () => {
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'Doomed');
     await win.click('.region-list__inline-form button:has-text("Add")');
-    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.click('.region-list__region:has-text("Global")');
     await win.locator('.track-list__track', { hasText: 'Golden Road' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Golden Road to region"]', { label: 'Doomed' });
     await win.click('.region-list__region:has-text("Doomed")');
     await win.click('button:has-text("Delete Region")');
-    await expect(win.locator('.region-header__title')).toHaveText('Everywhere');
+    await expect(win.locator('.region-header__title')).toHaveText('Global');
     await expect(win.locator('.track-list__track', { hasText: 'Golden Road' })).toBeVisible();
   });
 
@@ -177,7 +177,7 @@ test.describe('Music library and session playback', () => {
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
     await win.click('.region-list__inline-form button:has-text("Add")');
-    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.click('.region-list__region:has-text("Global")');
     await win.locator('.track-list__track', { hasText: 'Sea Surf' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Sea Surf to region"]', { label: 'The Sunken Coast' });
     await win.click('.region-list__region:has-text("The Sunken Coast")');
@@ -212,7 +212,7 @@ test.describe('Music library and session playback', () => {
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.src)).not.toBe(calmSrc);
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
 
-    // The region's own combat default wins; its missing adventuring default falls back to Everywhere.
+    // The region's own combat default wins; its missing adventuring default falls back to Global.
     await win.selectOption('select[aria-label="Music region"]', { label: 'The Sunken Coast' });
     await expect(now).toHaveText('Sea Surf');
     await win.click('.mode-toggle__option:has-text("Adventuring")');
@@ -227,6 +227,29 @@ test.describe('Music library and session playback', () => {
     await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
     await expect(win.locator('select[aria-label="Music region"] option:checked')).toHaveText('The Sunken Coast');
+  });
+
+  test('each track has its own persisted volume, independent of another track\'s', async () => {
+    await openMusicTab();
+    await pickFiles('Calm Road', 'War Drums');
+    await expect(win.locator('.track-list__track')).toHaveCount(2);
+
+    const calmVolume = win.locator('.track-list__item', { hasText: 'Calm Road' }).getByLabel('Calm Road volume');
+    const warVolume = win.locator('.track-list__item', { hasText: 'War Drums' }).getByLabel('War Drums volume');
+    await expect(calmVolume).toHaveValue('1');
+    await expect(warVolume).toHaveValue('1');
+
+    await calmVolume.fill('0.4');
+    await expect(win.locator('.track-list__item', { hasText: 'Calm Road' }).locator('.track-list__track-volume-value')).toHaveText(
+      '40%'
+    );
+    // Unrelated track is untouched.
+    await expect(warVolume).toHaveValue('1');
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await openMusicTab();
+    await expect(win.locator('.track-list__item', { hasText: 'Calm Road' }).getByLabel('Calm Road volume')).toHaveValue('0.4');
   });
 
   test('a session with no music set says so, and Play is disabled', async () => {

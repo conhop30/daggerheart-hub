@@ -1000,19 +1000,33 @@ describe('cloneSession', () => {
 describe('Music', () => {
   const DEFAULT = 'everywhere';
 
-  it('always has the built-in Everywhere region, which cannot be removed or renamed', async () => {
+  it('always has the built-in Global region, which cannot be removed or renamed', async () => {
     const regions = store.listMusicRegions();
     expect(regions).toHaveLength(1);
-    expect(regions[0]).toMatchObject({ id: DEFAULT, name: 'Everywhere', isDefault: true });
+    expect(regions[0]).toMatchObject({ id: DEFAULT, name: 'Global', isDefault: true });
     await expect(store.removeMusicRegion(DEFAULT)).rejects.toThrow('cannot be removed');
     const renamed = await store.updateMusicRegion(DEFAULT, { name: 'Elsewhere', isDefault: false });
-    expect(renamed).toMatchObject({ name: 'Everywhere', isDefault: true });
+    expect(renamed).toMatchObject({ name: 'Global', isDefault: true });
   });
 
-  it('backfills the Everywhere region into an older store that lacks the collections', async () => {
+  it('backfills the Global region into an older store that lacks the collections', async () => {
     fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify({ version: 1, campaigns: [] }));
     store.__resetCacheForTests();
-    expect(store.listMusicRegions().map((r) => r.id)).toEqual([DEFAULT]);
+    expect(store.listMusicRegions()).toEqual([expect.objectContaining({ id: DEFAULT, name: 'Global' })]);
+  });
+
+  it('renames an older store\'s default region forward from "Everywhere" to "Global" on load', async () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'data.json'),
+      JSON.stringify({
+        version: 1,
+        campaigns: [],
+        musicRegions: [{ id: DEFAULT, name: 'Everywhere', isDefault: true, adventuringTrackId: null, combatTrackId: null }],
+        musicTracks: [],
+      })
+    );
+    store.__resetCacheForTests();
+    expect(store.listMusicRegions()).toEqual([expect.objectContaining({ id: DEFAULT, name: 'Global' })]);
   });
 
   it('creates regions and files tracks under them (default region if none given)', async () => {
@@ -1082,6 +1096,39 @@ describe('Music', () => {
     await expect(store.createSession({ campaignId: c.id, name: 'Session 1', regionId: 'missing' })).rejects.toThrow(
       'No music region'
     );
+  });
+
+  it('a new track starts at full volume, and volume clamps to 0–1 on update', async () => {
+    const t = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3' });
+    expect(t.volume).toBe(1);
+
+    const quieter = await store.updateMusicTrack(t.id, { volume: 0.4 });
+    expect(quieter.volume).toBe(0.4);
+
+    const clampedHigh = await store.updateMusicTrack(t.id, { volume: 3 });
+    expect(clampedHigh.volume).toBe(1);
+    const clampedLow = await store.updateMusicTrack(t.id, { volume: -2 });
+    expect(clampedLow.volume).toBe(0);
+    const clampedNaN = await store.updateMusicTrack(t.id, { volume: Number.NaN });
+    expect(clampedNaN.volume).toBe(0); // falls back to the track's current (just-clamped) volume, not 1
+  });
+
+  it('a track record from before `volume` existed presents as full volume, without rewriting the stored file', async () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'data.json'),
+      JSON.stringify({
+        version: 1,
+        campaigns: [],
+        musicRegions: [{ id: DEFAULT, name: 'Global', isDefault: true, adventuringTrackId: null, combatTrackId: null }],
+        musicTracks: [{ id: 'legacy-track', name: 'Old Tide', regionId: DEFAULT, fileName: 'old.mp3', sizeBytes: 1 }],
+      })
+    );
+    store.__resetCacheForTests();
+    const [track] = store.listMusicTracks();
+    expect(track.volume).toBe(1);
+
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+    expect(onDisk.musicTracks[0].volume).toBeUndefined();
   });
 });
 

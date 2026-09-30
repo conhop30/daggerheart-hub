@@ -54,11 +54,25 @@ const COLLECTIONS = [
 // fixed id (not a random UUID) so Export/Import from another machine upserts
 // onto the same record instead of creating a second default.
 const DEFAULT_REGION_ID = 'everywhere';
+const DEFAULT_REGION_NAME = 'Global';
 function defaultMusicRegion() {
-  return { id: DEFAULT_REGION_ID, name: 'Everywhere', isDefault: true, adventuringTrackId: null, combatTrackId: null };
+  return { id: DEFAULT_REGION_ID, name: DEFAULT_REGION_NAME, isDefault: true, adventuringTrackId: null, combatTrackId: null };
 }
+// Backfills the default region if a store predates it entirely, AND — the
+// one deliberate exception to "never rewrite existing data.json content on
+// load" elsewhere in this file — fixes its name forward if an older default
+// ("Everywhere") is still stored. Safe specifically because this region's
+// name has never been user-editable (updateMusicRegion strips `name` from
+// any patch when id === DEFAULT_REGION_ID), so a stored value that isn't
+// the current default name can only be a leftover from an earlier version
+// of this app, never something a user typed.
 function ensureDefaultRegion(store) {
-  if (!store.musicRegions.some((r) => r.id === DEFAULT_REGION_ID)) store.musicRegions.unshift(defaultMusicRegion());
+  const existing = store.musicRegions.find((r) => r.id === DEFAULT_REGION_ID);
+  if (!existing) {
+    store.musicRegions.unshift(defaultMusicRegion());
+  } else if (existing.name !== DEFAULT_REGION_NAME) {
+    existing.name = DEFAULT_REGION_NAME;
+  }
 }
 
 let cache = null;
@@ -1440,8 +1454,19 @@ function listMusicRegions() {
   return getCache().musicRegions;
 }
 
+// A read-only fixup, same spirit as the Global-rename one above: tracks
+// created before `volume` existed have no such key on disk at all (the
+// store's policy is to never rewrite old records on load), so every read
+// defaults it here rather than letting every consumer assume the field is
+// always present. clampNumber() rounds to an integer, which would wreck a
+// 0–1 fraction, hence the hand-rolled clamp instead of reusing it.
+function clampVolume(value, fallback = 1) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+}
+
 function listMusicTracks() {
-  return getCache().musicTracks;
+  return getCache().musicTracks.map((t) => (t.volume == null ? { ...t, volume: 1 } : t));
 }
 
 // Tracks are hand-written, not makeCollection: two files can share a name
@@ -1459,6 +1484,10 @@ function createMusicTrack(data) {
       regionId,
       fileName: data.fileName,
       sizeBytes: data.sizeBytes ?? null,
+      // Tracks are innately different in loudness; a fresh import starts at
+      // full (1) and the GM trims it down per-file from there, not the
+      // other way round — matches how <audio>.volume itself is capped.
+      volume: data.volume === undefined ? 1 : clampVolume(data.volume),
     };
     store.musicTracks.push(record);
     return record;
@@ -1472,6 +1501,9 @@ function updateMusicTrack(id, patch) {
     if (patch.name !== undefined) {
       if (!patch.name.trim()) throw new Error('Name is required.');
       track.name = patch.name.trim();
+    }
+    if (patch.volume !== undefined) {
+      track.volume = clampVolume(patch.volume, track.volume ?? 1);
     }
     if (patch.regionId !== undefined && patch.regionId !== track.regionId) {
       if (!store.musicRegions.some((r) => r.id === patch.regionId)) throw new Error(`No music region with id ${patch.regionId}`);

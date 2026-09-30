@@ -12,6 +12,7 @@ interface TrackListProps {
   onVolumeChange: (volume: number) => void;
   onRename: (track: MusicTrack, name: string) => void;
   onMove: (track: MusicTrack, regionId: string) => void;
+  onTrackVolumeChange: (track: MusicTrack, volume: number) => void;
   onDelete: (track: MusicTrack) => void;
 }
 
@@ -29,6 +30,7 @@ export default function TrackList({
   onVolumeChange,
   onRename,
   onMove,
+  onTrackVolumeChange,
   onDelete,
 }: TrackListProps) {
   const [renamingTrackId, setRenamingTrackId] = useState<string | null>(null);
@@ -53,86 +55,102 @@ export default function TrackList({
   return (
     <div className="track-list">
       {tracks.map((track) => (
-        <div className="track-list__track" key={track.id}>
-          <button
-            type="button"
-            className="track-list__play"
-            aria-label={previewId === track.id ? `Stop ${track.name}` : `Preview ${track.name}`}
-            onClick={() => onPreviewToggle(track.id)}
-          >
-            {previewId === track.id ? '■' : '▶'}
-          </button>
-
-          {renamingTrackId === track.id ? (
-            <input
-              autoFocus
-              className="track-list__rename"
-              value={nameDraft}
-              aria-label="Track name"
-              onChange={(e) => setNameDraft(e.target.value)}
-              onBlur={() => submitRename(track)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitRename(track);
-                if (e.key === 'Escape') setRenamingTrackId(null);
-              }}
-            />
-          ) : (
-            <span className="track-list__name">{track.name}</span>
-          )}
-
-          {selectedRegion.adventuringTrackId === track.id && <em className="track-list__tag">ADV</em>}
-          {selectedRegion.combatTrackId === track.id && <em className="track-list__tag">COM</em>}
-
-          <div className="track-list__menu">
+        <div className="track-list__item" key={track.id}>
+          <div className="track-list__track">
             <button
               type="button"
-              className="track-list__kebab"
-              aria-label={`More actions for ${track.name}`}
-              aria-expanded={openMenuId === track.id}
-              onClick={() => setOpenMenuId((id) => (id === track.id ? null : track.id))}
+              className="track-list__play"
+              aria-label={previewId === track.id ? `Stop ${track.name}` : `Preview ${track.name}`}
+              onClick={() => onPreviewToggle(track.id)}
             >
-              &#8942;
+              {previewId === track.id ? '■' : '▶'}
             </button>
-            {openMenuId === track.id && (
-              <div className="track-list__popover" role="menu">
-                <button type="button" onClick={() => startRename(track)}>
-                  Rename
-                </button>
-                <label className="track-list__popover-move">
-                  File in region
-                  <select
-                    aria-label={`Move ${track.name} to region`}
-                    value={track.regionId}
-                    onChange={(e) => {
-                      onMove(track, e.target.value);
+
+            {renamingTrackId === track.id ? (
+              <input
+                autoFocus
+                className="track-list__rename"
+                value={nameDraft}
+                aria-label="Track name"
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => submitRename(track)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitRename(track);
+                  if (e.key === 'Escape') setRenamingTrackId(null);
+                }}
+              />
+            ) : (
+              <span className="track-list__name">{track.name}</span>
+            )}
+
+            {selectedRegion.adventuringTrackId === track.id && <em className="track-list__tag">ADV</em>}
+            {selectedRegion.combatTrackId === track.id && <em className="track-list__tag">COM</em>}
+
+            <div className="track-list__menu">
+              <button
+                type="button"
+                className="track-list__kebab"
+                aria-label={`More actions for ${track.name}`}
+                aria-expanded={openMenuId === track.id}
+                onClick={() => setOpenMenuId((id) => (id === track.id ? null : track.id))}
+              >
+                &#8942;
+              </button>
+              {openMenuId === track.id && (
+                <div className="track-list__popover" role="menu">
+                  <button type="button" onClick={() => startRename(track)}>
+                    Rename
+                  </button>
+                  <label className="track-list__popover-move">
+                    File in region
+                    <select
+                      aria-label={`Move ${track.name} to region`}
+                      value={track.regionId}
+                      onChange={(e) => {
+                        onMove(track, e.target.value);
+                        setOpenMenuId(null);
+                      }}
+                    >
+                      {regions.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="track-list__popover-danger"
+                    onClick={() => {
                       setOpenMenuId(null);
+                      onDelete(track);
                     }}
                   >
-                    {regions.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="track-list__popover-danger"
-                  onClick={() => {
-                    setOpenMenuId(null);
-                    onDelete(track);
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            )}
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+
+          <label className="track-list__track-volume">
+            <span className="track-list__track-volume-label">Vol</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={track.volume}
+              aria-label={`${track.name} volume`}
+              onChange={(e) => onTrackVolumeChange(track, Number(e.target.value))}
+            />
+            <span className="track-list__track-volume-value">{Math.round(track.volume * 100)}%</span>
+          </label>
         </div>
       ))}
 
       <label className="track-list__volume">
-        Preview volume
+        Preview volume (master)
         <input
           type="range"
           min={0.05}

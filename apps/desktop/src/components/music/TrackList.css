@@ -3,13 +3,17 @@
   flex-direction: column;
 }
 
+.track-list__item {
+  border-bottom: 1px solid var(--hairline);
+  padding: 0.35rem 0.25rem;
+}
+
 .track-list__track {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  border-bottom: 1px solid var(--hairline);
-  padding: 0.5rem 0.25rem;
+  padding: 0.15rem 0;
 }
 
 .track-list__play {
@@ -135,6 +139,41 @@
 }
 
 .track-list__empty {
+  color: var(--muted);
+}
+
+/* Each track's own trim, right under its row — adjusting it while the
+   track is previewing (track-list__play) is the intended workflow, so it
+   stays visible at all times rather than living behind the "⋯" menu. */
+.track-list__track-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: calc(1.8rem + var(--space-1));
+}
+
+.track-list__track-volume-label {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  width: 1.6rem;
+}
+
+.track-list__track-volume input {
+  flex: 1;
+  accent-color: var(--muted);
+}
+
+.track-list__track-volume-value {
+  flex-shrink: 0;
+  min-width: 2.2rem;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
   color: var(--muted);
 }
 

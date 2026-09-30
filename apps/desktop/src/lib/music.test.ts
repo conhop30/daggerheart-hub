@@ -8,6 +8,7 @@ const track = (id: string, regionId = 'everywhere'): MusicTrack => ({
   regionId,
   fileName: `${id}.mp3`,
   sizeBytes: 1,
+  volume: 1,
 });
 const region = (over: Partial<MusicRegion> & { id: string }): MusicRegion => ({
   name: over.id,

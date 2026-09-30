@@ -20,9 +20,16 @@ export interface MusicTrack {
   /** The generated name of the audio file copied into the app's music folder. */
   fileName: string;
   sizeBytes: number | null;
+  /** 0–1, per-track trim applied on top of the shared Volume slider — tracks are innately different in loudness. */
+  volume: number;
 }
 
 export type UpdateMusicRegionRequest = Partial<Pick<MusicRegion, 'name' | 'adventuringTrackId' | 'combatTrackId'>>;
+export interface UpdateMusicTrackRequest {
+  name?: string;
+  regionId?: string;
+  volume?: number;
+}
 
 export const musicApi = {
   listRegions: () => apiClient.list<MusicRegion>('musicRegions'),
@@ -31,8 +38,7 @@ export const musicApi = {
     apiClient.update<MusicRegion>('musicRegions', id, body),
   removeRegion: (id: string) => apiClient.remove('musicRegions', id),
   listTracks: () => apiClient.list<MusicTrack>('musicTracks'),
-  updateTrack: (id: string, body: { name?: string; regionId?: string }) =>
-    apiClient.update<MusicTrack>('musicTracks', id, body),
+  updateTrack: (id: string, body: UpdateMusicTrackRequest) => apiClient.update<MusicTrack>('musicTracks', id, body),
   removeTrack: (id: string) => apiClient.remove('musicTracks', id),
   /** Opens a file picker and copies the chosen audio files into the library. */
   importFiles: (regionId: string) => apiClient.importMusicFiles<MusicTrack>(regionId),

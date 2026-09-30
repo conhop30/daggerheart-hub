@@ -72,10 +72,13 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     }
   }, [previewTrack?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Master listening level × this specific track's own saved trim — the
+  // same multiply MusicContext applies for real session playback, so what
+  // you dial in here previewing is exactly what you'll hear in a Session.
   useEffect(() => {
-    if (previewRef.current) previewRef.current.volume = volume;
+    if (previewRef.current) previewRef.current.volume = volume * (previewTrack?.volume ?? 1);
     saveVolume(volume);
-  }, [volume]);
+  }, [volume, previewTrack?.volume]);
 
   function fail(err: unknown, fallback: string) {
     window.alert(err instanceof Error ? err.message : fallback);
@@ -121,7 +124,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
 
   async function deleteRegion(region: MusicRegion) {
     const count = tracks.filter((t) => t.regionId === region.id).length;
-    const note = count > 0 ? ` Its ${count} track${count === 1 ? '' : 's'} will move to Everywhere.` : '';
+    const note = count > 0 ? ` Its ${count} track${count === 1 ? '' : 's'} will move to Global.` : '';
     if (!window.confirm(`Delete the region "${region.name}"?${note}`)) return;
     try {
       await musicApi.removeRegion(region.id);
@@ -158,6 +161,20 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
       fail(err, 'Could not add those files.');
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function setTrackVolume(track: MusicTrack, volume: number) {
+    // Optimistic: applied to local state immediately so a dragged slider
+    // tracks the pointer smoothly instead of waiting on the IPC round trip.
+    setTracks((prev) => prev.map((t) => (t.id === track.id ? { ...t, volume } : t)));
+    try {
+      const saved = await musicApi.updateTrack(track.id, { volume });
+      setTracks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
+      onLibraryChanged?.();
+    } catch (err) {
+      setTracks((prev) => prev.map((t) => (t.id === track.id ? track : t)));
+      fail(err, 'Could not set that volume.');
     }
   }
 
@@ -199,7 +216,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
   }
 
   const candidates = selected ? defaultCandidates(selected, tracks) : [];
-  const inheritLabel = selected?.isDefault ? 'None' : 'Use the Everywhere default';
+  const inheritLabel = selected?.isDefault ? 'None' : 'Use the Global default';
 
   return {
     regions,
@@ -227,6 +244,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     setDefault,
     addFiles,
     renameTrack,
+    setTrackVolume,
     moveTrack,
     deleteTrack,
   };

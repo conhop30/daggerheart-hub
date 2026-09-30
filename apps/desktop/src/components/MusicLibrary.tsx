@@ -55,6 +55,7 @@ export default function MusicLibrary() {
           onVolumeChange={editor.setVolume}
           onRename={editor.renameTrack}
           onMove={editor.moveTrack}
+          onTrackVolumeChange={editor.setTrackVolume}
           onDelete={editor.deleteTrack}
         />
       </section>
