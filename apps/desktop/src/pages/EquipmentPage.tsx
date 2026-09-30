@@ -7,7 +7,7 @@ import { lootTablesApi, type LootTable, type LootTableEntry } from '../api/lootT
 import { consumableTablesApi, type ConsumableTable, type ConsumableTableEntry } from '../api/consumableTables';
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
-import { ContentCard, ContentCardList, MetaChip } from '../components/ContentCard';
+import { ContentCard, MetaChip } from '../components/ContentCard';
 import EquipmentSection from '../components/EquipmentSection';
 import WeaponForm from '../components/WeaponForm';
 import ArmorForm from '../components/ArmorForm';
@@ -16,8 +16,7 @@ import TableDetail from '../components/TableDetail';
 import { RARITIES } from '../lib/lootRarity';
 import { loadEquipmentView, saveEquipmentView, type EquipmentView } from '../lib/equipmentView';
 import { useTagFilters, type FilterDimension } from '../lib/useTagFilters';
-import TagFilterBar from '../components/TagFilterBar';
-import EquipmentTable, { type EquipmentTableColumn } from '../components/EquipmentTable';
+import type { EquipmentTableColumn } from '../components/EquipmentTable';
 import '../components/ModeToggle.css';
 import './BrowsePage.css';
 
@@ -516,15 +515,15 @@ export default function EquipmentPage() {
           }}
         />
 
-      <div className="browse-page__section">
-        <div className="browse-page__section-header">
-          <h2 className="browse-page__section-title">Loot</h2>
+      <EquipmentSection<Loot>
+        title="Loot"
+        addButtons={
           <button type="button" className="browse-page__add-button" onClick={() => setCreatingLoot(true)}>
             + New Loot
           </button>
-        </div>
-        {creatingLoot && (
-          <div className="browse-page__inline-form">
+        }
+        createForm={
+          creatingLoot && (
             <SimpleNameDescriptionForm
               title="Loot"
               submitLabel="Create Loot"
@@ -536,10 +535,10 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setCreatingLoot(false)}
             />
-          </div>
-        )}
-        {view === 'table' && editingLoot && (
-          <div className="browse-page__inline-form">
+          )
+        }
+        editForm={
+          editingLoot && (
             <SimpleNameDescriptionForm
               title="Loot"
               submitLabel="Create Loot"
@@ -552,59 +551,49 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setEditingLootId(null)}
             />
-          </div>
-        )}
-        {loot.loading && <p className="browse-page__status">Loading Loot&hellip;</p>}
-        {loot.error && <p className="browse-page__status browse-page__status--error">{loot.error}</p>}
-        {!loot.loading &&
-          !loot.error &&
-          (view === 'cards' ? (
-            <ContentCardList
-              items={loot.items}
-              emptyMessage="No Loot yet — click + New Loot above to create one."
-              getKey={(l) => l.id}
-              renderItem={(l) =>
-                editingLootId === l.id ? (
-                  <SimpleNameDescriptionForm
-                    title="Loot"
-                    submitLabel="Create Loot"
-                    initial={l}
-                    create={lootApi.create}
-                    update={lootApi.update}
-                    onSaved={(saved) => {
-                      loot.upsert(saved);
-                      setEditingLootId(null);
-                    }}
-                    onCancel={() => setEditingLootId(null)}
-                  />
-                ) : (
-                  <NameDescriptionCard item={l} onEdit={handleEditLoot} onDelete={handleDeleteLoot} />
-                )
-              }
+          )
+        }
+        loading={loot.loading}
+        error={loot.error}
+        items={loot.items}
+        getKey={(l) => l.id}
+        emptyMessage="No Loot yet — click + New Loot above to create one."
+        renderCard={(l) =>
+          editingLootId === l.id ? (
+            <SimpleNameDescriptionForm
+              title="Loot"
+              submitLabel="Create Loot"
+              initial={l}
+              create={lootApi.create}
+              update={lootApi.update}
+              onSaved={(saved) => {
+                loot.upsert(saved);
+                setEditingLootId(null);
+              }}
+              onCancel={() => setEditingLootId(null)}
             />
           ) : (
-            !editingLoot && (
-              <EquipmentTable
-                columns={LOOT_COLUMNS}
-                items={loot.items}
-                getKey={(l) => l.id}
-                onEdit={(l) => handleEditLoot(l.id)}
-                onDelete={(l) => handleDeleteLoot(l.id)}
-                emptyMessage="No Loot yet — click + New Loot above to create one."
-              />
-            )
-          ))}
-      </div>
+            <NameDescriptionCard item={l} onEdit={handleEditLoot} onDelete={handleDeleteLoot} />
+          )
+        }
+        table={{
+          view,
+          columns: LOOT_COLUMNS,
+          onEdit: (l) => handleEditLoot(l.id),
+          onDelete: (l) => handleDeleteLoot(l.id),
+          editing: Boolean(editingLoot),
+        }}
+      />
 
-      <div className="browse-page__section">
-        <div className="browse-page__section-header">
-          <h2 className="browse-page__section-title">Consumables</h2>
+      <EquipmentSection<Consumable>
+        title="Consumables"
+        addButtons={
           <button type="button" className="browse-page__add-button" onClick={() => setCreatingConsumable(true)}>
             + New Consumable
           </button>
-        </div>
-        {creatingConsumable && (
-          <div className="browse-page__inline-form">
+        }
+        createForm={
+          creatingConsumable && (
             <SimpleNameDescriptionForm
               title="Consumable"
               submitLabel="Create Consumable"
@@ -616,10 +605,10 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setCreatingConsumable(false)}
             />
-          </div>
-        )}
-        {view === 'table' && editingConsumable && (
-          <div className="browse-page__inline-form">
+          )
+        }
+        editForm={
+          editingConsumable && (
             <SimpleNameDescriptionForm
               title="Consumable"
               submitLabel="Create Consumable"
@@ -632,59 +621,49 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setEditingConsumableId(null)}
             />
-          </div>
-        )}
-        {consumables.loading && <p className="browse-page__status">Loading Consumables&hellip;</p>}
-        {consumables.error && <p className="browse-page__status browse-page__status--error">{consumables.error}</p>}
-        {!consumables.loading &&
-          !consumables.error &&
-          (view === 'cards' ? (
-            <ContentCardList
-              items={consumables.items}
-              emptyMessage="No Consumables yet — click + New Consumable above to create one."
-              getKey={(c) => c.id}
-              renderItem={(c) =>
-                editingConsumableId === c.id ? (
-                  <SimpleNameDescriptionForm
-                    title="Consumable"
-                    submitLabel="Create Consumable"
-                    initial={c}
-                    create={consumablesApi.create}
-                    update={consumablesApi.update}
-                    onSaved={(saved) => {
-                      consumables.upsert(saved);
-                      setEditingConsumableId(null);
-                    }}
-                    onCancel={() => setEditingConsumableId(null)}
-                  />
-                ) : (
-                  <NameDescriptionCard item={c} onEdit={handleEditConsumable} onDelete={handleDeleteConsumable} />
-                )
-              }
+          )
+        }
+        loading={consumables.loading}
+        error={consumables.error}
+        items={consumables.items}
+        getKey={(c) => c.id}
+        emptyMessage="No Consumables yet — click + New Consumable above to create one."
+        renderCard={(c) =>
+          editingConsumableId === c.id ? (
+            <SimpleNameDescriptionForm
+              title="Consumable"
+              submitLabel="Create Consumable"
+              initial={c}
+              create={consumablesApi.create}
+              update={consumablesApi.update}
+              onSaved={(saved) => {
+                consumables.upsert(saved);
+                setEditingConsumableId(null);
+              }}
+              onCancel={() => setEditingConsumableId(null)}
             />
           ) : (
-            !editingConsumable && (
-              <EquipmentTable
-                columns={CONSUMABLE_COLUMNS}
-                items={consumables.items}
-                getKey={(c) => c.id}
-                onEdit={(c) => handleEditConsumable(c.id)}
-                onDelete={(c) => handleDeleteConsumable(c.id)}
-                emptyMessage="No Consumables yet — click + New Consumable above to create one."
-              />
-            )
-          ))}
-      </div>
+            <NameDescriptionCard item={c} onEdit={handleEditConsumable} onDelete={handleDeleteConsumable} />
+          )
+        }
+        table={{
+          view,
+          columns: CONSUMABLE_COLUMNS,
+          onEdit: (c) => handleEditConsumable(c.id),
+          onDelete: (c) => handleDeleteConsumable(c.id),
+          editing: Boolean(editingConsumable),
+        }}
+      />
 
-      <div className="browse-page__section">
-        <div className="browse-page__section-header">
-          <h2 className="browse-page__section-title">Loot Tables</h2>
+      <EquipmentSection<LootTable>
+        title="Loot Tables"
+        addButtons={
           <button type="button" className="browse-page__add-button" onClick={() => setCreatingLootTable(true)}>
             + New Loot Table
           </button>
-        </div>
-        {creatingLootTable && (
-          <div className="browse-page__inline-form">
+        }
+        createForm={
+          creatingLootTable && (
             <SimpleNameDescriptionForm
               title="Loot Table"
               submitLabel="Create Loot Table"
@@ -696,29 +675,25 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setCreatingLootTable(false)}
             />
-          </div>
-        )}
-        {lootTables.loading && <p className="browse-page__status">Loading Loot Tables&hellip;</p>}
-        {lootTables.error && <p className="browse-page__status browse-page__status--error">{lootTables.error}</p>}
-        {!lootTables.loading && !lootTables.error && (
-          <ContentCardList
-            items={lootTables.items}
-            emptyMessage="No Loot Tables yet — click + New Loot Table above, then open it to add rollable entries."
-            getKey={(t) => t.id}
-            renderItem={(t) => <TableCard table={t} onOpen={handleOpenLootTable} onDelete={handleDeleteLootTable} />}
-          />
-        )}
-      </div>
+          )
+        }
+        loading={lootTables.loading}
+        error={lootTables.error}
+        items={lootTables.items}
+        getKey={(t) => t.id}
+        emptyMessage="No Loot Tables yet — click + New Loot Table above, then open it to add rollable entries."
+        renderCard={(t) => <TableCard table={t} onOpen={handleOpenLootTable} onDelete={handleDeleteLootTable} />}
+      />
 
-      <div className="browse-page__section">
-        <div className="browse-page__section-header">
-          <h2 className="browse-page__section-title">Consumable Tables</h2>
+      <EquipmentSection<ConsumableTable>
+        title="Consumable Tables"
+        addButtons={
           <button type="button" className="browse-page__add-button" onClick={() => setCreatingConsumableTable(true)}>
             + New Consumable Table
           </button>
-        </div>
-        {creatingConsumableTable && (
-          <div className="browse-page__inline-form">
+        }
+        createForm={
+          creatingConsumableTable && (
             <SimpleNameDescriptionForm
               title="Consumable Table"
               submitLabel="Create Consumable Table"
@@ -730,23 +705,17 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setCreatingConsumableTable(false)}
             />
-          </div>
+          )
+        }
+        loading={consumableTables.loading}
+        error={consumableTables.error}
+        items={consumableTables.items}
+        getKey={(t) => t.id}
+        emptyMessage="No Consumable Tables yet — click + New Consumable Table above, then open it to add rollable entries."
+        renderCard={(t) => (
+          <TableCard table={t} onOpen={handleOpenConsumableTable} onDelete={handleDeleteConsumableTable} />
         )}
-        {consumableTables.loading && <p className="browse-page__status">Loading Consumable Tables&hellip;</p>}
-        {consumableTables.error && (
-          <p className="browse-page__status browse-page__status--error">{consumableTables.error}</p>
-        )}
-        {!consumableTables.loading && !consumableTables.error && (
-          <ContentCardList
-            items={consumableTables.items}
-            emptyMessage="No Consumable Tables yet — click + New Consumable Table above, then open it to add rollable entries."
-            getKey={(t) => t.id}
-            renderItem={(t) => (
-              <TableCard table={t} onOpen={handleOpenConsumableTable} onDelete={handleDeleteConsumableTable} />
-            )}
-          />
-        )}
-      </div>
+      />
     </div>
   );
 }
