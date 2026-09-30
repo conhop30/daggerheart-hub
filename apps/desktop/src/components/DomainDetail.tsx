@@ -5,6 +5,7 @@ import DomainForm from './DomainForm';
 import CardForm from './CardForm';
 import { domainGradient } from './DomainBanner';
 import DomainCardTile from './DomainCardTile';
+import DomainIcon from './DomainIcon';
 import { upsertById } from '../lib/upsert';
 import './DomainDetail.css';
 
@@ -99,6 +100,7 @@ export default function DomainDetail({ domain, onBack, onDomainSaved, onDomainDe
         </div>
       ) : (
         <div className="domain-detail__hero" style={{ background: domainGradient(domain.colorHex) }}>
+          <DomainIcon domainName={domain.name} className="domain-detail__icon" />
           <div className="domain-detail__hero-actions">
             <button type="button" className="domain-detail__hero-action" onClick={() => setEditingDomain(true)}>
               Edit Domain

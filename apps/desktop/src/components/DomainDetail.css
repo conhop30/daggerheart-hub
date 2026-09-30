@@ -21,10 +21,20 @@
 
 .domain-detail__hero {
   position: relative;
+  overflow: hidden;
   border-radius: var(--radius-card);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
   box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.6);
+}
+
+.domain-detail__icon {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-3);
+  width: 96px;
+  height: 96px;
+  color: rgba(255, 255, 255, 0.16);
 }
 
 .domain-detail__title {
