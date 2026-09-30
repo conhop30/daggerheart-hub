@@ -1,0 +1,49 @@
+/* Self-hosted replacement for the old Google Fonts <link> in index.html —
+   same 4 families/weights, latin subset only (this app's UI text is
+   English). Cinzel/Fraunces/Inter each ship as one variable-font file
+   covering every weight this app uses, so 4 families is only 5 files
+   total, not one per weight. Relative url()s so Vite's asset pipeline
+   resolves and copies them correctly under vite.config.ts's base: './'
+   (an absolute /fonts/... path would resolve to the filesystem root in
+   the packaged file:// build — see that file's own comment on this exact
+   trap). font-display: swap matches the previous Google Fonts request. */
+
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('./fonts/cinzel.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/fraunces.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('./fonts/inter.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-mono-500.woff2') format('woff2');
+}
