@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { FeatureRow } from '../lib/featureKinds';
 import './ContentCard.css';
 
 interface ContentCardProps {
@@ -72,6 +73,27 @@ export function FeatureLines({ label, features }: { label?: string; features: Na
         {features.map((f, i) => (
           <li key={i}>
             <strong>{f.name}</strong>
+            {f.description ? `: ${f.description}` : ''}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Like FeatureLines, but for rows already flattened by featureRowsFor() —
+// each one prints its section (Passive/Action/Reaction/Evolution/…)
+// alongside its name, which matters a lot mid-combat (a Reaction reads very
+// differently from a Passive).
+export function FeatureRowLines({ label = 'Features', rows }: { label?: string; rows: FeatureRow[] }) {
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div className="content-card__section">
+      <p className="content-card__section-label">{label}</p>
+      <ul className="content-card__feature-list">
+        {rows.map((f, i) => (
+          <li key={i}>
+            <strong>{f.name}</strong> <span className="content-card__feature-kind">— {f.kind}</span>
             {f.description ? `: ${f.description}` : ''}
           </li>
         ))}

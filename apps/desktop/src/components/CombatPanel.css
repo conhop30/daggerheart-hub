@@ -31,9 +31,12 @@
   color: var(--fear-on-dark);
 }
 
+/* Wide enough to show Features without cramming — the tiles now carry a
+   full feature list, not just HP/Stress/conditions, so this trades tiles
+   per row for actually being able to read them. */
 .combat-panel__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: var(--space-2);
   align-items: start;
 }

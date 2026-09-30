@@ -150,6 +150,11 @@ export default function CombatPanel({ sessionId }: CombatPanelProps) {
           <SessionAdversaryTile
             key={adversary.id}
             adversary={adversary}
+            // Features aren't part of the session snapshot (nothing about them
+            // is live-tracked state), so they're looked up live from the master
+            // record instead of duplicating them into every pull-in — undefined
+            // just means the master was deleted since, and the section hides.
+            masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
             onChange={(patch) => handleAdversaryChange(adversary, patch)}
             onRemove={() => handleAdversaryRemove(adversary)}
           />
@@ -158,6 +163,7 @@ export default function CombatPanel({ sessionId }: CombatPanelProps) {
           <SessionEnvironmentTile
             key={environment.id}
             environment={environment}
+            masterFeatures={environments.items.find((e) => e.id === environment.environmentId)?.features}
             onChange={(patch) => handleEnvironmentChange(environment, patch)}
             onRemove={() => handleEnvironmentRemove(environment)}
           />

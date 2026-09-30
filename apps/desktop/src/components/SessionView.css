@@ -1,4 +1,8 @@
 .session-view {
+  /* Room for the fixed, bottom-center DiceTray so it never sits on top of
+     the last bit of real content (a Feature list, notes, whatever happens
+     to be at the end of the page). */
+  padding-bottom: 88px;
   animation: fadeInUp 280ms var(--ease);
 }
 

@@ -36,6 +36,27 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.app-shell__brand');
   }
 
+  async function createAdversaryWithAttackAndFeature(
+    name: string,
+    hp: string,
+    stress: string,
+    attackDescription: string,
+    featureName: string,
+    featureDescription: string
+  ) {
+    await win.click('.create-panel__toggle');
+    await win.click('.chip:text-is("Adversary")');
+    await win.fill('.create-form input[type="text"]', name);
+    await win.fill('.text-field:has-text("HP") input', hp);
+    await win.fill('.text-field:has-text("Stress") input', stress);
+    await win.fill('label:has-text("Attack Description") textarea', attackDescription);
+    await win.click('.feature-editor__add:has-text("passives")');
+    await win.locator('.feature-editor__row input[placeholder="Name"]').first().fill(featureName);
+    await win.locator('.feature-editor__row').first().locator('textarea').first().fill(featureDescription);
+    await win.click('button:has-text("Create Adversary")');
+    await win.click('.app-shell__brand');
+  }
+
   async function createCampaignAndOpenSession(campaignName: string, sessionName: string) {
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.click('.campaign-banner--hollow');
@@ -144,6 +165,68 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     const logEntry = win.locator('.loot-roller__log-entry').first();
     await expect(logEntry).toContainText('Adventure Loot');
     await expect(logEntry).toContainText('Trinket');
+  });
+
+  test('a pulled-in Adversary shows its Features (looked up live) and can roll its damage', async () => {
+    await createAdversaryWithAttackAndFeature(
+      'Ashen Warden',
+      '8',
+      '3',
+      'Cinder Blade: 1d10+2 phy damage',
+      'Smoldering Grip',
+      'Once per rest, mark a Stress to make an attack ignore Armor.'
+    );
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.click('.mode-toggle__option:has-text("Combat")');
+    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.item-picker__option:has-text("Ashen Warden")');
+
+    const tile = win.locator('.content-card', { hasText: 'Ashen Warden' });
+    await expect(tile.locator('.content-card__section-label:has-text("Features")')).toBeVisible();
+    await expect(tile).toContainText('Smoldering Grip');
+    await expect(tile).toContainText('Passive');
+    await expect(tile).toContainText('Once per rest, mark a Stress to make an attack ignore Armor.');
+
+    // Math.floor(0.5 * 10) + 1 === 6, so 1d10+2 always resolves to 6 + 2 = 8.
+    await win.evaluate(() => {
+      window.Math.random = () => 0.5;
+    });
+    await tile.locator('.session-tile__roll-damage').click();
+    await expect(tile.locator('.session-tile__roll-result')).toHaveText('6 + 2 = 8');
+  });
+
+  test('the dice tray queues dice by left click, un-queues by right click, and rolls everything queued into one total', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await expect(win.locator('.dice-tray__roll')).toHaveCount(0);
+
+    await win.click('.dice-tray__die:has-text("d6")');
+    await win.click('.dice-tray__die:has-text("d6")');
+    await win.click('.dice-tray__die:has-text("d20")');
+    await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('×2');
+    await expect(win.locator('.dice-tray__die:has-text("d20") .dice-tray__badge')).toHaveText('×1');
+
+    await win.locator('.dice-tray__die:has-text("d6")').click({ button: 'right' });
+    await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('×1');
+
+    // Math.floor(0.5 * 6) + 1 === 4, Math.floor(0.5 * 20) + 1 === 11 → total 15.
+    await win.evaluate(() => {
+      window.Math.random = () => 0.5;
+    });
+    await win.click('.dice-tray__roll');
+
+    await expect(win.locator('.dice-tray__result')).toContainText('d6: 4');
+    await expect(win.locator('.dice-tray__result')).toContainText('d20: 11');
+    await expect(win.locator('.dice-tray__result')).toContainText('→ 15');
+
+    // The queue resets after a roll — no die still shows a badge, and the
+    // Roll button disappears until something is queued again.
+    await expect(win.locator('.dice-tray__die.queued')).toHaveCount(0);
+    await expect(win.locator('.dice-tray__roll')).toHaveCount(0);
+
+    await win.click('.dice-tray__dismiss');
+    await expect(win.locator('.dice-tray__result')).toHaveCount(0);
   });
 
   test('deleting a Campaign cascades to remove its Sessions', async () => {

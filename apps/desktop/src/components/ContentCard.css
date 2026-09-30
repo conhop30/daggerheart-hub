@@ -127,3 +127,10 @@
 .content-card__feature-list strong {
   color: var(--ink);
 }
+
+.content-card__feature-kind {
+  color: var(--muted);
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}

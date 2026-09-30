@@ -1,20 +1,41 @@
+import { useState } from 'react';
 import type { SessionAdversary } from '../api/sessionAdversaries';
-import { ContentCard, MetaChip } from './ContentCard';
+import type { FeatureSections } from '../lib/featureKinds';
+import { featureRowsFor } from '../lib/featureKinds';
+import { parseDamageNotation, rollDamage, type DamageRollResult } from '../lib/dice';
+import { ContentCard, FeatureRowLines, MetaChip } from './ContentCard';
 import StatStepper from './StatStepper';
 import StringListEditor from './StringListEditor';
 import './SessionTile.css';
 
 interface SessionAdversaryTileProps {
   adversary: SessionAdversary;
+  /** Looked up live from the master Adversary — see CombatPanel for why. */
+  masterFeatures: FeatureSections | undefined;
   onChange: (patch: { hpMarked?: number; stressMarked?: number; conditions?: string[] }) => void;
   onRemove: () => void;
+}
+
+function formatDamageRoll(result: DamageRollResult): string {
+  if (result.rolls.length === 0) return `${result.total}`;
+  const sign = result.modifier > 0 ? ' + ' : result.modifier < 0 ? ' − ' : '';
+  const modifierText = result.modifier !== 0 ? `${sign}${Math.abs(result.modifier)}` : '';
+  return `${result.rolls.join(' + ')}${modifierText} = ${result.total}`;
 }
 
 // A live, mutable card for one Adversary pulled into a session — reads
 // entirely off the props it's given and reports changes upward, so
 // CombatPanel (the only thing that knows how to persist a change) is the
 // only piece that has to know sessionAdversariesApi exists.
-export default function SessionAdversaryTile({ adversary, onChange, onRemove }: SessionAdversaryTileProps) {
+export default function SessionAdversaryTile({ adversary, masterFeatures, onChange, onRemove }: SessionAdversaryTileProps) {
+  const [rollResult, setRollResult] = useState<DamageRollResult | null>(null);
+  const parsedDamage = parseDamageNotation(adversary.attackDescription);
+
+  function handleRollDamage() {
+    if (!parsedDamage) return;
+    setRollResult(rollDamage(parsedDamage));
+  }
+
   return (
     <ContentCard
       title={adversary.label}
@@ -54,13 +75,24 @@ export default function SessionAdversaryTile({ adversary, onChange, onRemove }: 
           />
         )}
       </div>
-      {adversary.attackDescription && <p className="session-tile__attack">{adversary.attackDescription}</p>}
+      {adversary.attackDescription && (
+        <p className="session-tile__attack">
+          {adversary.attackDescription}
+          {parsedDamage && (
+            <button type="button" className="session-tile__roll-damage" onClick={handleRollDamage}>
+              Roll Damage
+            </button>
+          )}
+        </p>
+      )}
+      {rollResult && <p className="session-tile__roll-result">{formatDamageRoll(rollResult)}</p>}
       <StringListEditor
         label="Conditions"
         placeholder="e.g. Restrained"
         values={adversary.conditions}
         onChange={(conditions) => onChange({ conditions })}
       />
+      <FeatureRowLines rows={featureRowsFor(masterFeatures)} />
     </ContentCard>
   );
 }

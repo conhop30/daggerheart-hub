@@ -8,6 +8,7 @@ import SessionMusicPanel from './SessionMusicPanel';
 import CombatPanel from './CombatPanel';
 import AdventuringPanel from './AdventuringPanel';
 import PartyRoster from './PartyRoster';
+import DiceTray from './DiceTray';
 import { useMusicContext } from '../context/MusicContext';
 import './SessionView.css';
 
@@ -124,6 +125,8 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
           <SessionMusicPanel regionId={session.regionId ?? null} onRegionChange={(regionId) => persist({ regionId })} />
         </aside>
       </div>
+
+      <DiceTray />
     </div>
   );
 }
