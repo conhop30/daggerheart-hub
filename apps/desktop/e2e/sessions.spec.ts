@@ -290,20 +290,20 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.dice-tray__die:has-text("d6")');
     await win.click('.dice-tray__die:has-text("d6")');
     await win.click('.dice-tray__die:has-text("d20")');
-    await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('×2');
-    await expect(win.locator('.dice-tray__die:has-text("d20") .dice-tray__badge')).toHaveText('×1');
+    await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('2');
+    await expect(win.locator('.dice-tray__die:has-text("d20") .dice-tray__badge')).toHaveText('1');
 
     await win.locator('.dice-tray__die:has-text("d6")').click({ button: 'right' });
-    await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('×1');
+    await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('1');
 
     // Math.floor(0.5 * 6) + 1 === 4, Math.floor(0.5 * 20) + 1 === 11 → total 15.
-    // The result shows only the final total, not the per-die breakdown.
     await win.evaluate(() => {
       window.Math.random = () => 0.5;
     });
     await win.click('.dice-tray__roll');
 
-    await expect(win.locator('.dice-tray__result .roll-result')).toHaveText('15');
+    await expect(win.locator('.dice-tray__result-notation')).toHaveText('1d6 + 1d20');
+    await expect(win.locator('.dice-tray__result-total')).toHaveText('15');
 
     // The queue resets after a roll — no die still shows a badge, and the
     // Roll button disappears until something is queued again.

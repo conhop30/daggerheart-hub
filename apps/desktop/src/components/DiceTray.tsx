@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DIE_SIZES, rollDiceQueue, formatDiceQueueLabel, type DiceTrayRollResult } from '../lib/dice';
+import { DIE_SHAPES } from '../lib/diceShapes';
 import './DiceTray.css';
 
 interface DiceTrayProps {
@@ -17,12 +18,12 @@ function dieLabel(sides: number): string {
 // (attack rolls, saves, anything homebrew).
 export default function DiceTray({ onRoll }: DiceTrayProps) {
   const [queue, setQueue] = useState<Record<number, number>>({});
-  const [result, setResult] = useState<DiceTrayRollResult | null>(null);
+  const [roll, setRoll] = useState<{ notation: string; result: DiceTrayRollResult } | null>(null);
 
   const hasQueued = DIE_SIZES.some((sides) => (queue[sides] ?? 0) > 0);
 
   function add(sides: number) {
-    setResult(null);
+    setRoll(null);
     setQueue((prev) => ({ ...prev, [sides]: (prev[sides] ?? 0) + 1 }));
   }
 
@@ -31,28 +32,21 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
     setQueue((prev) => ({ ...prev, [sides]: Math.max(0, (prev[sides] ?? 0) - 1) }));
   }
 
-  function roll() {
+  function rollQueue() {
     const entries = DIE_SIZES.filter((sides) => (queue[sides] ?? 0) > 0).map((sides) => ({
       sides,
       count: queue[sides] ?? 0,
     }));
     if (entries.length === 0) return;
-    const rolled = rollDiceQueue(entries);
-    setResult(rolled);
+    const result = rollDiceQueue(entries);
+    const notation = entries.map((e) => `${e.count}d${e.sides}`).join(' + ');
+    setRoll({ notation, result });
     setQueue({});
-    onRoll(`Dice roller ${formatDiceQueueLabel(entries)}`, rolled.total);
+    onRoll(`Dice roller ${formatDiceQueueLabel(entries)}`, result.total);
   }
 
   return (
     <div className="dice-tray">
-      {result && (
-        <div className="dice-tray__result">
-          <span className="roll-result">{result.total}</span>
-          <button type="button" className="dice-tray__dismiss" onClick={() => setResult(null)} aria-label="Clear result">
-            ×
-          </button>
-        </div>
-      )}
       <div className="dice-tray__row">
         {DIE_SIZES.map((sides) => {
           const count = queue[sides] ?? 0;
@@ -65,17 +59,29 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
               onContextMenu={(e) => remove(sides, e)}
               aria-label={`${dieLabel(sides)}${count > 0 ? `, ${count} queued — right-click to remove one` : ''}`}
             >
-              {dieLabel(sides)}
-              {count > 0 && <span className="dice-tray__badge">×{count}</span>}
+              <span className="dice-tray__die-border" style={{ clipPath: DIE_SHAPES[sides] }} />
+              <span className="dice-tray__die-fill" style={{ clipPath: DIE_SHAPES[sides] }} />
+              <span className={`dice-tray__die-label${sides === 4 ? ' dice-tray__die-label--d4' : ''}`}>{dieLabel(sides)}</span>
+              {count > 0 && <span className="dice-tray__badge">{count}</span>}
             </button>
           );
         })}
         {hasQueued && (
-          <button type="button" className="dice-tray__roll" onClick={roll}>
+          <button type="button" className="dice-tray__roll" onClick={rollQueue}>
             Roll
           </button>
         )}
       </div>
+      {roll && (
+        <div className="dice-tray__result">
+          <span className="dice-tray__result-notation">{roll.notation}</span>
+          <span className="dice-tray__result-equals">=</span>
+          <span className="dice-tray__result-total">{roll.result.total}</span>
+          <button type="button" className="dice-tray__dismiss" onClick={() => setRoll(null)} aria-label="Clear result">
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

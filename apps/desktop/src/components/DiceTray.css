@@ -6,60 +6,113 @@
   z-index: 900;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--panel-raised, var(--panel));
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   animation: fadeInUp 240ms var(--ease);
 }
 
 .dice-tray__row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 14px;
-  background: var(--panel-raised, var(--panel));
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  gap: 8px;
 }
 
-/* Selection glows instead of filling a box, same idiom as everywhere else —
-   a queued die isn't a "pressed button", it's a live count. */
+/* Each die is a plain square button (full click/hover target, regardless of
+   shape) with the actual die silhouette drawn as two stacked clip-path
+   layers inside it — border color behind, fill color inset 1.5px on top —
+   the same technique DomainRibbon.css uses for its pennant outline. A d6
+   has no clip-path (plain square, border-radius instead); the rest get a
+   shape from lib/diceShapes so a d4 reads as a triangle, a d20 as a
+   hexagon, and so on, instead of every size looking identical. */
 .dice-tray__die {
   position: relative;
-  min-width: 42px;
-  padding: 8px 8px;
-  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: none;
   background: transparent;
-  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+
+.dice-tray__die-border,
+.dice-tray__die-fill {
+  position: absolute;
+  border-radius: 6px;
+  transition: background 160ms var(--ease);
+}
+
+.dice-tray__die-border {
+  inset: 0;
+  background: var(--hairline);
+}
+
+.dice-tray__die-fill {
+  inset: 1.5px;
+  background: var(--panel);
+}
+
+.dice-tray__die-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 11px;
   font-weight: 600;
-  transition:
-    background 160ms var(--ease),
-    color 160ms var(--ease),
-    box-shadow 160ms var(--ease);
+  color: var(--ink-dim);
+  transition: color 160ms var(--ease);
+  pointer-events: none;
 }
 
-.dice-tray__die:hover {
+/* A triangle's visual centroid sits below its bounding box's center. */
+.dice-tray__die-label--d4 {
+  padding-top: 9px;
+}
+
+.dice-tray__die:hover .dice-tray__die-fill {
+  background: rgba(228, 179, 65, 0.1);
+}
+
+.dice-tray__die:hover .dice-tray__die-label {
   color: var(--ink);
-  background: radial-gradient(circle, rgba(228, 179, 65, 0.12), transparent 72%);
 }
 
-.dice-tray__die.queued {
+/* The fill layer has to stay OPAQUE here, same as it is at rest — it's
+   what hides the border layer in the tile's interior, leaving only a thin
+   ring of border color showing around the edge (the same peek-through
+   trick DomainRibbon.css uses for its pennant outline). A translucent gold
+   fill on top of an opaque gold border doesn't hide anything — the two
+   just blend into one solid gold block with the label unreadable on top
+   of it, which is exactly what shipped here the first time. */
+.dice-tray__die.queued .dice-tray__die-border {
+  background: var(--hope);
+}
+
+.dice-tray__die.queued .dice-tray__die-fill {
+  background: #2c2415;
+}
+
+.dice-tray__die.queued .dice-tray__die-label {
   color: var(--hope);
-  background: radial-gradient(circle, rgba(228, 179, 65, 0.22), transparent 72%);
-  box-shadow: 0 0 20px 3px rgba(228, 179, 65, 0.16);
 }
 
 .dice-tray__badge {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  z-index: 2;
+  top: -6px;
+  right: -6px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: 5px;
   background: var(--hope);
   color: #1a1508;
   font-family: var(--font-body);
@@ -72,37 +125,48 @@
 .dice-tray__roll {
   margin-left: 6px;
   background: none;
-  border: none;
-  border-bottom: 1px solid var(--hope);
+  border: 1px solid var(--hope);
   color: var(--hope-on-dark);
+  border-radius: 8px;
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 4px 0;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 9px 16px;
   white-space: nowrap;
-  transition: color 160ms var(--ease);
+  transition:
+    background 160ms var(--ease),
+    color 160ms var(--ease);
 }
 
 .dice-tray__roll:hover {
+  background: rgba(228, 179, 65, 0.12);
   color: var(--hope);
 }
 
 .dice-tray__result {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 18px;
-  background: var(--panel-raised, var(--panel));
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
-  max-width: min(80vw, 640px);
-  overflow-x: auto;
-  white-space: nowrap;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+}
+
+.dice-tray__result-equals {
+  color: var(--muted);
+}
+
+.dice-tray__result-total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--hope-on-dark);
 }
 
 .dice-tray__dismiss {
-  flex-shrink: 0;
+  margin-left: auto;
   background: none;
   border: none;
   color: var(--muted);

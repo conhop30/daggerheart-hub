@@ -177,22 +177,6 @@ button {
   }
 }
 
-/* Shared "big roll total" styling — a stat block's own damage roll
-   (SessionAdversaryTile) and the freeform dice tray (DiceTray) both drop
-   the per-die breakdown and show just the final number, large and in the
-   game's warm accent so it reads instantly at the table. -webkit-text-
-   stroke is safe here (Electron is Chromium-only, no other target). */
-.roll-result {
-  font-family: 'Cinzel', var(--font-display);
-  font-weight: 700;
-  font-size: 1.8rem;
-  color: #ff6a3d;
-  -webkit-text-stroke: 1.25px #fff;
-  paint-order: stroke fill;
-  letter-spacing: 0.02em;
-  line-height: 1;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

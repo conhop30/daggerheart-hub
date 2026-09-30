@@ -1,20 +1,14 @@
 /* Self-hosted replacement for the old Google Fonts <link> in index.html —
-   same 4 families/weights, latin subset only (this app's UI text is
-   English). Cinzel/Fraunces/Inter each ship as one variable-font file
-   covering every weight this app uses, so 4 families is only 5 files
-   total, not one per weight. Relative url()s so Vite's asset pipeline
-   resolves and copies them correctly under vite.config.ts's base: './'
-   (an absolute /fonts/... path would resolve to the filesystem root in
-   the packaged file:// build — see that file's own comment on this exact
-   trap). font-display: swap matches the previous Google Fonts request. */
-
-@font-face {
-  font-family: 'Cinzel';
-  font-style: normal;
-  font-weight: 600 700;
-  font-display: swap;
-  src: url('./fonts/cinzel.woff2') format('woff2');
-}
+   same families/weights, latin subset only (this app's UI text is
+   English). Fraunces/Inter each ship as one variable-font file covering
+   every weight this app uses, so 3 families is only 4 files total, not one
+   per weight. Relative url()s so Vite's asset pipeline resolves and copies
+   them correctly under vite.config.ts's base: './' (an absolute /fonts/...
+   path would resolve to the filesystem root in the packaged file:// build
+   — see that file's own comment on this exact trap). font-display: swap
+   matches the previous Google Fonts request. (Cinzel was dropped along
+   with the last component that used it — DiceTray/SessionAdversaryTile's
+   old red/white-stroke roll-total display.) */
 
 @font-face {
   font-family: 'Fraunces';
