@@ -1340,6 +1340,34 @@ describe('Carrying data across Sessions', () => {
       expect(store.listSessionAdversariesBySession(sessions[0].id)[0].hpMarked).toBe(2);
       expect(store.listSessionAdversariesBySession(sessions[2].id)[0].hpMarked).toBe(4);
     });
+
+    it('a record written before difficultyModifier/thresholdsModifier/stacked Conditions existed is presented with safe defaults, not crashed on', async () => {
+      // Regression test: a real user's live data.json had SessionAdversary
+      // records from before this schema existed — no difficultyModifier/
+      // thresholdsModifier keys at all, and old-format string Conditions
+      // (including a bare ""). The frontend assumed the new shape
+      // unconditionally and crashed the whole Session view opening them.
+      const { sessions } = await board();
+      store.flushPendingWrite();
+      const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+      raw.sessionAdversaries.push({
+        id: 'legacy-2',
+        sessionId: sessions[0].id,
+        adversaryId: 'x',
+        label: 'Old Courtier',
+        name: 'Courtier',
+        hpMarked: 0,
+        conditions: [''],
+        // difficultyModifier/thresholdsModifier deliberately absent.
+      });
+      fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify(raw));
+      store.__resetCacheForTests();
+
+      const [presented] = store.listSessionAdversariesBySession(sessions[0].id).filter((a) => a.id === 'legacy-2');
+      expect(presented.difficultyModifier).toBeNull();
+      expect(presented.thresholdsModifier).toEqual({ major: null, severe: null });
+      expect(presented.conditions).toEqual([{ name: '', count: 1 }]);
+    });
   });
 
   describe('Loot log', () => {

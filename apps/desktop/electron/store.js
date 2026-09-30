@@ -841,9 +841,19 @@ function editSession(store, campaignId, ctx) {
 
 const lineageOfVersion = (v) => v.lineageId ?? v.id;
 
-function makeVersionedCollection(key, { context, build, validate, uniqueByName = false }) {
+// `present`, when given, runs on every record this collection returns
+// (list/create/update) — a read-time-only shape fixup, never written back to
+// disk. It exists for the case validate()/build() can't cover: a field added
+// to the schema after records already existed on someone's disk. Those
+// records keep their old shape forever (this store's stated policy: never
+// silently rewrite existing data.json content), so any code that assumes
+// the new field is always present will throw the instant it touches one —
+// present() is what makes "new field, old record" safe to read without
+// touching what's actually stored. See presentSessionAdversary for why this
+// exists: a real crash it fixed, not a hypothetical one.
+function makeVersionedCollection(key, { context, build, validate, uniqueByName = false, present = (record) => record }) {
   const viewsAsOf = (store, campaignId, sessionId) =>
-    carry.resolveVersions(versionsOf(store, key, campaignId), sessionOrder(store, campaignId), sessionId);
+    carry.resolveVersions(versionsOf(store, key, campaignId), sessionOrder(store, campaignId), sessionId).map(present);
 
   function list() {
     const store = getCache();
@@ -870,7 +880,7 @@ function makeVersionedCollection(key, { context, build, validate, uniqueByName =
       if (validate) validate(store, data);
       const record = build(store, data, { campaignId, sessionId });
       store[key].push(record);
-      return { ...record, carried: false };
+      return present({ ...record, carried: false });
     });
   }
 
@@ -1234,9 +1244,46 @@ function validateSessionAdversary(_store, data) {
   sanitizeConditions(data);
 }
 
+// Real bug this fixed: difficultyModifier/thresholdsModifier were added to
+// the schema after live data already had SessionAdversary records on disk
+// (e.g. adversaries pulled into a session weeks ago), and Conditions moved
+// from plain strings to {name, count}. Those older records keep their old
+// shape — validate()/build() only ever touch a record going forward, they
+// don't rewrite what's already stored — so the frontend (which assumes the
+// new shape unconditionally, e.g. `adversary.thresholdsModifier.major`)
+// crashed outright opening a Session with anything pulled in before today.
+// present() below patches the shape on the way OUT, every time, without
+// ever touching the file on disk.
+function presentSessionAdversary(record) {
+  return {
+    ...record,
+    difficultyModifier: record.difficultyModifier ?? null,
+    thresholdsModifier: record.thresholdsModifier ?? { major: null, severe: null },
+    conditions: normalizeConditionsForRead(record.conditions),
+    // experiences predates this too — records pulled in before Experience
+    // snapshotting shipped have no key for it at all.
+    experiences: Array.isArray(record.experiences) ? record.experiences : [],
+  };
+}
+
+function normalizeConditionsForRead(conditions) {
+  if (!Array.isArray(conditions)) return [];
+  return conditions.map((c) => {
+    if (typeof c === 'string') return { name: c, count: 1 };
+    if (c && typeof c === 'object') {
+      return {
+        name: typeof c.name === 'string' ? c.name : '',
+        count: Number.isFinite(Number(c.count)) ? Math.max(1, Math.round(Number(c.count))) : 1,
+      };
+    }
+    return { name: '', count: 1 };
+  });
+}
+
 const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
   context: sessionContext,
   validate: validateSessionAdversary,
+  present: presentSessionAdversary,
   build(store, data, { campaignId, sessionId }) {
     const adversary = store.adversaries.find((a) => a.id === data.adversaryId);
     if (!adversary) throw new Error(`No adversary with id ${data.adversaryId}`);

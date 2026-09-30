@@ -21,11 +21,18 @@ const CONDITION_EFFECTS: Record<string, ConditionEffect> = {
   corrosive: { difficultyPerStack: -1 },
 };
 
+// `name` is typed as a required string, but this also runs against data
+// read straight off disk (electron/store.js's presentSessionAdversary
+// normalizes it going forward, but never rewrites what's already stored) —
+// a non-string slipping through here shouldn't crash the whole Combat
+// panel over a cosmetic lookup, so this tolerates one instead of trusting
+// the type.
 export function conditionEffect(name: string): ConditionEffect | undefined {
-  return CONDITION_EFFECTS[name.trim().toLowerCase()];
+  return typeof name === 'string' ? CONDITION_EFFECTS[name.trim().toLowerCase()] : undefined;
 }
 
 /** Sum of every stacked Condition's Difficulty effect — what SessionAdversaryTile folds into its effective Difficulty readout. */
 export function difficultyModifierFromConditions(conditions: SessionCondition[]): number {
-  return conditions.reduce((sum, c) => sum + (conditionEffect(c.name)?.difficultyPerStack ?? 0) * c.count, 0);
+  if (!Array.isArray(conditions)) return 0;
+  return conditions.reduce((sum, c) => sum + (conditionEffect(c?.name)?.difficultyPerStack ?? 0) * (c?.count ?? 1), 0);
 }

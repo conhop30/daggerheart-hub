@@ -30,9 +30,13 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
   const parsedDamage = parseDamageNotation(adversary.attackDescription);
   const featureRows = featureRowsFor(masterFeatures);
   const isCustomLabel = adversary.label.trim() !== adversary.name.trim();
-  const conditionDifficultyDelta = difficultyModifierFromConditions(adversary.conditions);
-  const thresholdsModifier = adversary.thresholdsModifier;
+  const conditionDifficultyDelta = difficultyModifierFromConditions(adversary.conditions ?? []);
+  // electron/store.js's presentSessionAdversary always fills this in now,
+  // but the fallback stays cheap insurance against ever crashing the whole
+  // Combat panel over one tile's stale shape again.
+  const thresholdsModifier = adversary.thresholdsModifier ?? { major: null, severe: null };
   const hasThresholdsModifier = thresholdsModifier.major != null || thresholdsModifier.severe != null;
+  const experiences = adversary.experiences ?? [];
 
   function handleRollDamage() {
     if (!parsedDamage) return;
@@ -135,10 +139,10 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
           {roll.notation} = <strong>{roll.result.total}</strong>
         </p>
       )}
-      {adversary.experiences.length > 0 && (
+      {experiences.length > 0 && (
         <p className="session-tile__experiences">
           <strong>Experience:</strong>{' '}
-          {adversary.experiences.map((e, i) => (
+          {experiences.map((e, i) => (
             <span key={i}>
               {i > 0 && ', '}
               {e.name} {e.modifier >= 0 ? `+${e.modifier}` : e.modifier}
@@ -146,7 +150,7 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
           ))}
         </p>
       )}
-      <ConditionsEditor values={adversary.conditions} onChange={(conditions) => onChange({ conditions })} />
+      <ConditionsEditor values={adversary.conditions ?? []} onChange={(conditions) => onChange({ conditions })} />
       {featureRows.length > 0 && (
         <div className="session-tile__features">
           <button
