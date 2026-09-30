@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import UpdateBanner from './UpdateBanner';
 import FramelessCloseButton from './FramelessCloseButton';
+import TankardMark from './TankardMark';
 import './AppShell.css';
 
 export type View =
@@ -49,6 +50,11 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
     <div className="app-shell">
       <nav className="app-shell__bar">
         <button type="button" className="app-shell__brand" onClick={() => onNavigate('home')}>
+          <span className="app-shell__brand-mark">
+            <TankardMark className="app-shell__brand-mark-svg" />
+            <span className="app-shell__brand-drip app-shell__brand-drip--1" />
+            <span className="app-shell__brand-drip app-shell__brand-drip--2" />
+          </span>
           Daggerheart Brewery
         </button>
         <div className="app-shell__nav">

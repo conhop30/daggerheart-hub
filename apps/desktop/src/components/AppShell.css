@@ -16,6 +16,9 @@
 }
 
 .app-shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   background: none;
   border: none;
   color: var(--ink);
@@ -30,6 +33,64 @@
 
 .app-shell__brand:hover {
   color: var(--hope);
+}
+
+.app-shell__brand-mark {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.app-shell__brand-mark-svg {
+  height: 24px;
+  width: auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.35));
+}
+
+/* Stretch effect: a couple of small droplets breaking off the mark's mist
+   trail and falling/fading toward the brand text, as if the pour continues
+   past the logo itself. Self-contained on purpose (its own two elements,
+   its own keyframes) so it can be deleted in one block — mark + label above
+   read fine on their own with this entirely removed. */
+.app-shell__brand-drip {
+  position: absolute;
+  right: -3px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #2f74b8, #82ecd6);
+  opacity: 0;
+  animation: brandDrip 2600ms ease-in infinite;
+}
+
+.app-shell__brand-drip--1 {
+  top: 18px;
+  animation-delay: 0ms;
+}
+
+.app-shell__brand-drip--2 {
+  top: 18px;
+  right: -1px;
+  width: 2px;
+  height: 2px;
+  animation-delay: 1300ms;
+}
+
+@keyframes brandDrip {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 .app-shell__nav {
