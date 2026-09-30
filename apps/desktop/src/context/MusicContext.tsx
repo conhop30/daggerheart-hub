@@ -32,6 +32,8 @@ interface MusicContextValue {
   toggle: () => void;
   setVolume: (volume: number) => void;
   audioError: string | null;
+  /** Re-fetches regions/tracks immediately — wired into the in-session "Manage Music" editor so an edit made mid-session (a new default, a renamed/volume-adjusted track) takes effect without leaving and re-entering the Session. */
+  refreshLibrary: () => void;
 }
 
 const MusicContext = createContext<MusicContextValue | null>(null);
@@ -100,13 +102,23 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       });
     } else {
       audio.pause();
+      // `track` disappearing (its region's default was edited/removed while
+      // playing — only possible now that editing lives inside SessionMusicPanel
+      // too) must actually turn `playing` off, not just pause the element —
+      // otherwise a *new* track resolving later silently auto-resumes with no
+      // Play press, since this effect is keyed on track?.id and would see
+      // playing already true.
+      if (playing) setPlaying(false);
     }
   }, [playing, track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Master listening level × this specific track's own saved trim — the
+  // same multiply the Music tab/in-session editor's preview applies, so
+  // what a GM dials in there previewing is exactly what plays for real.
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
+    if (audioRef.current) audioRef.current.volume = volume * (track?.volume ?? 1);
     saveVolume(volume);
-  }, [volume]);
+  }, [volume, track?.volume]);
 
   // Derived from `playing` itself (not set inline by play()/toggle()) so it
   // doesn't matter which action turned playback on — SessionMusicPanel and
@@ -137,8 +149,25 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       toggle,
       setVolume: setVolumeState,
       audioError,
+      refreshLibrary,
     }),
-    [regions, tracks, session, viewingSessionId, track, playing, volume, everPlayed, setSession, clearIfSession, play, pause, toggle, audioError]
+    [
+      regions,
+      tracks,
+      session,
+      viewingSessionId,
+      track,
+      playing,
+      volume,
+      everPlayed,
+      setSession,
+      clearIfSession,
+      play,
+      pause,
+      toggle,
+      audioError,
+      refreshLibrary,
+    ]
   );
 
   return (

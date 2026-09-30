@@ -319,6 +319,89 @@ test.describe('Music library and session playback', () => {
 
     await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
     await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
-    await expect(win.locator('.session-music-panel__hint')).toContainText('Campaigns');
+    await expect(win.locator('.session-music-panel__hint')).toContainText('Manage Music');
+  });
+
+  async function openQuietSession() {
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.click('.campaign-banner--hollow');
+    await win.fill('.create-form input[type="text"]', 'The Wildwood');
+    await win.click('button:has-text("Create Campaign")');
+    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.click('.session-list__add');
+    await win.click('button:has-text("Start Session")');
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+  }
+
+  test('"Manage Music" starts collapsed, with no editing controls in the DOM until expanded', async () => {
+    await openQuietSession();
+    await expect(win.locator('.session-music-panel')).toBeVisible();
+    await expect(win.locator('.music-library-editor')).toHaveCount(0);
+    await expect(win.locator('button:has-text("+ Add Music")')).toHaveCount(0);
+
+    await win.click('.session-music-panel button:has-text("Manage Music")');
+    await expect(win.locator('.music-library-editor')).toBeVisible();
+    await expect(win.locator('button:has-text("+ Add Music")')).toBeVisible();
+  });
+
+  test('editing music from inside a Session takes effect immediately, with no reload', async () => {
+    await openQuietSession();
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
+    await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
+
+    await win.click('.session-music-panel button:has-text("Manage Music")');
+    await pickFiles('Calm Road');
+    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+
+    // Still expanded, still without leaving the Session or reloading.
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('Calm Road');
+    await expect(win.locator('button[aria-label="Play music"]')).toBeEnabled();
+
+    await win.click('.session-music-panel button:has-text("Manage Music")'); // collapse
+    await expect(win.locator('.music-library-editor')).toHaveCount(0);
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('Calm Road');
+
+    await win.click('button[aria-label="Play music"]');
+    const audio = win.locator('audio[loop]');
+    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
+  });
+
+  test('the in-session preview player is independent of real Session playback', async () => {
+    await openQuietSession();
+    await win.click('.session-music-panel button:has-text("Manage Music")');
+    await pickFiles('Calm Road', 'War Drums');
+    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+
+    await win.click('button[aria-label="Play music"]');
+    const realAudio = win.locator('audio[loop]');
+    await expect.poll(() => realAudio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
+
+    // Previewing a different track in the editor doesn't touch real playback.
+    await win.locator('.track-list__item', { hasText: 'War Drums' }).getByRole('button', { name: /Preview/ }).click();
+    await expect(realAudio).toHaveJSProperty('paused', false);
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('Calm Road');
+  });
+
+  test('editing away the currently-playing default pauses playback, and a later new default does not silently auto-resume', async () => {
+    await openQuietSession();
+    await win.click('.session-music-panel button:has-text("Manage Music")');
+    await pickFiles('Calm Road', 'War Drums');
+    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+
+    await win.click('button[aria-label="Play music"]');
+    const audio = win.locator('audio[loop]');
+    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
+
+    // Clear the default that's actively playing.
+    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'None' });
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
+    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
+    await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
+
+    // Setting a new default afterwards must NOT auto-resume on its own.
+    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'War Drums' });
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('War Drums');
+    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
+    await expect(win.locator('button[aria-label="Play music"]')).toHaveText('▶ Play');
   });
 });

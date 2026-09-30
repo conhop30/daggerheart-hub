@@ -1,0 +1,14 @@
+.music-library-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.music-library-editor__status {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.music-library-editor__status--error {
+  color: var(--fear-on-dark, #c66);
+}

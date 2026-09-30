@@ -1,5 +1,7 @@
 import { EVERYWHERE_REGION_ID } from '../api/music';
 import { useMusicContext } from '../context/MusicContext';
+import CollapsibleSection from './CollapsibleSection';
+import MusicLibraryEditor from './music/MusicLibraryEditor';
 import './SessionMusicPanel.css';
 
 interface SessionMusicPanelProps {
@@ -12,8 +14,15 @@ interface SessionMusicPanelProps {
 // FloatingMusicPlayer for the other half of that); this component only owns
 // the region picker, since changing it has to persist onto the Session
 // record, which SessionView (not the music context) is responsible for.
+//
+// The player block below is unchanged and always visible — "an audio
+// player with music selectors outside of it". Editing (upload/rename/file/
+// set-default/per-track volume) lives in the collapsed-by-default "Manage
+// Music" section beneath it, so a GM can fix the music without leaving the
+// Session; refreshLibrary() is what makes an edit made there actually take
+// effect on the spot instead of waiting for the next time setSession() runs.
 export default function SessionMusicPanel({ regionId, onRegionChange }: SessionMusicPanelProps) {
-  const { regions, session, track, playing, volume, toggle, setVolume, audioError } = useMusicContext();
+  const { regions, session, track, playing, volume, toggle, setVolume, audioError, refreshLibrary } = useMusicContext();
   const modeLabel = session?.mode === 'combat' ? 'combat' : 'adventuring';
 
   return (
@@ -66,9 +75,13 @@ export default function SessionMusicPanel({ regionId, onRegionChange }: SessionM
       </label>
 
       {!track && (
-        <p className="session-music-panel__hint">Add music under Campaigns &rarr; Music, then pick a default for each mode.</p>
+        <p className="session-music-panel__hint">No music set for this region/mode yet — add some under &ldquo;Manage Music&rdquo; below.</p>
       )}
       {audioError && <p className="session-music-panel__hint session-music-panel__hint--error">{audioError}</p>}
+
+      <CollapsibleSection title="Manage Music">
+        <MusicLibraryEditor onLibraryChanged={refreshLibrary} />
+      </CollapsibleSection>
     </div>
   );
 }

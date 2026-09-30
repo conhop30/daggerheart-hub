@@ -1,0 +1,24 @@
+.collapsible-section {
+  margin-top: var(--space-1);
+}
+
+.collapsible-section__toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0;
+  transition: color 160ms var(--ease);
+}
+
+.collapsible-section__toggle:hover {
+  color: var(--ink);
+}
+
+.collapsible-section__body {
+  margin-top: var(--space-2);
+}
