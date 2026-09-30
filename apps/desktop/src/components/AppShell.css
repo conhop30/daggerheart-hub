@@ -158,8 +158,16 @@
 }
 
 /* Same entrance signature as every other stage/form transition in the app
-   (see tokens.css's fadeInUp) — re-mounting on `view` change is what
-   restarts it on every navigation. */
+   (see tokens.css's fadeInUp) — App.tsx gives each page one of these,
+   mounted once on its first visit, so it plays there and only there;
+   switching back to an already-visited page just toggles display, no
+   re-animation. */
 .app-shell__page {
   animation: fadeInUp 320ms var(--ease);
+}
+
+.app-shell__page-loading {
+  padding: var(--space-4);
+  color: var(--muted);
+  font-family: var(--font-body);
 }

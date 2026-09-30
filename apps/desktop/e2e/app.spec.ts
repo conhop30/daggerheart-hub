@@ -60,9 +60,12 @@ test.describe('Electron app', () => {
   test('loads seeded Core content on first run with no errors', async () => {
     const errors: string[] = [];
     win.on('pageerror', (err) => errors.push(err.message));
+    // Home is lazy-loaded (see App.tsx) — its chunk resolves just after the
+    // app shell itself, so wait for its actual content rather than reading
+    // the body immediately and catching the Suspense fallback instead.
+    await expect(win.locator('body')).toContainText('9 built', { timeout: 5000 }); // Classes tile
     const body = await win.textContent('body');
     expect(body).not.toContain("Couldn't load your data");
-    expect(body).toContain('9 built'); // Classes tile
     expect(errors).toEqual([]);
   });
 

@@ -39,12 +39,12 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-// The persistent chrome every page renders inside — this is what makes
-// navigation feel like moving around one app instead of swapping pages:
-// the brand/nav bar never unmounts, only the content below it does. The
-// content re-mounts on every view change (keyed by `view`) so it always
-// gets the same fade-and-lift entrance every other stage transition in the
-// app uses, instead of an instant swap.
+// The persistent chrome every page renders inside — the brand/nav bar never
+// unmounts. `children` is App.tsx's job now, not this component's: it keeps
+// every visited page mounted (hidden via CSS, not unmounted) so revisiting
+// one doesn't refetch its data, and gives each page its own `.app-shell__page`
+// wrapper + key so the fade-and-lift entrance (see AppShell.css) still plays
+// on a page's first appearance, just not on every later revisit.
 export default function AppShell({ view, onNavigate, children }: AppShellProps) {
   return (
     <div className="app-shell">
@@ -80,9 +80,7 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
         <FramelessCloseButton />
       </nav>
       <UpdateBanner />
-      <div className="app-shell__page" key={view}>
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
