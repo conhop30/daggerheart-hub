@@ -470,3 +470,9 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// Store writes are debounced (see store.js's scheduleWrite) so a rapid burst
+// of edits doesn't hit disk on every one — this flushes any still-pending
+// write synchronously before the app actually exits, so the last edit
+// before quitting is never lost.
+app.on('before-quit', () => store.flushPendingWrite());

@@ -124,6 +124,34 @@ function writeStoreToDisk(store) {
   fs.writeFileSync(getStorePath(), JSON.stringify(store, null, 2), 'utf-8');
 }
 
+// mutate() used to call writeStoreToDisk synchronously on every single
+// create/update/remove — a full JSON.stringify + writeFileSync of every
+// collection, even for something like an HP-stepper click during combat.
+// scheduleWrite/flushPendingWrite decouple the disk flush from the
+// in-memory mutation: the write is debounced, but never delayed past
+// WRITE_MAX_WAIT_MS, so a burst of rapid edits coalesces into one disk
+// write instead of starving the flush indefinitely. flushPendingWrite is
+// called directly (not scheduled) on app quit (see main.js) so the last
+// edit before closing is never lost.
+const WRITE_DEBOUNCE_MS = 250;
+const WRITE_MAX_WAIT_MS = 2000;
+let writeTimer = null;
+let writeDeadline = null;
+
+function scheduleWrite(store) {
+  const now = Date.now();
+  if (!writeDeadline) writeDeadline = now + WRITE_MAX_WAIT_MS;
+  clearTimeout(writeTimer);
+  writeTimer = setTimeout(flushPendingWrite, Math.max(0, Math.min(WRITE_DEBOUNCE_MS, writeDeadline - now)));
+}
+
+function flushPendingWrite() {
+  if (writeTimer) clearTimeout(writeTimer);
+  writeTimer = null;
+  writeDeadline = null;
+  if (cache) writeStoreToDisk(cache);
+}
+
 function readStoreFromDisk() {
   if (!fs.existsSync(getStorePath())) {
     const seeded = buildSeedStore();
@@ -156,7 +184,7 @@ function mutate(fn) {
   const result = writeQueue.then(() => {
     const store = getCache();
     const value = fn(store);
-    writeStoreToDisk(store);
+    scheduleWrite(store);
     return value;
   });
   // Keep the shared queue on a resolved path even if this mutation failed,
@@ -309,6 +337,8 @@ function createHeroClass(data) {
     const existing = findByNameIgnoreCase(store.heroClasses, data.name);
     if (existing) return existing;
     validateDomainPair(store, data.primaryDomainId, data.secondaryDomainId);
+    clampNumber(data, 'startingEvasion', { min: 0 });
+    clampNumber(data, 'startingHp', { min: 0 });
     const record = {
       id: randomUUID(),
       name: data.name,
@@ -340,6 +370,8 @@ function updateHeroClass(id, patch) {
       const effectiveSecondary = patch.secondaryDomainId ?? existing.secondaryDomainId;
       validateDomainPair(store, effectivePrimary, effectiveSecondary);
     }
+    clampNumber(patch, 'startingEvasion', { min: 0 });
+    clampNumber(patch, 'startingHp', { min: 0 });
 
     const merged = mergePatch(existing, patch);
     applyRename(store.heroClasses, id, existing, patch, merged);
@@ -511,7 +543,27 @@ function listCardsByDomain(domainId) {
 // src/lib/featureKinds.ts, and the store persists whatever keys it's given.
 const emptyFeatures = () => ({});
 
+// Kept in sync by hand with AdversaryForm.tsx's ATTACK_RANGES/ATTACK_TYPES/
+// ADVERSARY_TYPES — store.js is CJS and can't import the .ts source, so a
+// new enum value added there needs the matching literal added here too.
+const ADVERSARY_TYPES = ['STANDARD', 'BRUISER', 'HORDE', 'LEADER', 'MINION', 'RANGED', 'SKULK', 'SOCIAL', 'SOLO', 'SUPPORT'];
+const ATTACK_RANGES = ['MELEE', 'VERY_CLOSE', 'CLOSE', 'FAR', 'VERY_FAR', 'OUT_OF_RANGE'];
+const ATTACK_TYPES = ['PHYSICAL', 'MAGICAL', 'DIRECT_PHYSICAL', 'DIRECT_MAGICAL'];
+
+function validateAdversary(_store, data) {
+  requireEnum(data, 'type', ADVERSARY_TYPES);
+  requireEnum(data, 'attackRange', ATTACK_RANGES);
+  requireEnum(data, 'attackType', ATTACK_TYPES);
+  clampNumber(data, 'tier', { min: 1 });
+  clampNumber(data, 'difficulty', { min: 0 });
+  clampNumber(data, 'hp', { min: 0 });
+  clampNumber(data, 'stress', { min: 0 });
+  clampNumber(data, 'attackModifier');
+  clampThresholds(data);
+}
+
 const adversaries = makeCollection('adversaries', {
+  validate: validateAdversary,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
@@ -538,7 +590,17 @@ const adversaries = makeCollection('adversaries', {
   }),
 });
 
+// Kept in sync by hand with EnvironmentForm.tsx's ENVIRONMENT_CATEGORIES.
+const ENVIRONMENT_CATEGORIES = ['EXPLORATION', 'EVENT', 'SOCIAL', 'TRAVERSAL'];
+
+function validateEnvironment(_store, data) {
+  requireEnum(data, 'category', ENVIRONMENT_CATEGORIES);
+  clampNumber(data, 'tier', { min: 1 });
+  clampNumber(data, 'difficulty', { min: 0 });
+}
+
 const environments = makeCollection('environments', {
+  validate: validateEnvironment,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
@@ -556,12 +618,30 @@ const environments = makeCollection('environments', {
   }),
 });
 
+// Kept in sync by hand with src/api/weapons.ts's WeaponSlot/Burden/
+// WeaponTrait/DamageType unions.
+const WEAPON_SLOTS = ['PRIMARY', 'SECONDARY'];
+const BURDENS = ['ONE_HANDED', 'TWO_HANDED'];
+const WEAPON_TRAITS = ['AGILITY', 'PRESENCE', 'INSTINCT', 'KNOWLEDGE', 'FINESSE', 'STRENGTH'];
+const DAMAGE_TYPES = ['PHYSICAL', 'MAGICAL'];
+
 // Burden locked to One-Handed when WeaponSlot = Secondary — enforced here,
 // not just as a UI default, per the spec.
 function validateWeapon(_store, data) {
+  requireEnum(data, 'weaponSlot', WEAPON_SLOTS);
+  requireEnum(data, 'burden', BURDENS);
+  requireEnum(data, 'trait', WEAPON_TRAITS);
+  requireEnum(data, 'damageType', DAMAGE_TYPES);
+  clampNumber(data, 'tier', { min: 1 });
   if (data.weaponSlot === 'SECONDARY' && data.burden !== 'ONE_HANDED') {
     throw new Error('A Secondary weapon must be One-Handed.');
   }
+}
+
+function validateArmor(_store, data) {
+  clampNumber(data, 'tier', { min: 1 });
+  clampNumber(data, 'baseScore', { min: 0 });
+  clampThresholds(data);
 }
 
 const weapons = makeCollection('weapons', {
@@ -581,6 +661,7 @@ const weapons = makeCollection('weapons', {
 });
 
 const armors = makeCollection('armors', {
+  validate: validateArmor,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
@@ -592,7 +673,18 @@ const armors = makeCollection('armors', {
   }),
 });
 
+// Loot/Consumable have no numeric fields to clamp — their real sanitization
+// gap is referential, not numeric: confirming gameSetId actually points at a
+// real Game Set, same rule validateEntriesTable already enforces below for
+// the tables that reference these records.
+function validateGameSetRef(store, data) {
+  if (!store.gameSets.some((g) => g.id === data.gameSetId)) {
+    throw new Error(`No game set with id ${data.gameSetId}`);
+  }
+}
+
 const loot = makeCollection('loot', {
+  validate: validateGameSetRef,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
@@ -602,6 +694,7 @@ const loot = makeCollection('loot', {
 });
 
 const consumables = makeCollection('consumables', {
+  validate: validateGameSetRef,
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
@@ -748,7 +841,7 @@ function editSession(store, campaignId, ctx) {
 
 const lineageOfVersion = (v) => v.lineageId ?? v.id;
 
-function makeVersionedCollection(key, { context, build, uniqueByName = false }) {
+function makeVersionedCollection(key, { context, build, validate, uniqueByName = false }) {
   const viewsAsOf = (store, campaignId, sessionId) =>
     carry.resolveVersions(versionsOf(store, key, campaignId), sessionOrder(store, campaignId), sessionId);
 
@@ -774,6 +867,7 @@ function makeVersionedCollection(key, { context, build, uniqueByName = false }) 
         const taken = viewsAsOf(store, campaignId, sessionId).find((v) => v.name.toLowerCase() === data.name.toLowerCase());
         if (taken) return taken;
       }
+      if (validate) validate(store, data);
       const record = build(store, data, { campaignId, sessionId });
       store[key].push(record);
       return { ...record, carried: false };
@@ -794,6 +888,7 @@ function makeVersionedCollection(key, { context, build, uniqueByName = false }) 
         );
         if (clash) delete safePatch.name;
       }
+      if (validate) validate(store, safePatch);
       carry.editVersion(store[key], order, id, sessionId, safePatch, randomUUID);
       return viewsAsOf(store, campaignId, sessionId).find((v) => v.id === id);
     });
@@ -827,6 +922,58 @@ function makeVersionedCollection(key, { context, build, uniqueByName = false }) 
 function validateCampaign(_store, data) {
   if (data.level !== undefined) {
     data.level = Math.max(1, Math.min(10, Math.round(Number(data.level)) || 1));
+  }
+}
+
+// ---- Shared data-sanitization helpers ----
+// Several stat-block-shaped collections (Adversary, Environment, Weapon,
+// Armor, ...) previously had no validate() at all, so a garbled paste or a
+// bypassed <input type="number"> could leave a non-numeric string or a
+// nonsense value (negative HP, an attack type that isn't one of the ones
+// the UI offers) sitting in stored data indefinitely. clampNumber/
+// requireEnum are the reusable building blocks for that, following the same
+// "mutate the record in place before it's persisted" idiom validateCampaign
+// already established above. Both makeCollection and makeVersionedCollection
+// call validate() on an object whose mutations are exactly what gets
+// persisted (the raw `data` on create, the merged/patched record on
+// update) — see each factory's own validate call site.
+//
+// Only clamps/normalizes going forward: an already-stored bad record is
+// left alone until it's next created/updated through this path — this
+// deliberately does not rewrite existing data.json content on load, since
+// silently rewriting someone's existing homebrew on startup is its own risk.
+function clampNumber(data, field, { min = -Infinity, max = Infinity, allowNull = true } = {}) {
+  if (data[field] === undefined) return;
+  if (data[field] === null) {
+    if (!allowNull) data[field] = min;
+    return;
+  }
+  const n = Math.round(Number(data[field]));
+  data[field] = Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : allowNull ? null : min;
+}
+
+function requireEnum(data, field, allowed) {
+  if (data[field] != null && !allowed.includes(data[field])) {
+    throw new Error(`${field} must be one of ${allowed.join(', ')}`);
+  }
+}
+
+function clampThresholds(data) {
+  if (data.thresholds === undefined || data.thresholds === null) return;
+  clampNumber(data.thresholds, 'major', { min: 0 });
+  clampNumber(data.thresholds, 'severe', { min: 0 });
+}
+
+// PartyMember trackables are fully freeform ({label, current, max}) — no
+// fixed schema, so there's nothing to enum-check, but current/max still
+// need to stay non-negative whole numbers.
+function clampTrackables(data) {
+  if (!Array.isArray(data.trackables)) return;
+  for (const t of data.trackables) {
+    if (t && typeof t === 'object') {
+      clampNumber(t, 'current', { min: 0 });
+      clampNumber(t, 'max', { min: 0 });
+    }
   }
 }
 
@@ -867,6 +1014,7 @@ function removeCampaign(id) {
 
 const partyMembers = makeVersionedCollection('partyMembers', {
   uniqueByName: true,
+  validate: (_store, data) => clampTrackables(data),
   context(store, data) {
     if (!store.campaigns.some((c) => c.id === data.campaignId)) {
       throw new Error(`No campaign with id ${data.campaignId}`);
@@ -1054,8 +1202,22 @@ function sessionContext(store, data) {
   return { campaignId: session.campaignId, sessionId: session.id };
 }
 
+// Most of a SessionAdversary's fields are a snapshot copied from an already-
+// validated master Adversary at pull-in time (see build() below), so the
+// only real sanitization gap is on values a GM can edit live during Combat
+// — Difficulty/Thresholds (editable once pulled in) and the HP/Stress
+// marked-boxes trackers.
+function validateSessionAdversary(_store, data) {
+  clampNumber(data, 'hpMarked', { min: 0 });
+  clampNumber(data, 'stressMarked', { min: 0 });
+  clampNumber(data, 'attackModifier');
+  clampNumber(data, 'difficulty', { min: 0 });
+  clampThresholds(data);
+}
+
 const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
   context: sessionContext,
+  validate: validateSessionAdversary,
   build(store, data, { campaignId, sessionId }) {
     const adversary = store.adversaries.find((a) => a.id === data.adversaryId);
     if (!adversary) throw new Error(`No adversary with id ${data.adversaryId}`);
@@ -1083,8 +1245,13 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
   },
 });
 
+function validateSessionEnvironment(_store, data) {
+  clampNumber(data, 'difficulty', { min: 0 });
+}
+
 const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
   context: sessionContext,
+  validate: validateSessionEnvironment,
   build(store, data, { campaignId, sessionId }) {
     const environment = store.environments.find((e) => e.id === data.environmentId);
     if (!environment) throw new Error(`No environment with id ${data.environmentId}`);
@@ -1311,6 +1478,9 @@ function importSnapshot(incoming) {
 function __resetCacheForTests() {
   cache = null;
   writeQueue = Promise.resolve();
+  if (writeTimer) clearTimeout(writeTimer);
+  writeTimer = null;
+  writeDeadline = null;
 }
 
 module.exports = {
@@ -1419,4 +1589,5 @@ module.exports = {
   DEFAULT_REGION_ID,
   exportSnapshot,
   importSnapshot,
+  flushPendingWrite,
 };

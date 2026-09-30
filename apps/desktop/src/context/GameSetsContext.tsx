@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { gameSetsApi, type GameSet } from '../api/gameSets';
 import { upsertById } from '../lib/upsert';
@@ -41,15 +41,18 @@ export function GameSetsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function createGameSet(name: string) {
+  const createGameSet = useCallback(async (name: string) => {
     const created = await gameSetsApi.create({ name });
     setGameSets((prev) => upsertById(prev, created));
     return created;
-  }
+  }, []);
 
-  return (
-    <GameSetsContext.Provider value={{ gameSets, loading, createGameSet }}>{children}</GameSetsContext.Provider>
+  const value = useMemo<GameSetsContextValue>(
+    () => ({ gameSets, loading, createGameSet }),
+    [gameSets, loading, createGameSet]
   );
+
+  return <GameSetsContext.Provider value={value}>{children}</GameSetsContext.Provider>;
 }
 
 export function useGameSets(): GameSetsContextValue {

@@ -9,7 +9,7 @@
 // empty (already-existing) data.json so the store's first-run seeding
 // logic doesn't fire except in the dedicated "seeding" tests below that
 // want it to.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,6 +26,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // A test that mutated the store without flushing may still have a pending
+  // debounced write timer — left alone, it'd fire later and write to
+  // whatever getStoreDir() resolves to once DAGGERHEART_STORE_DIR is gone
+  // (the real ~/.daggerheart-hub), so clear it before tearing anything down.
+  store.__resetCacheForTests();
   delete process.env.DAGGERHEART_STORE_DIR;
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
@@ -199,6 +204,90 @@ describe('Weapon', () => {
     const w = await store.createWeapon({ weaponSlot: 'SECONDARY', name: 'Dagger', burden: 'ONE_HANDED', gameSetId: 'gs-1' });
     await expect(store.updateWeapon(w.id, { burden: 'TWO_HANDED' })).rejects.toThrow('Secondary weapon must be One-Handed');
   });
+
+  it('rejects a trait that is not one of the known trait names', async () => {
+    await expect(
+      store.createWeapon({ weaponSlot: 'PRIMARY', name: 'Cursed Blade', burden: 'ONE_HANDED', trait: 'LUCK', gameSetId: 'gs-1' })
+    ).rejects.toThrow('trait must be one of');
+  });
+
+  it('clamps a non-numeric tier instead of persisting NaN', async () => {
+    const w = await store.createWeapon({
+      weaponSlot: 'PRIMARY',
+      name: 'Rusty Sword',
+      burden: 'ONE_HANDED',
+      tier: 'a lot',
+      gameSetId: 'gs-1',
+    });
+    expect(w.tier).toBeNull();
+  });
+});
+
+describe('Adversary', () => {
+  it('rejects a type that is not one of the corebook categories', async () => {
+    await expect(store.createAdversary({ name: 'Ogre', type: 'BOSS', gameSetId: 'gs-1' })).rejects.toThrow(
+      'type must be one of'
+    );
+  });
+
+  it('clamps a garbled numeric field instead of persisting NaN, the motivating "Harbinger of Pestilence" bug', async () => {
+    const a = await store.createAdversary({
+      name: 'Harbinger of Pestilence',
+      hp: '(unrecognized damage type)',
+      gameSetId: 'gs-1',
+    });
+    expect(a.hp).toBeNull();
+  });
+
+  it('clamps hp/stress/thresholds to non-negative whole numbers', async () => {
+    const a = await store.createAdversary({
+      name: 'Ogre',
+      hp: -3,
+      stress: 2.6,
+      thresholds: { major: -1, severe: 10.4 },
+      gameSetId: 'gs-1',
+    });
+    expect(a.hp).toBe(0);
+    expect(a.stress).toBe(3);
+    expect(a.thresholds).toEqual({ major: 0, severe: 10 });
+  });
+
+  it('re-validates enum fields on update too, not just create', async () => {
+    const a = await store.createAdversary({ name: 'Ogre', gameSetId: 'gs-1' });
+    await expect(store.updateAdversary(a.id, { attackRange: 'ADJACENT' })).rejects.toThrow('attackRange must be one of');
+  });
+});
+
+describe('Environment', () => {
+  it('rejects a category that is not one of the corebook categories', async () => {
+    await expect(store.createEnvironment({ name: 'Cave', category: 'DUNGEON', gameSetId: 'gs-1' })).rejects.toThrow(
+      'category must be one of'
+    );
+  });
+
+  it('clamps a negative difficulty to zero', async () => {
+    const e = await store.createEnvironment({ name: 'Cave', difficulty: -5, gameSetId: 'gs-1' });
+    expect(e.difficulty).toBe(0);
+  });
+});
+
+describe('Armor', () => {
+  it('clamps a non-numeric baseScore instead of persisting NaN', async () => {
+    const a = await store.createArmor({ name: 'Leather', baseScore: 'sturdy', gameSetId: 'gs-1' });
+    expect(a.baseScore).toBeNull();
+  });
+
+  it('clamps thresholds to non-negative whole numbers', async () => {
+    const a = await store.createArmor({ name: 'Leather', thresholds: { major: -2, severe: 8.2 }, gameSetId: 'gs-1' });
+    expect(a.thresholds).toEqual({ major: 0, severe: 8 });
+  });
+});
+
+describe('Loot / Consumable', () => {
+  it('rejects a gameSetId that does not exist', async () => {
+    await expect(store.createLoot({ name: 'Trinket', gameSetId: 'missing' })).rejects.toThrow('No game set with id');
+    await expect(store.createConsumable({ name: 'Potion', gameSetId: 'missing' })).rejects.toThrow('No game set with id');
+  });
 });
 
 describe('Campaign', () => {
@@ -276,6 +365,16 @@ describe('PartyMember', () => {
     expect(updated.notes).toBe('Ranger');
     await store.removePartyMember(member.id);
     expect(store.listPartyMembers()).toHaveLength(0);
+  });
+
+  it('clamps a trackable\'s current/max to non-negative whole numbers', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const member = await store.createPartyMember({
+      campaignId: c.id,
+      name: 'Fenn',
+      trackables: [{ label: 'HP', current: -2, max: 6.7 }],
+    });
+    expect(member.trackables).toEqual([{ label: 'HP', current: 0, max: 7 }]);
   });
 });
 
@@ -542,6 +641,23 @@ describe('SessionAdversary', () => {
     expect(updated.conditions).toEqual(['Restrained']);
   });
 
+  it('clamps Difficulty/Thresholds/HP edited live in Combat instead of persisting a garbled value', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+
+    const updated = await store.updateSessionAdversary(pulled.id, {
+      difficulty: -4,
+      thresholds: { major: -1, severe: 12.9 },
+      hpMarked: -1,
+    });
+    expect(updated.difficulty).toBe(0);
+    expect(updated.thresholds).toEqual({ major: 0, severe: 13 });
+    expect(updated.hpMarked).toBe(0);
+  });
+
   it('remove deletes the record', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
     const c = await store.createCampaign({ name: 'The Wildwood' });
@@ -579,7 +695,8 @@ describe('SessionEnvironment', () => {
 
 describe('generic collection (makeCollection) shared behavior', () => {
   it('PATCH semantics: an omitted field is untouched, an explicit empty value overwrites', async () => {
-    const loot = await store.createLoot({ name: 'Trinket', description: 'A shiny thing', gameSetId: 'gs-1' });
+    const gs = await store.createGameSet({ name: 'Core' });
+    const loot = await store.createLoot({ name: 'Trinket', description: 'A shiny thing', gameSetId: gs.id });
     const updated = await store.updateLoot(loot.id, { description: '' });
     expect(updated.name).toBe('Trinket');
     expect(updated.description).toBe('');
@@ -597,7 +714,8 @@ describe('generic collection (makeCollection) shared behavior', () => {
     await expect(store.updateLoot('missing', { name: 'x' })).rejects.toThrow();
     // If the write queue were left in a rejected state, this would hang
     // or reject too, instead of succeeding normally.
-    const loot = await store.createLoot({ name: 'Still Works', gameSetId: 'gs-1' });
+    const gs = await store.createGameSet({ name: 'Core' });
+    const loot = await store.createLoot({ name: 'Still Works', gameSetId: gs.id });
     expect(loot.name).toBe('Still Works');
   });
 });
@@ -677,8 +795,43 @@ describe('forward-compat store migration', () => {
     // The read fixed the in-memory cache; write it back out and confirm the
     // key is actually persisted, not just papered over in memory.
     await store.createGameSet({ name: 'Forces a write' });
+    store.flushPendingWrite();
     const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
     expect(Array.isArray(onDisk.cards)).toBe(true);
+  });
+});
+
+describe('debounced disk writes', () => {
+  it('list() reflects a mutation immediately, even before the debounced write to disk fires', async () => {
+    await store.createGameSet({ name: 'Core' });
+    expect(store.listGameSets()).toHaveLength(1);
+  });
+
+  it('flushPendingWrite() writes to disk immediately, without waiting out the debounce window', async () => {
+    await store.createGameSet({ name: 'Core' });
+    store.flushPendingWrite();
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+    expect(onDisk.gameSets).toHaveLength(1);
+  });
+
+  it('a burst of rapid mutations coalesces into disk matching the final in-memory state once flushed', async () => {
+    const a = await store.createGameSet({ name: 'Core' });
+    await store.createGameSet({ name: 'Homebrew' });
+    await store.updateGameSet(a.id, { name: 'Core (renamed)' });
+    store.flushPendingWrite();
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+    expect(onDisk.gameSets.map((g) => g.name).sort()).toEqual(['Core (renamed)', 'Homebrew']);
+  });
+
+  it('coalesces multiple rapid mutations into a single disk write instead of one per mutation', async () => {
+    const writeSpy = vi.spyOn(fs, 'writeFileSync');
+    await store.createGameSet({ name: 'A' });
+    await store.createGameSet({ name: 'B' });
+    await store.createGameSet({ name: 'C' });
+    expect(writeSpy).not.toHaveBeenCalled();
+    store.flushPendingWrite();
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+    writeSpy.mockRestore();
   });
 });
 
@@ -1146,6 +1299,7 @@ describe('Carrying data across Sessions', () => {
 
     it('records written before carrying existed (no lineage, no campaignId) still show in later sessions', async () => {
       const { c, sessions } = await board();
+      store.flushPendingWrite();
       const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
       raw.sessionAdversaries.push({
         id: 'legacy-1',
@@ -1206,6 +1360,7 @@ describe('Carrying data across Sessions', () => {
     it('a log that predates entry ids gets ids on load, so old entries can be removed', async () => {
       const c = await store.createCampaign({ name: 'The Wildwood' });
       const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+      store.flushPendingWrite();
       const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
       raw.sessions[0].lootLog = [roll(9)];
       fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify(raw));
@@ -1256,6 +1411,7 @@ describe('Carrying data across Sessions', () => {
       const adv = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
       await store.removeSessionAdversary(adv.id, { sessionId: sessions[2].id });
       await store.removeCampaign(c.id);
+      store.flushPendingWrite();
       const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
       expect(raw.partyMembers).toEqual([]);
       expect(raw.sessionAdversaries).toEqual([]);
