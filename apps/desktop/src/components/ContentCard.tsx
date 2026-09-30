@@ -4,6 +4,8 @@ import './ContentCard.css';
 
 interface ContentCardProps {
   title: string;
+  /** Replaces the plain `<h3>{title}</h3>` with custom content (e.g. an editable name field) — `title` is still required as the semantic fallback. */
+  titleNode?: ReactNode;
   /** Optional color swatch — used by Domain. */
   accent?: string | null;
   /** A row of small stat chips (Tier, Difficulty, etc). */
@@ -21,13 +23,13 @@ interface ContentCardProps {
 // uses — deliberately plain (no images, no filters) since the point of
 // this pass is closing the write-only gap, not building the fully designed
 // galleries the spec describes for later.
-export function ContentCard({ title, accent, meta, onEdit, editLabel, onDelete, deleteLabel, children }: ContentCardProps) {
+export function ContentCard({ title, titleNode, accent, meta, onEdit, editLabel, onDelete, deleteLabel, children }: ContentCardProps) {
   return (
     <div className="content-card">
       {accent && <span className="content-card__swatch" style={{ background: accent }} aria-hidden="true" />}
       <div className="content-card__body">
         <div className="content-card__header">
-          <h3 className="content-card__title">{title}</h3>
+          {titleNode ?? <h3 className="content-card__title">{title}</h3>}
           {(onEdit || onDelete) && (
             <div className="content-card__actions">
               {onEdit && (
@@ -81,6 +83,45 @@ export function EditableMetaField({
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
         aria-label={label}
       />
+    </span>
+  );
+}
+
+// A stat that's adjusted via a modifier rather than edited directly — the
+// book's own base value stays put, and what's typed here is layered onto
+// it. Empty input -> the effective value (base + any non-editable `extra`,
+// e.g. a Condition's penalty) shows as a greyed placeholder, so you can see
+// what it currently is without typing anything. Non-empty input -> the
+// typed modifier is what's in the box, so the resulting effective value
+// shows as a small greyed line underneath instead.
+export function ModifierMetaField({
+  label,
+  base,
+  modifier,
+  extra = 0,
+  onChange,
+}: {
+  label: string;
+  base: number | null;
+  modifier: number | null;
+  /** A computed adjustment already folded into the effective value but not itself directly editable — e.g. a stacked Condition's penalty. */
+  extra?: number;
+  onChange: (value: number | null) => void;
+}) {
+  const effective = (base ?? 0) + (modifier ?? 0) + extra;
+  return (
+    <span className="content-card__chip content-card__chip--editable content-card__chip--modifier">
+      <span>
+        {label}:{' '}
+        <input
+          type="number"
+          value={modifier ?? ''}
+          placeholder={String((base ?? 0) + extra)}
+          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+          aria-label={`${label} modifier`}
+        />
+      </span>
+      {modifier != null && <span className="content-card__chip-effective">= {effective}</span>}
     </span>
   );
 }

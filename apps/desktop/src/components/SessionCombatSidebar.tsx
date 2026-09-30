@@ -25,21 +25,23 @@ export default function SessionCombatSidebar({ sessionAdversaries, onChange }: S
           {adversary.hpMax != null && (
             <StatStepper
               label="HP"
-              current={adversary.hpMarked}
+              current={adversary.hpMax - adversary.hpMarked}
               max={adversary.hpMax}
-              onChange={(hpMarked) => onChange(adversary, { hpMarked })}
+              onChange={(remaining) => onChange(adversary, { hpMarked: adversary.hpMax! - remaining })}
             />
           )}
           {adversary.stressMax != null && (
             <StatStepper
               label="Stress"
-              current={adversary.stressMarked}
+              current={adversary.stressMax - adversary.stressMarked}
               max={adversary.stressMax}
-              onChange={(stressMarked) => onChange(adversary, { stressMarked })}
+              onChange={(remaining) => onChange(adversary, { stressMarked: adversary.stressMax! - remaining })}
             />
           )}
           {adversary.conditions.length > 0 && (
-            <p className="session-combat-sidebar__conditions">{adversary.conditions.join(', ')}</p>
+            <p className="session-combat-sidebar__conditions">
+              {adversary.conditions.map((c) => (c.count > 1 ? `${c.name} ×${c.count}` : c.name)).join(', ')}
+            </p>
           )}
         </div>
       ))}

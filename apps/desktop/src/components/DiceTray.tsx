@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { DIE_SIZES, rollDiceQueue, type DiceTrayRollResult } from '../lib/dice';
+import { DIE_SIZES, rollDiceQueue, formatDiceQueueLabel, type DiceTrayRollResult } from '../lib/dice';
 import './DiceTray.css';
+
+interface DiceTrayProps {
+  onRoll: (label: string, total: number) => void;
+}
 
 function dieLabel(sides: number): string {
   return `d${sides}`;
@@ -11,7 +15,7 @@ function dieLabel(sides: number): string {
 // separate from a stat block's own "Roll Damage" button (SessionAdversaryTile):
 // this is for anything NOT already described by a stat block's own notation
 // (attack rolls, saves, anything homebrew).
-export default function DiceTray() {
+export default function DiceTray({ onRoll }: DiceTrayProps) {
   const [queue, setQueue] = useState<Record<number, number>>({});
   const [result, setResult] = useState<DiceTrayRollResult | null>(null);
 
@@ -33,8 +37,10 @@ export default function DiceTray() {
       count: queue[sides] ?? 0,
     }));
     if (entries.length === 0) return;
-    setResult(rollDiceQueue(entries));
+    const rolled = rollDiceQueue(entries);
+    setResult(rolled);
     setQueue({});
+    onRoll(`Dice roller ${formatDiceQueueLabel(entries)}`, rolled.total);
   }
 
   return (

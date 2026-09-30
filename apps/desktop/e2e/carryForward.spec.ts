@@ -33,7 +33,11 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     win.locator('.content-card', { hasText: name }).getByRole('button', { name: 'Open' }).click();
 
   const partyHp = () => win.locator('.party-roster .content-card', { hasText: 'Mira' }).locator('.stat-stepper__value');
-  const ogreHp = () => win.locator('.combat-panel .content-card', { hasText: 'Ogre' }).locator('.stat-stepper__value').first();
+  // Found by container, not name text — a Session Adversary's name now
+  // lives in an editable <input>, not visible textContent (see
+  // SessionAdversaryTile); only the Ogre is ever pulled into Combat here.
+  const ogreTile = () => win.locator('.combat-panel .content-card');
+  const ogreHp = () => ogreTile().locator('.stat-stepper__value').first();
 
   async function newSession(name: string) {
     await win.click('.session-list__add');
@@ -80,8 +84,8 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await win.click('.mode-toggle__option:has-text("Combat")');
     await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
-    await win.locator('.combat-panel .content-card', { hasText: 'Ogre' }).getByRole('button', { name: 'Increase HP Marked' }).click();
-    await expect(ogreHp()).toHaveText('1 / 8');
+    await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Decrease HP' }).click();
+    await expect(ogreHp()).toHaveText('7 / 8');
     await win.click('.session-view__back');
 
     // ---- Session 2 starts where Session 1 left off ----
@@ -93,12 +97,12 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue('');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await expect(ogreHp()).toHaveText('1 / 8');
-    await expect(win.locator('.combat-panel .content-card', { hasText: 'Ogre' })).toContainText('Carried over');
+    await expect(ogreHp()).toHaveText('7 / 8');
+    await expect(win.locator('.combat-panel .content-card')).toContainText('Carried over');
 
     // Change things in Session 2.
-    await win.locator('.combat-panel .content-card', { hasText: 'Ogre' }).getByRole('button', { name: 'Increase HP Marked' }).click();
-    await expect(ogreHp()).toHaveText('2 / 8');
+    await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Decrease HP' }).click();
+    await expect(ogreHp()).toHaveText('6 / 8');
     await win.locator('.party-roster .content-card', { hasText: 'Mira' }).getByRole('button', { name: 'Decrease HP' }).click();
     await expect(partyHp().first()).toHaveText(`${startCurrent - 2} / ${hpMax}`);
     await win.getByRole('button', { name: 'Set Fear to 7' }).click();
@@ -112,13 +116,13 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await win.click('.mode-toggle__option:has-text("Adventuring")');
     await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue('Night one.');
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await expect(ogreHp()).toHaveText('1 / 8');
+    await expect(ogreHp()).toHaveText('7 / 8');
     await win.click('.session-view__back');
 
     // ---- Pushing the Ogre out in Session 2 removes it from 2 onward only ----
     await openSession('Session 2');
-    await win.locator('.combat-panel .content-card', { hasText: 'Ogre' }).getByRole('button', { name: 'Push Out' }).click();
-    await expect(win.locator('.combat-panel .content-card', { hasText: 'Ogre' })).toHaveCount(0);
+    await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Push Out' }).click();
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
     await win.click('.session-view__back');
 
     await newSession('Session 3');
@@ -126,12 +130,12 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await expect(win.locator('.fear-track__value')).toHaveText('7 / 12');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 2} / ${hpMax}`);
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await expect(win.locator('.combat-panel .content-card', { hasText: 'Ogre' })).toHaveCount(0);
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
     await win.click('.session-view__back');
 
     await openSession('Session 1');
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await expect(ogreHp()).toHaveText('1 / 8'); // still there in the session it was pulled into
+    await expect(ogreHp()).toHaveText('7 / 8'); // still there in the session it was pulled into
   });
 
   test('removing a party member in a later session leaves the earlier session’s party alone', async () => {

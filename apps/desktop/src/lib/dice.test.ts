@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDamageNotation, rollDamage, rollDice, rollDiceQueue, rollDie } from './dice';
+import { damageNotationLabel, formatDiceQueueLabel, parseDamageNotation, rollDamage, rollDice, rollDiceQueue, rollDie } from './dice';
 
 describe('rollDie', () => {
   it('the lowest possible roll is 1, not 0', () => {
@@ -62,6 +62,35 @@ describe('rollDamage', () => {
 
   it('a flat (diceless) value just returns the modifier as the total', () => {
     expect(rollDamage({ count: 0, sides: 0, modifier: 4 })).toEqual({ rolls: [], modifier: 4, total: 4 });
+  });
+});
+
+describe('damageNotationLabel', () => {
+  it('reconstructs the dice notation plus the damage type word', () => {
+    expect(damageNotationLabel('Claws: 1d12+2 phy damage', { count: 1, sides: 12, modifier: 2 })).toBe('1d12+2 phy');
+  });
+
+  it('handles a flat (diceless) value with a type word', () => {
+    expect(damageNotationLabel('Claws: 1 phy damage', { count: 0, sides: 0, modifier: 1 })).toBe('1 phy');
+  });
+
+  it('falls back to the parsed numbers when the text has no recognizable damage phrase', () => {
+    expect(damageNotationLabel('Grapple', { count: 1, sides: 10, modifier: 3 })).toBe('1d10+3');
+  });
+
+  it('falls back to just the modifier for a diceless fallback', () => {
+    expect(damageNotationLabel(null, { count: 0, sides: 0, modifier: 4 })).toBe('4');
+  });
+});
+
+describe('formatDiceQueueLabel', () => {
+  it('formats a queue as a bracketed, comma-separated list', () => {
+    expect(
+      formatDiceQueueLabel([
+        { sides: 6, count: 2 },
+        { sides: 20, count: 1 },
+      ]),
+    ).toBe('[2d6, 1d20]');
   });
 });
 

@@ -146,6 +146,28 @@
   -moz-appearance: textfield;
 }
 
+.content-card__chip--editable input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* A modifier field's effective-value readout sits on its own line below the
+   input instead of inline, so it never gets mistaken for part of the typed
+   value. */
+.content-card__chip--modifier {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.content-card__chip-effective {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
 .content-card__description {
   color: var(--ink-dim);
   font-size: 0.9rem;

@@ -21,6 +21,31 @@ interface CombatPanelProps {
   onPullInAdversary: (adversaryId: string) => void;
   onAdversaryChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   onAdversaryRemove: (adversary: SessionAdversary) => void;
+  onRoll: (label: string, total: number) => void;
+}
+
+// "#N" is computed here, not stored — it's purely a display convenience for
+// telling un-renamed copies of the same Adversary apart ("Bear #1", "Bear
+// #2"), recomputed fresh off the live list every render so pushing one out
+// or renaming it never leaves a stale number behind. Only adversaries still
+// at their default name (never customized in SessionAdversaryTile) count
+// toward the numbering — once a copy gets its own name it no longer needs
+// one, and dropping out of the count here is what lets SessionAdversaryTile
+// tell "still just the pack name" apart from "customized" in the first
+// place (see its isCustomLabel check).
+function computeDuplicateSuffixes(list: SessionAdversary[]): Map<string, number> {
+  const eligible = list.filter((a) => a.label.trim() === a.name.trim());
+  const totals = new Map<string, number>();
+  for (const a of eligible) totals.set(a.adversaryId, (totals.get(a.adversaryId) ?? 0) + 1);
+  const counters = new Map<string, number>();
+  const suffixes = new Map<string, number>();
+  for (const a of eligible) {
+    if ((totals.get(a.adversaryId) ?? 0) <= 1) continue;
+    const n = (counters.get(a.adversaryId) ?? 0) + 1;
+    counters.set(a.adversaryId, n);
+    suffixes.set(a.id, n);
+  }
+  return suffixes;
 }
 
 // Pulls in, and persists its own SessionEnvironments — the same "own your
@@ -38,6 +63,7 @@ export default function CombatPanel({
   onPullInAdversary,
   onAdversaryChange,
   onAdversaryRemove,
+  onRoll,
 }: CombatPanelProps) {
   const [sessionEnvironments, setSessionEnvironments] = useState<SessionEnvironment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +127,8 @@ export default function CombatPanel({
     }
   }
 
+  const duplicateSuffixes = computeDuplicateSuffixes(sessionAdversaries);
+
   return (
     <div className="combat-panel">
       <div className="combat-panel__toolbar">
@@ -150,8 +178,10 @@ export default function CombatPanel({
             // record instead of duplicating them into every pull-in — undefined
             // just means the master was deleted since, and the section hides.
             masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
+            duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
             onChange={(patch) => onAdversaryChange(adversary, patch)}
             onRemove={() => onAdversaryRemove(adversary)}
+            onRoll={onRoll}
           />
         ))}
         {sessionEnvironments.map((environment) => (

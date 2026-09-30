@@ -50,6 +50,34 @@ export function rollDamage(parsed: ParsedDamage, rng: () => number = Math.random
   return { rolls, modifier: parsed.modifier, total };
 }
 
+// The "2d10+10 mag" half of "2d10+10 mag = 23" — re-derived from the same
+// free text parseDamageNotation reads, including the damage-type word
+// (phy/mag/etc.) that parseDamageNotation itself discards, since that's
+// worth keeping for display even though it plays no role in the math.
+// Falls back to reconstructing plain notation from the already-parsed
+// numbers if the text doesn't match either shape (e.g. imported homebrew
+// phrased its damage differently).
+export function damageNotationLabel(text: string | null | undefined, parsed: ParsedDamage): string {
+  if (text) {
+    const diceMatch = text.match(/(\d+)?d(\d+)\s*([+-]\s*\d+)?\s*(\w+)?\s*damage/i);
+    if (diceMatch) {
+      const notation = `${diceMatch[1] ?? '1'}d${diceMatch[2]}${diceMatch[3] ? diceMatch[3].replace(/\s+/g, '') : ''}`;
+      return diceMatch[4] ? `${notation} ${diceMatch[4]}` : notation;
+    }
+    const flatMatch = text.match(/(\d+)\s*(\w+)?\s*damage/i);
+    if (flatMatch) return flatMatch[2] ? `${flatMatch[1]} ${flatMatch[2]}` : flatMatch[1];
+  }
+  if (parsed.count > 0) {
+    return `${parsed.count}d${parsed.sides}${parsed.modifier ? (parsed.modifier > 0 ? `+${parsed.modifier}` : parsed.modifier) : ''}`;
+  }
+  return `${parsed.modifier}`;
+}
+
+/** The "[2d6, 1d10]" half of a DiceTray roll's log line. */
+export function formatDiceQueueLabel(queue: DiceQueueEntry[]): string {
+  return `[${queue.map((q) => `${q.count}d${q.sides}`).join(', ')}]`;
+}
+
 /** One die size's queued count in the dice tray, e.g. { sides: 20, count: 2 }. */
 export interface DiceQueueEntry {
   sides: number;

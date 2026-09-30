@@ -83,12 +83,16 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
 
     await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
-    const tile = win.locator('.content-card', { hasText: 'Ogre' });
+    // The Adversary's name now lives in an editable <input>, not plain text
+    // (see SessionAdversaryTile), so it's no longer found by hasText — an
+    // <input>'s value isn't part of its textContent. Only one tile is ever
+    // pulled in during this test, so the Combat panel's only card is it.
+    const tile = win.locator('.combat-panel .content-card');
     await expect(tile).toBeVisible();
-    await expect(tile.locator('.stat-stepper__value').first()).toHaveText('0 / 8');
+    await expect(tile.locator('.stat-stepper__value').first()).toHaveText('8 / 8');
 
-    await tile.getByRole('button', { name: 'Increase HP Marked' }).click();
-    await expect(tile.locator('.stat-stepper__value').first()).toHaveText('1 / 8');
+    await tile.getByRole('button', { name: 'Decrease HP' }).click();
+    await expect(tile.locator('.stat-stepper__value').first()).toHaveText('7 / 8');
 
     // Reload and re-navigate all the way back in — nothing here is kept in
     // localStorage, so this only passes if the IPC round trips actually
@@ -101,8 +105,8 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
 
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
     await expect(win.locator('.mode-toggle__option--active')).toHaveText('Combat');
-    const reloadedTile = win.locator('.content-card', { hasText: 'Ogre' });
-    await expect(reloadedTile.locator('.stat-stepper__value').first()).toHaveText('1 / 8');
+    const reloadedTile = win.locator('.combat-panel .content-card');
+    await expect(reloadedTile.locator('.stat-stepper__value').first()).toHaveText('7 / 8');
 
     await reloadedTile.getByRole('button', { name: 'Push Out' }).click();
     await expect(reloadedTile).toHaveCount(0);
@@ -182,7 +186,9 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
     await win.click('.item-picker__option:has-text("Ashen Warden")');
 
-    const tile = win.locator('.content-card', { hasText: 'Ashen Warden' });
+    // Found by container, not name text — the name now lives in an
+    // editable <input>, not visible textContent (see SessionAdversaryTile).
+    const tile = win.locator('.combat-panel .content-card');
     // Features start expanded and grouped by section (Passives/Actions/…).
     await expect(tile.locator('.session-tile__features-toggle')).toBeVisible();
     await expect(tile.locator('.content-card__feature-group-label:has-text("Passives")')).toBeVisible();
@@ -196,12 +202,84 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(tile.locator('.content-card__feature-group-label:has-text("Passives")')).toBeVisible();
 
     // Math.floor(0.5 * 10) + 1 === 6, so 1d10+2 always resolves to 6 + 2 = 8.
-    // The roll display shows only the final total, not the breakdown.
+    // The roll display reads "notation = total", e.g. "1d10+2 phy = 8".
     await win.evaluate(() => {
       window.Math.random = () => 0.5;
     });
     await tile.locator('.session-tile__roll-damage').click();
-    await expect(tile.locator('.session-tile__roll-result')).toHaveText('8');
+    await expect(tile.locator('.session-tile__roll-result')).toHaveText('1d10+2 phy = 8');
+  });
+
+  test('duplicate pulls get numbered, Conditions stack into an effective Difficulty, and rolls append to the Roll Log', async () => {
+    await win.click('.create-panel__toggle');
+    await win.click('.chip:text-is("Adversary")');
+    await win.fill('.create-form input[type="text"]', 'Ogre');
+    await win.fill('.text-field:has-text("Difficulty") input', '14');
+    await win.fill('.text-field:has-text("HP") input', '8');
+    await win.fill('.text-field:has-text("Stress") input', '3');
+    await win.fill('label:has-text("Attack Description") textarea', 'Slam: 1d10+2 phy damage');
+    await win.click('button:has-text("Create Adversary")');
+    await win.click('.app-shell__brand');
+
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.mode-toggle__option:has-text("Combat")');
+
+    // Pulling the same Adversary in twice numbers the un-renamed copies.
+    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.item-picker__option:has-text("Ogre")');
+    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.item-picker__option:has-text("Ogre")');
+    const tiles = win.locator('.combat-panel .content-card');
+    await expect(tiles).toHaveCount(2);
+    await expect(tiles.nth(0).locator('.session-tile__name-suffix')).toHaveText('#1');
+    await expect(tiles.nth(1).locator('.session-tile__name-suffix')).toHaveText('#2');
+
+    // Renaming the first copy drops its number and tags it with the
+    // original stat block's name instead — and since only one "Ogre" is
+    // left un-renamed, it no longer needs a number either.
+    await tiles.nth(0).locator('.session-tile__name-input').fill('Bruiser');
+    await expect(tiles.nth(0).locator('.session-tile__name-suffix')).toHaveCount(0);
+    await expect(tiles.nth(0).locator('.session-tile__name-original')).toHaveText('Ogre');
+    await expect(tiles.nth(1).locator('.session-tile__name-suffix')).toHaveCount(0);
+
+    const tile = tiles.nth(1);
+
+    // Difficulty/Thresholds start as an empty modifier, with the book's own
+    // value shown as a greyed placeholder — not directly editable.
+    const difficultyInput = tile.getByLabel('Difficulty modifier');
+    await expect(difficultyInput).toHaveValue('');
+    await expect(difficultyInput).toHaveAttribute('placeholder', '14');
+
+    // Stacking two Corrosive Conditions applies -1 Difficulty per stack,
+    // folded straight into the Difficulty placeholder.
+    await tile.getByRole('button', { name: '+ Add condition' }).click();
+    await tile.locator('.conditions-editor__row input[type="text"]').fill('Corrosive');
+    await tile.getByRole('button', { name: 'Increase Corrosive stacks' }).click();
+    await expect(tile.locator('.conditions-editor__effect')).toHaveText('-2 Difficulty');
+    await expect(difficultyInput).toHaveAttribute('placeholder', '12');
+
+    // Typing a manual modifier on top shows the resulting effective value
+    // below the field instead of in the placeholder.
+    await difficultyInput.fill('-1');
+    await expect(tile.locator('.content-card__chip-effective')).toHaveText('= 11');
+
+    // Rolling this Adversary's damage appends a labeled entry to the Roll
+    // Log, using its current display name (this tile is the un-renamed
+    // second copy, still plain "Ogre").
+    await win.evaluate(() => {
+      window.Math.random = () => 0.5;
+    });
+    await tile.locator('.session-tile__roll-damage').click();
+    const rollLog = win.locator('.roll-log__entry');
+    await expect(rollLog).toHaveCount(1);
+    await expect(rollLog.first().locator('.roll-log__label')).toHaveText('Ogre damage');
+    await expect(rollLog.first().locator('.roll-log__total')).toHaveText('8');
+
+    // A general DiceTray roll appends its own entry above it, newest first.
+    await win.click('.dice-tray__die:has-text("d6")');
+    await win.click('.dice-tray__roll');
+    await expect(rollLog).toHaveCount(2);
+    await expect(rollLog.first().locator('.roll-log__label')).toHaveText('Dice roller [1d6]');
   });
 
   test('the dice tray queues dice by left click, un-queues by right click, and rolls everything queued into one total', async () => {

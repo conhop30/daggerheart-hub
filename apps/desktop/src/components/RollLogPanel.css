@@ -1,0 +1,93 @@
+.roll-log {
+  position: fixed;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 890;
+  width: 240px;
+  max-height: 260px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-raised, var(--panel));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  animation: fadeInUp 240ms var(--ease);
+  overflow: hidden;
+}
+
+.roll-log__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--hairline);
+  flex-shrink: 0;
+}
+
+.roll-log__toggle {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0;
+  transition: color 160ms var(--ease);
+}
+
+.roll-log__toggle:hover {
+  color: var(--ink);
+}
+
+.roll-log__clear {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 0;
+  transition: color 160ms var(--ease);
+}
+
+.roll-log__clear:hover {
+  color: var(--fear-on-dark);
+}
+
+.roll-log__list {
+  overflow-y: auto;
+  padding: 4px 10px 8px;
+}
+
+.roll-log__entry {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.8rem;
+}
+
+.roll-log__entry:first-child {
+  border-top: none;
+}
+
+.roll-log__label {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roll-log__equals {
+  color: var(--muted);
+}
+
+.roll-log__total {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--hope-on-dark);
+}

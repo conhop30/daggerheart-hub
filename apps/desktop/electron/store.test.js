@@ -636,9 +636,28 @@ describe('SessionAdversary', () => {
     const ogre = await store.createAdversary({ name: 'Ogre', hp: 8, gameSetId: gs.id });
     const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
 
-    const updated = await store.updateSessionAdversary(pulled.id, { hpMarked: 3, conditions: ['Restrained'] });
+    const updated = await store.updateSessionAdversary(pulled.id, {
+      hpMarked: 3,
+      conditions: [{ name: 'Restrained', count: 1 }],
+    });
     expect(updated.hpMarked).toBe(3);
-    expect(updated.conditions).toEqual(['Restrained']);
+    expect(updated.conditions).toEqual([{ name: 'Restrained', count: 1 }]);
+  });
+
+  it('stacks and sanitizes Conditions on update', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', hp: 8, gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+
+    const updated = await store.updateSessionAdversary(pulled.id, {
+      conditions: [{ name: 'Corrosive', count: 2.6 }, { count: 3 }],
+    });
+    expect(updated.conditions).toEqual([
+      { name: 'Corrosive', count: 3 },
+      { name: '', count: 3 },
+    ]);
   });
 
   it('clamps Difficulty/Thresholds/HP edited live in Combat instead of persisting a garbled value', async () => {
@@ -914,7 +933,7 @@ describe('cloneSession', () => {
       lootLog: [{ rolledAt: 'x', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] }],
     });
     const sa = await store.createSessionAdversary({ sessionId: source.id, adversaryId: adv.id, label: 'Ogre A' });
-    await store.updateSessionAdversary(sa.id, { hpMarked: 2, conditions: ['Vulnerable'] });
+    await store.updateSessionAdversary(sa.id, { hpMarked: 2, conditions: [{ name: 'Vulnerable', count: 1 }] });
     await store.createSessionEnvironment({ sessionId: source.id, environmentId: env.id, label: 'Bog' });
     return { c, source };
   }
@@ -929,7 +948,7 @@ describe('cloneSession', () => {
 
     const advs = store.listSessionAdversariesBySession(copy.id);
     expect(advs).toHaveLength(1);
-    expect(advs[0]).toMatchObject({ label: 'Ogre A', hpMarked: 2, conditions: ['Vulnerable'] });
+    expect(advs[0]).toMatchObject({ label: 'Ogre A', hpMarked: 2, conditions: [{ name: 'Vulnerable', count: 1 }] });
     expect(store.listSessionEnvironmentsBySession(copy.id)).toHaveLength(1);
   });
 

@@ -1,70 +1,103 @@
 import { useState } from 'react';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
-import type { Thresholds } from './ThresholdsInput';
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
-import { parseDamageNotation, rollDamage, type DamageRollResult } from '../lib/dice';
-import { ContentCard, EditableMetaField, FeatureRowLines, MetaChip } from './ContentCard';
+import { parseDamageNotation, rollDamage, damageNotationLabel, type DamageRollResult } from '../lib/dice';
+import { difficultyModifierFromConditions } from '../lib/conditions';
+import { ContentCard, FeatureRowLines, MetaChip, ModifierMetaField } from './ContentCard';
 import StatStepper from './StatStepper';
-import StringListEditor from './StringListEditor';
+import ConditionsEditor from './ConditionsEditor';
 import './SessionTile.css';
 
 interface SessionAdversaryTileProps {
   adversary: SessionAdversary;
   /** Looked up live from the master Adversary — see CombatPanel for why. */
   masterFeatures: FeatureSections | undefined;
+  /** This tile's "#N" among other un-renamed pulls of the same Adversary in this session — null when it's the only one, or once it's been given a custom name. See CombatPanel. */
+  duplicateSuffix: number | null;
   onChange: (patch: UpdateSessionAdversaryRequest) => void;
   onRemove: () => void;
+  onRoll: (label: string, total: number) => void;
 }
 
 // A live, mutable card for one Adversary pulled into a session — reads
 // entirely off the props it's given and reports changes upward, so
 // CombatPanel (the only thing that knows how to persist a change) is the
 // only piece that has to know sessionAdversariesApi exists.
-export default function SessionAdversaryTile({ adversary, masterFeatures, onChange, onRemove }: SessionAdversaryTileProps) {
-  const [rollResult, setRollResult] = useState<DamageRollResult | null>(null);
+export default function SessionAdversaryTile({ adversary, masterFeatures, duplicateSuffix, onChange, onRemove, onRoll }: SessionAdversaryTileProps) {
+  const [roll, setRoll] = useState<{ notation: string; result: DamageRollResult } | null>(null);
   const [featuresOpen, setFeaturesOpen] = useState(true);
   const parsedDamage = parseDamageNotation(adversary.attackDescription);
   const featureRows = featureRowsFor(masterFeatures);
+  const isCustomLabel = adversary.label.trim() !== adversary.name.trim();
+  const conditionDifficultyDelta = difficultyModifierFromConditions(adversary.conditions);
+  const thresholdsModifier = adversary.thresholdsModifier;
+  const hasThresholdsModifier = thresholdsModifier.major != null || thresholdsModifier.severe != null;
 
   function handleRollDamage() {
     if (!parsedDamage) return;
-    setRollResult(rollDamage(parsedDamage));
+    const result = rollDamage(parsedDamage);
+    setRoll({ notation: damageNotationLabel(adversary.attackDescription, parsedDamage), result });
+    onRoll(`${adversary.label} damage`, result.total);
   }
 
-  function handleThresholdChange(field: keyof Thresholds, value: number | null) {
-    onChange({ thresholds: { ...adversary.thresholds, [field]: value } });
+  function handleThresholdsModifierChange(field: 'major' | 'severe', value: number | null) {
+    onChange({ thresholdsModifier: { ...thresholdsModifier, [field]: value } });
   }
 
   return (
     <ContentCard
       title={adversary.label}
+      titleNode={
+        <h3 className="content-card__title session-tile__title">
+          <input
+            type="text"
+            className="session-tile__name-input"
+            value={adversary.label}
+            onChange={(e) => onChange({ label: e.target.value })}
+            aria-label="Name"
+          />
+          {!isCustomLabel && duplicateSuffix != null && <span className="session-tile__name-suffix">#{duplicateSuffix}</span>}
+          {isCustomLabel && <span className="session-tile__name-original">{adversary.name}</span>}
+        </h3>
+      }
       onDelete={onRemove}
       deleteLabel="Push Out"
       meta={
         <>
           {adversary.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={adversary.tier} />
-          <EditableMetaField
+          <ModifierMetaField
             label="Difficulty"
-            value={adversary.difficulty}
-            onChange={(difficulty) => onChange({ difficulty })}
+            base={adversary.difficulty}
+            modifier={adversary.difficultyModifier}
+            extra={conditionDifficultyDelta}
+            onChange={(difficultyModifier) => onChange({ difficultyModifier })}
           />
-          <span className="content-card__chip content-card__chip--editable">
-            Thresholds:{' '}
-            <input
-              type="number"
-              value={adversary.thresholds.major ?? ''}
-              onChange={(e) => handleThresholdChange('major', e.target.value === '' ? null : Number(e.target.value))}
-              aria-label="Major Threshold"
-            />{' '}
-            /{' '}
-            <input
-              type="number"
-              value={adversary.thresholds.severe ?? ''}
-              onChange={(e) => handleThresholdChange('severe', e.target.value === '' ? null : Number(e.target.value))}
-              aria-label="Severe Threshold"
-            />
+          <span className="content-card__chip content-card__chip--editable content-card__chip--modifier">
+            <span>
+              Thresholds:{' '}
+              <input
+                type="number"
+                value={thresholdsModifier.major ?? ''}
+                placeholder={String(adversary.thresholds.major ?? '')}
+                onChange={(e) => handleThresholdsModifierChange('major', e.target.value === '' ? null : Number(e.target.value))}
+                aria-label="Major Threshold modifier"
+              />{' '}
+              /{' '}
+              <input
+                type="number"
+                value={thresholdsModifier.severe ?? ''}
+                placeholder={String(adversary.thresholds.severe ?? '')}
+                onChange={(e) => handleThresholdsModifierChange('severe', e.target.value === '' ? null : Number(e.target.value))}
+                aria-label="Severe Threshold modifier"
+              />
+            </span>
+            {hasThresholdsModifier && (
+              <span className="content-card__chip-effective">
+                = {(adversary.thresholds.major ?? 0) + (thresholdsModifier.major ?? 0)} / {(adversary.thresholds.severe ?? 0) + (thresholdsModifier.severe ?? 0)}
+              </span>
+            )}
           </span>
         </>
       }
@@ -72,18 +105,18 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
       <div className="session-tile__stats">
         {adversary.hpMax != null && (
           <StatStepper
-            label="HP Marked"
-            current={adversary.hpMarked}
+            label="HP"
+            current={adversary.hpMax - adversary.hpMarked}
             max={adversary.hpMax}
-            onChange={(hpMarked) => onChange({ hpMarked })}
+            onChange={(remaining) => onChange({ hpMarked: adversary.hpMax! - remaining })}
           />
         )}
         {adversary.stressMax != null && (
           <StatStepper
-            label="Stress Marked"
-            current={adversary.stressMarked}
+            label="Stress"
+            current={adversary.stressMax - adversary.stressMarked}
             max={adversary.stressMax}
-            onChange={(stressMarked) => onChange({ stressMarked })}
+            onChange={(remaining) => onChange({ stressMarked: adversary.stressMax! - remaining })}
           />
         )}
       </div>
@@ -97,7 +130,11 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
           )}
         </p>
       )}
-      {rollResult && <p className="session-tile__roll-result roll-result">{rollResult.total}</p>}
+      {roll && (
+        <p className="session-tile__roll-result">
+          {roll.notation} = <strong>{roll.result.total}</strong>
+        </p>
+      )}
       {adversary.experiences.length > 0 && (
         <p className="session-tile__experiences">
           <strong>Experience:</strong>{' '}
@@ -109,12 +146,7 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
           ))}
         </p>
       )}
-      <StringListEditor
-        label="Conditions"
-        placeholder="e.g. Restrained"
-        values={adversary.conditions}
-        onChange={(conditions) => onChange({ conditions })}
-      />
+      <ConditionsEditor values={adversary.conditions} onChange={(conditions) => onChange({ conditions })} />
       {featureRows.length > 0 && (
         <div className="session-tile__features">
           <button

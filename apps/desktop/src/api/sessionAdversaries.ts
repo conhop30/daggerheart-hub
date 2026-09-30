@@ -2,6 +2,7 @@ import { apiClient, type SessionContext } from './client';
 import type { AttackRange, AttackType } from './adversaries';
 import type { Thresholds } from '../components/ThresholdsInput';
 import type { Experience } from '../components/ExperienceListEditor';
+import type { SessionCondition } from '../lib/conditions';
 
 // A snapshot of a master Adversary at pull-in time, not a live reference —
 // see electron/store.js's comment on buildSessionAdversary for why.
@@ -12,6 +13,7 @@ export interface SessionAdversary {
   label: string;
   name: string;
   tier: number | null;
+  /** The book's own Difficulty/Thresholds — no longer edited directly once pulled in; see difficultyModifier/thresholdsModifier. */
   difficulty: number | null;
   thresholds: Thresholds;
   hpMax: number | null;
@@ -23,7 +25,11 @@ export interface SessionAdversary {
   experiences: Experience[];
   hpMarked: number;
   stressMarked: number;
-  conditions: string[];
+  /** A live adjustment layered onto `difficulty` — e.g. a GM toughening a fight, or a Condition's stacked penalty (see lib/conditions). */
+  difficultyModifier: number | null;
+  /** Same idea as difficultyModifier, one per Threshold. */
+  thresholdsModifier: Thresholds;
+  conditions: SessionCondition[];
   /** True when this was pulled in (or last changed) in an earlier session than the one being viewed. */
   carried?: boolean;
 }
@@ -39,10 +45,12 @@ export interface UpdateSessionAdversaryRequest {
   label?: string;
   hpMarked?: number;
   stressMarked?: number;
-  conditions?: string[];
+  conditions?: SessionCondition[];
   /** Adjusted independently of the master Adversary once pulled in — see SessionAdversaryTile. */
   difficulty?: number | null;
   thresholds?: Thresholds;
+  difficultyModifier?: number | null;
+  thresholdsModifier?: Thresholds;
 }
 
 export const sessionAdversariesApi = {

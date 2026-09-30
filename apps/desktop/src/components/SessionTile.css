@@ -1,3 +1,57 @@
+.session-tile__title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.session-tile__name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0 0 1px;
+  min-width: 4rem;
+  flex: 1 1 auto;
+  transition: border-color 160ms var(--ease);
+}
+
+.session-tile__name-input:hover {
+  border-bottom-color: var(--hairline);
+}
+
+.session-tile__name-input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--hope);
+}
+
+.session-tile__name-suffix {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* The original stat block's name, kept visible once a copy's name has been
+   customized — so "Name is different" doesn't lose its link back to
+   "Courtier" mid-combat. */
+.session-tile__name-original {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 1px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .session-tile__stats {
   display: flex;
   flex-direction: column;
@@ -31,8 +85,20 @@
   color: var(--hope);
 }
 
+/* Plain text, not the big red/white-stroke .roll-result treatment — reads
+   as part of the attack line ("2d10+10 mag = 23"), not a separate shout. */
 .session-tile__roll-result {
   margin: 0 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+
+.session-tile__roll-result strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--hope-on-dark);
 }
 
 .session-tile__experiences {

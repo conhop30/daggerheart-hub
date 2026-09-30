@@ -1,0 +1,50 @@
+.conditions-editor__row {
+  grid-template-columns: auto 1fr auto auto auto;
+}
+
+.conditions-editor__count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.2rem;
+}
+
+.conditions-editor__count-button {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--ink);
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 160ms var(--ease);
+}
+
+.conditions-editor__count-button:hover:not(:disabled) {
+  border-color: var(--hope);
+}
+
+.conditions-editor__count-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.conditions-editor__count-value {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  min-width: 1.6rem;
+  text-align: center;
+}
+
+.conditions-editor__effect {
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fear-on-dark);
+  white-space: nowrap;
+}

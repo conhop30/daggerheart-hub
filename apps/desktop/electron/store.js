@@ -958,10 +958,23 @@ function requireEnum(data, field, allowed) {
   }
 }
 
-function clampThresholds(data) {
-  if (data.thresholds === undefined || data.thresholds === null) return;
-  clampNumber(data.thresholds, 'major', { min: 0 });
-  clampNumber(data.thresholds, 'severe', { min: 0 });
+function clampThresholds(data, field = 'thresholds', { min = 0 } = {}) {
+  if (data[field] === undefined || data[field] === null) return;
+  clampNumber(data[field], 'major', { min });
+  clampNumber(data[field], 'severe', { min });
+}
+
+// Conditions are stacked ({name, count}), not a flat free-text list — count
+// is what lets e.g. two stacks of Corrosive actually double its Difficulty
+// penalty instead of just showing "Corrosive" twice. Name stays free text
+// (no fixed condition list exists in the corebook data), only count is
+// numeric and needs clamping.
+function sanitizeConditions(data) {
+  if (!Array.isArray(data.conditions)) return;
+  data.conditions = data.conditions.map((c) => ({
+    name: typeof c?.name === 'string' ? c.name : '',
+    count: Number.isFinite(Number(c?.count)) ? Math.max(1, Math.round(Number(c.count))) : 1,
+  }));
 }
 
 // PartyMember trackables are fully freeform ({label, current, max}) — no
@@ -1212,7 +1225,13 @@ function validateSessionAdversary(_store, data) {
   clampNumber(data, 'stressMarked', { min: 0 });
   clampNumber(data, 'attackModifier');
   clampNumber(data, 'difficulty', { min: 0 });
+  // Modifiers, unlike the base Difficulty/Thresholds they're layered onto,
+  // are deliberately allowed negative (and unbounded) — a GM pushing a
+  // fight harder or softer isn't clamped to "at least as hard as the book".
+  clampNumber(data, 'difficultyModifier');
   clampThresholds(data);
+  clampThresholds(data, 'thresholdsModifier', { min: -Infinity });
+  sanitizeConditions(data);
 }
 
 const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
@@ -1240,6 +1259,8 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
       experiences: adversary.experiences ?? [],
       hpMarked: 0,
       stressMarked: 0,
+      difficultyModifier: null,
+      thresholdsModifier: { major: null, severe: null },
       conditions: [],
     };
   },
