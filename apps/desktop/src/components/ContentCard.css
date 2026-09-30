@@ -15,6 +15,12 @@
   align-items: start;
 }
 
+/* Text Size: Large (Settings) — bigger text needs a bit more room per
+   tile before it starts wrapping awkwardly. */
+:root[data-text-size='large'] .content-card-list--grid {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
+
 .content-card-list__empty {
   color: var(--muted);
   font-size: 0.9rem;
@@ -89,20 +95,55 @@
 .content-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
+  gap: var(--space-1) 0;
   margin-bottom: var(--space-1);
 }
 
+/* No pill/box — chips read as one ledger line, separated by a thin
+   vertical hairline and plain spacing instead of a bordered capsule. */
 .content-card__chip {
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.74rem;
   letter-spacing: 0.02em;
   color: var(--ink-dim);
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  padding: 1px 9px;
+  padding: 0 var(--space-2);
+  border-left: 1px solid var(--hairline);
   white-space: nowrap;
+}
+
+.content-card__chip:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.content-card__chip--editable input {
+  width: 2.4rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: inherit;
+  font-weight: 600;
+  padding: 0 0 1px;
+  margin-left: 2px;
+  transition: border-color 160ms var(--ease);
+}
+
+.content-card__chip--editable input:focus-visible {
+  border-color: var(--hope);
+  outline: none;
+}
+
+.content-card__chip--editable input::-webkit-outer-spin-button,
+.content-card__chip--editable input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.content-card__chip--editable input[type='number'] {
+  -moz-appearance: textfield;
 }
 
 .content-card__description {

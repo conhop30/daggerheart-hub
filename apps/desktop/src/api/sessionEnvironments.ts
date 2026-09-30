@@ -28,6 +28,8 @@ export interface CreateSessionEnvironmentRequest {
 export interface UpdateSessionEnvironmentRequest {
   label?: string;
   notes?: string;
+  /** Adjusted independently of the master Environment once pulled in — see SessionEnvironmentTile. */
+  difficulty?: number | null;
 }
 
 export const sessionEnvironmentsApi = {

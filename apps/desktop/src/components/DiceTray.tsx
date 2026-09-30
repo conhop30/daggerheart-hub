@@ -6,11 +6,6 @@ function dieLabel(sides: number): string {
   return `d${sides}`;
 }
 
-function formatResult(result: DiceTrayRollResult): string {
-  const parts = result.entries.map((e) => `${dieLabel(e.sides)}: ${e.rolls.join(', ')}`);
-  return `${parts.join(' · ')} → ${result.total}`;
-}
-
 // A floating, freeform dice roller for the table — d4 through d100, click to
 // queue, click Roll to resolve every queued die into one total. Deliberately
 // separate from a stat block's own "Roll Damage" button (SessionAdversaryTile):
@@ -46,7 +41,7 @@ export default function DiceTray() {
     <div className="dice-tray">
       {result && (
         <div className="dice-tray__result">
-          <span>{formatResult(result)}</span>
+          <span className="roll-result">{result.total}</span>
           <button type="button" className="dice-tray__dismiss" onClick={() => setResult(null)} aria-label="Clear result">
             ×
           </button>

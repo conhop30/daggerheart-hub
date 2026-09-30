@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
 import { sessionsApi, type Session } from '../api/sessions';
-import CampaignCombatSidebar from './CampaignCombatSidebar';
+import CampaignMusicSidebar from './CampaignMusicSidebar';
 import CampaignForm from './CampaignForm';
 import PartyRoster from './PartyRoster';
 import SessionList from './SessionList';
@@ -94,7 +94,7 @@ export default function CampaignDetail({
           <SessionList campaignId={campaign.id} onOpenSession={onOpenSession} />
         </div>
         <aside className="campaign-detail__sidebar">
-          <CampaignCombatSidebar campaignId={campaign.id} session={mostRecentSession} />
+          <CampaignMusicSidebar campaignId={campaign.id} session={mostRecentSession} />
         </aside>
       </div>
     </div>

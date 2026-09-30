@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import type { SessionAdversary } from '../api/sessionAdversaries';
+import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
+import type { Thresholds } from './ThresholdsInput';
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
 import { parseDamageNotation, rollDamage, type DamageRollResult } from '../lib/dice';
-import { ContentCard, FeatureRowLines, MetaChip } from './ContentCard';
+import { ContentCard, EditableMetaField, FeatureRowLines, MetaChip } from './ContentCard';
 import StatStepper from './StatStepper';
 import StringListEditor from './StringListEditor';
 import './SessionTile.css';
@@ -12,15 +13,8 @@ interface SessionAdversaryTileProps {
   adversary: SessionAdversary;
   /** Looked up live from the master Adversary — see CombatPanel for why. */
   masterFeatures: FeatureSections | undefined;
-  onChange: (patch: { hpMarked?: number; stressMarked?: number; conditions?: string[] }) => void;
+  onChange: (patch: UpdateSessionAdversaryRequest) => void;
   onRemove: () => void;
-}
-
-function formatDamageRoll(result: DamageRollResult): string {
-  if (result.rolls.length === 0) return `${result.total}`;
-  const sign = result.modifier > 0 ? ' + ' : result.modifier < 0 ? ' − ' : '';
-  const modifierText = result.modifier !== 0 ? `${sign}${Math.abs(result.modifier)}` : '';
-  return `${result.rolls.join(' + ')}${modifierText} = ${result.total}`;
 }
 
 // A live, mutable card for one Adversary pulled into a session — reads
@@ -38,6 +32,10 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
     setRollResult(rollDamage(parsedDamage));
   }
 
+  function handleThresholdChange(field: keyof Thresholds, value: number | null) {
+    onChange({ thresholds: { ...adversary.thresholds, [field]: value } });
+  }
+
   return (
     <ContentCard
       title={adversary.label}
@@ -47,15 +45,27 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
         <>
           {adversary.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={adversary.tier} />
-          <MetaChip label="Difficulty" value={adversary.difficulty} />
-          <MetaChip
-            label="Thresholds"
-            value={
-              adversary.thresholds.major != null || adversary.thresholds.severe != null
-                ? `${adversary.thresholds.major ?? '—'} / ${adversary.thresholds.severe ?? '—'}`
-                : null
-            }
+          <EditableMetaField
+            label="Difficulty"
+            value={adversary.difficulty}
+            onChange={(difficulty) => onChange({ difficulty })}
           />
+          <span className="content-card__chip content-card__chip--editable">
+            Thresholds:{' '}
+            <input
+              type="number"
+              value={adversary.thresholds.major ?? ''}
+              onChange={(e) => handleThresholdChange('major', e.target.value === '' ? null : Number(e.target.value))}
+              aria-label="Major Threshold"
+            />{' '}
+            /{' '}
+            <input
+              type="number"
+              value={adversary.thresholds.severe ?? ''}
+              onChange={(e) => handleThresholdChange('severe', e.target.value === '' ? null : Number(e.target.value))}
+              aria-label="Severe Threshold"
+            />
+          </span>
         </>
       }
     >
@@ -87,7 +97,18 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
           )}
         </p>
       )}
-      {rollResult && <p className="session-tile__roll-result">{formatDamageRoll(rollResult)}</p>}
+      {rollResult && <p className="session-tile__roll-result roll-result">{rollResult.total}</p>}
+      {adversary.experiences.length > 0 && (
+        <p className="session-tile__experiences">
+          <strong>Experience:</strong>{' '}
+          {adversary.experiences.map((e, i) => (
+            <span key={i}>
+              {i > 0 && ', '}
+              {e.name} {e.modifier >= 0 ? `+${e.modifier}` : e.modifier}
+            </span>
+          ))}
+        </p>
+      )}
       <StringListEditor
         label="Conditions"
         placeholder="e.g. Restrained"

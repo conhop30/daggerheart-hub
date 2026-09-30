@@ -162,8 +162,17 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
       </label>
       <label>
         Attack Description
-        <textarea value={attackDescription} onChange={(e) => setAttackDescription(e.target.value)} rows={2} />
+        <textarea
+          value={attackDescription}
+          onChange={(e) => setAttackDescription(e.target.value)}
+          rows={2}
+          placeholder="e.g. Cinder Blade: 1d10+2 phy"
+        />
       </label>
+      <p className="create-form__hint">
+        Just the weapon/attack line and its damage — Experience bonuses and other reminders belong in the
+        Experiences list below, not here, so they show up correctly once this Adversary is pulled into a Session.
+      </p>
       <ExperienceListEditor experiences={experiences} onChange={setExperiences} />
       <FeatureSectionsEditor value={features} onChange={setFeatures} />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />

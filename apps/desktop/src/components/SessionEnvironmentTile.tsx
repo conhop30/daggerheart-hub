@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import type { SessionEnvironment } from '../api/sessionEnvironments';
+import type { SessionEnvironment, UpdateSessionEnvironmentRequest } from '../api/sessionEnvironments';
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
-import { ContentCard, FeatureRowLines, MetaChip, StringLines } from './ContentCard';
+import { ContentCard, EditableMetaField, FeatureRowLines, MetaChip, StringLines } from './ContentCard';
 import './SessionTile.css';
 
 interface SessionEnvironmentTileProps {
   environment: SessionEnvironment;
   /** Looked up live from the master Environment — see CombatPanel for why. */
   masterFeatures: FeatureSections | undefined;
-  onChange: (patch: { notes?: string }) => void;
+  onChange: (patch: UpdateSessionEnvironmentRequest) => void;
   onRemove: () => void;
 }
 
@@ -29,7 +29,11 @@ export default function SessionEnvironmentTile({ environment, masterFeatures, on
         <>
           {environment.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={environment.tier} />
-          <MetaChip label="Difficulty" value={environment.difficulty} />
+          <EditableMetaField
+            label="Difficulty"
+            value={environment.difficulty}
+            onChange={(difficulty) => onChange({ difficulty })}
+          />
         </>
       }
     >

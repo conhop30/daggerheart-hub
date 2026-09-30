@@ -1,6 +1,7 @@
 import { apiClient, type SessionContext } from './client';
 import type { AttackRange, AttackType } from './adversaries';
 import type { Thresholds } from '../components/ThresholdsInput';
+import type { Experience } from '../components/ExperienceListEditor';
 
 // A snapshot of a master Adversary at pull-in time, not a live reference —
 // see electron/store.js's comment on buildSessionAdversary for why.
@@ -19,6 +20,7 @@ export interface SessionAdversary {
   attackDescription: string | null;
   attackRange: AttackRange | null;
   attackType: AttackType | null;
+  experiences: Experience[];
   hpMarked: number;
   stressMarked: number;
   conditions: string[];
@@ -38,6 +40,9 @@ export interface UpdateSessionAdversaryRequest {
   hpMarked?: number;
   stressMarked?: number;
   conditions?: string[];
+  /** Adjusted independently of the master Adversary once pulled in — see SessionAdversaryTile. */
+  difficulty?: number | null;
+  thresholds?: Thresholds;
 }
 
 export const sessionAdversariesApi = {

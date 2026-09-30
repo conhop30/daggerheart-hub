@@ -62,6 +62,27 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-field: 520ms;
   --ease-field: var(--ease);
+
+  /* Text size preference (Settings > Text Size, TextSizeContext) — 'small'
+     is the app's original density and needs no override. Since almost
+     every component sizes its text in rem, scaling the root font-size is
+     what lets one setting reach the whole app without a per-component
+     rewrite; a modest, uniform bump reads as "the fine print got easier"
+     much more than "the headings changed", since headings were already
+     large in absolute terms. */
+  --text-scale: 1;
+}
+
+:root[data-text-size='normal'] {
+  --text-scale: 1.1;
+}
+
+:root[data-text-size='large'] {
+  --text-scale: 1.22;
+}
+
+:root {
+  font-size: calc(16px * var(--text-scale));
 }
 
 /* Light theme — same token names as :root above (nothing outside this file
@@ -114,7 +135,7 @@ body {
   background: var(--void);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition:
@@ -154,6 +175,22 @@ button {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Shared "big roll total" styling — a stat block's own damage roll
+   (SessionAdversaryTile) and the freeform dice tray (DiceTray) both drop
+   the per-die breakdown and show just the final number, large and in the
+   game's warm accent so it reads instantly at the table. -webkit-text-
+   stroke is safe here (Electron is Chromium-only, no other target). */
+.roll-result {
+  font-family: 'Cinzel', var(--font-display);
+  font-weight: 700;
+  font-size: 1.8rem;
+  color: #ff6a3d;
+  -webkit-text-stroke: 1.25px #fff;
+  paint-order: stroke fill;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

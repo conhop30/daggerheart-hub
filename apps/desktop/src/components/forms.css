@@ -54,6 +54,13 @@
   font-size: 0.85rem;
 }
 
+.create-form__hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: -0.3rem 0 0;
+}
+
 .create-form__actions {
   display: flex;
   justify-content: flex-end;

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { PartyMember } from '../api/partyMembers';
 import { sessionsApi, type Session, type UpdateSessionRequest } from '../api/sessions';
+import { sessionAdversariesApi, type SessionAdversary, type UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
 import ModeToggle from './ModeToggle';
 import SessionMusicPanel from './SessionMusicPanel';
 import CombatPanel from './CombatPanel';
+import SessionCombatSidebar from './SessionCombatSidebar';
 import AdventuringPanel from './AdventuringPanel';
 import PartyRoster from './PartyRoster';
 import DiceTray from './DiceTray';
@@ -36,7 +38,63 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   // the notes panel below lists the same members.
   const [members, setMembers] = useState<PartyMember[]>([]);
 
+  // Owned here (not by CombatPanel) because SessionCombatSidebar shows this
+  // very same live list at the same time, on the same screen — both need to
+  // agree the instant one of them changes something, so there's one source
+  // of truth instead of two independent fetches drifting apart.
+  const [sessionAdversaries, setSessionAdversaries] = useState<SessionAdversary[]>([]);
+  const [adversariesLoading, setAdversariesLoading] = useState(true);
+  const [adversariesError, setAdversariesError] = useState<string | null>(null);
+
   const { setSession: setMusicSession, setViewingSessionId, clearIfSession } = useMusicContext();
+
+  useEffect(() => {
+    let cancelled = false;
+    setAdversariesLoading(true);
+    setAdversariesError(null);
+    sessionAdversariesApi
+      .listBySession(session.id)
+      .then((list) => {
+        if (!cancelled) setSessionAdversaries(list);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setAdversariesError(err instanceof Error ? err.message : 'Could not load this session’s Adversaries.');
+      })
+      .finally(() => {
+        if (!cancelled) setAdversariesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id]);
+
+  async function pullInAdversary(adversaryId: string) {
+    try {
+      const pulled = await sessionAdversariesApi.create({ sessionId: session.id, adversaryId });
+      setSessionAdversaries((prev) => [...prev, pulled]);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not pull that Adversary in.');
+    }
+  }
+
+  async function handleAdversaryChange(adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) {
+    setSessionAdversaries((prev) => prev.map((a) => (a.id === adversary.id ? { ...a, ...patch } : a)));
+    try {
+      await sessionAdversariesApi.update(adversary.id, patch, { sessionId: session.id });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not save that change.');
+    }
+  }
+
+  async function handleAdversaryRemove(adversary: SessionAdversary) {
+    setSessionAdversaries((prev) => prev.filter((a) => a.id !== adversary.id));
+    try {
+      await sessionAdversariesApi.remove(adversary.id, { sessionId: session.id });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not push that Adversary out.');
+    }
+  }
 
   // Keeps the shared music context pointed at this Session's mode/region
   // (so it resolves the right track and the sidebar/floating players agree
@@ -120,7 +178,15 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
           />
 
           {session.mode === 'combat' ? (
-            <CombatPanel sessionId={session.id} />
+            <CombatPanel
+              sessionId={session.id}
+              sessionAdversaries={sessionAdversaries}
+              adversariesLoading={adversariesLoading}
+              adversariesError={adversariesError}
+              onPullInAdversary={pullInAdversary}
+              onAdversaryChange={handleAdversaryChange}
+              onAdversaryRemove={handleAdversaryRemove}
+            />
           ) : (
             <AdventuringPanel session={session} members={members} onSessionSaved={onSessionSaved} />
           )}
@@ -128,6 +194,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
 
         <aside className="session-view__sidebar">
           <SessionMusicPanel regionId={session.regionId ?? null} onRegionChange={(regionId) => persist({ regionId })} />
+          <SessionCombatSidebar sessionAdversaries={sessionAdversaries} onChange={handleAdversaryChange} />
         </aside>
       </div>
 

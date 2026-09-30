@@ -32,10 +32,12 @@
 }
 
 .session-tile__roll-result {
-  font-family: var(--font-mono);
+  margin: 0 0 var(--space-1);
+}
+
+.session-tile__experiences {
   font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ink);
+  color: var(--ink-dim);
   margin: 0 0 var(--space-1);
 }
 

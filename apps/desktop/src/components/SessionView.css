@@ -86,6 +86,9 @@
 }
 
 .session-view__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   position: sticky;
   top: var(--space-3);
 }

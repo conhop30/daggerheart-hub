@@ -59,6 +59,32 @@ export function MetaChip({ label, value }: { label: string; value: ReactNode }) 
   );
 }
 
+// Like MetaChip, but the value is a live number input instead of static
+// text — for stats that stay adjustable once pulled into a Session (e.g. a
+// pulled-in Adversary's Difficulty), where the master record's number is
+// only ever a starting point. `null` renders as an empty box, not "0".
+export function EditableMetaField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <span className="content-card__chip content-card__chip--editable">
+      {label}:{' '}
+      <input
+        type="number"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+        aria-label={label}
+      />
+    </span>
+  );
+}
+
 interface NamedFeature {
   name: string;
   description?: string | null;

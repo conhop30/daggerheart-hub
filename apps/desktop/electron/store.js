@@ -1075,6 +1075,7 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
       attackDescription: adversary.attackDescription,
       attackRange: adversary.attackRange,
       attackType: adversary.attackType,
+      experiences: adversary.experiences ?? [],
       hpMarked: 0,
       stressMarked: 0,
       conditions: [],

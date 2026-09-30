@@ -1,0 +1,10 @@
+.campaign-music-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.campaign-music-sidebar__hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}

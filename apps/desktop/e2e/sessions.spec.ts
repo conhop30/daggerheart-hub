@@ -196,11 +196,12 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(tile.locator('.content-card__feature-group-label:has-text("Passives")')).toBeVisible();
 
     // Math.floor(0.5 * 10) + 1 === 6, so 1d10+2 always resolves to 6 + 2 = 8.
+    // The roll display shows only the final total, not the breakdown.
     await win.evaluate(() => {
       window.Math.random = () => 0.5;
     });
     await tile.locator('.session-tile__roll-damage').click();
-    await expect(tile.locator('.session-tile__roll-result')).toHaveText('6 + 2 = 8');
+    await expect(tile.locator('.session-tile__roll-result')).toHaveText('8');
   });
 
   test('the dice tray queues dice by left click, un-queues by right click, and rolls everything queued into one total', async () => {
@@ -218,14 +219,13 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(win.locator('.dice-tray__die:has-text("d6") .dice-tray__badge')).toHaveText('×1');
 
     // Math.floor(0.5 * 6) + 1 === 4, Math.floor(0.5 * 20) + 1 === 11 → total 15.
+    // The result shows only the final total, not the per-die breakdown.
     await win.evaluate(() => {
       window.Math.random = () => 0.5;
     });
     await win.click('.dice-tray__roll');
 
-    await expect(win.locator('.dice-tray__result')).toContainText('d6: 4');
-    await expect(win.locator('.dice-tray__result')).toContainText('d20: 11');
-    await expect(win.locator('.dice-tray__result')).toContainText('→ 15');
+    await expect(win.locator('.dice-tray__result .roll-result')).toHaveText('15');
 
     // The queue resets after a roll — no die still shows a badge, and the
     // Roll button disappears until something is queued again.

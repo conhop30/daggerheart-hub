@@ -1,20 +1,12 @@
-.campaign-combat-sidebar {
+.session-combat-sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-}
-
-.campaign-combat-sidebar__hint {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.campaign-combat-sidebar__combatants {
+  gap: var(--space-2);
   border-top: 1px solid var(--hairline);
   padding-top: var(--space-2);
 }
 
-.campaign-combat-sidebar__label {
+.session-combat-sidebar__label {
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.7rem;
@@ -24,16 +16,16 @@
   margin: 0 0 var(--space-1);
 }
 
-.campaign-combat-sidebar__combatant {
+.session-combat-sidebar__combatant {
   padding: 6px 0;
   border-bottom: 1px solid var(--hairline);
 }
 
-.campaign-combat-sidebar__combatant:last-child {
+.session-combat-sidebar__combatant:last-child {
   border-bottom: none;
 }
 
-.campaign-combat-sidebar__combatant-name {
+.session-combat-sidebar__name {
   display: block;
   font-family: var(--font-display);
   font-size: 0.92rem;
@@ -41,23 +33,35 @@
   margin-bottom: 2px;
 }
 
+/* Conditions are the whole point of this sidebar existing — make them read
+   as an alert, not another muted line, so they land at a glance. */
+.session-combat-sidebar__conditions {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fear-on-dark);
+  margin: 4px 0 0;
+}
+
 /* Condensed: the stepper's own label/gaps shrink so two stats fit in one
    tight column instead of the roomier row CombatPanel's full tiles use. */
-.campaign-combat-sidebar__combatant .stat-stepper {
+.session-combat-sidebar__combatant .stat-stepper {
   padding: 1px 0;
   gap: var(--space-1);
 }
 
-.campaign-combat-sidebar__combatant .stat-stepper__label {
+.session-combat-sidebar__combatant .stat-stepper__label {
   font-size: 0.68rem;
 }
 
-.campaign-combat-sidebar__combatant .stat-stepper__button {
+.session-combat-sidebar__combatant .stat-stepper__button {
   width: 18px;
   height: 18px;
 }
 
-.campaign-combat-sidebar__combatant .stat-stepper__value {
+.session-combat-sidebar__combatant .stat-stepper__value {
   font-size: 0.78rem;
   min-width: 2.6rem;
 }

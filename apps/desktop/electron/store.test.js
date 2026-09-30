@@ -491,6 +491,20 @@ describe('SessionAdversary', () => {
     expect(pulled.conditions).toEqual([]);
   });
 
+  it('snapshots the master Adversary\'s Experiences too, not just its combat stats', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({
+      name: 'Ogre',
+      gameSetId: gs.id,
+      experiences: [{ name: 'Tracking', modifier: 2 }],
+    });
+
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+    expect(pulled.experiences).toEqual([{ name: 'Tracking', modifier: 2 }]);
+  });
+
   it('pulling in the same Adversary twice creates two independent records, not one', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
     const c = await store.createCampaign({ name: 'The Wildwood' });
