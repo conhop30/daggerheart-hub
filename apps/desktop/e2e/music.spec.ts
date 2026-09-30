@@ -404,4 +404,49 @@ test.describe('Music library and session playback', () => {
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
     await expect(win.locator('button[aria-label="Play music"]')).toHaveText('▶ Play');
   });
+
+  test('the Music tab\'s overview grid shows track counts and each mode\'s default, and "Open" jumps the selection below', async () => {
+    await openMusicTab();
+    await pickFiles('Calm Road', 'War Drums');
+    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+
+    await win.click('button:has-text("+ New Region")');
+    await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
+    await win.click('.region-list__inline-form button:has-text("Add")');
+
+    const globalCard = win.locator('.content-card', { hasText: 'Global' });
+    await expect(globalCard).toContainText('Tracks: 2');
+    await expect(globalCard).toContainText('Adventuring:');
+    await expect(globalCard).toContainText('Calm Road');
+    await expect(globalCard).toContainText('Combat:');
+    await expect(globalCard).toContainText('Not set');
+
+    const coastCard = win.locator('.content-card', { hasText: 'The Sunken Coast' });
+    await expect(coastCard).toContainText('Tracks: 0');
+    await expect(coastCard).toContainText('Not set');
+
+    // Currently on "The Sunken Coast" (just created); opening Global's card jumps back to it.
+    await expect(win.locator('.region-header__title')).toHaveText('The Sunken Coast');
+    await globalCard.getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.region-header__title')).toHaveText('Global');
+    await expect(win.locator('.region-list__region--active')).toContainText('Global');
+  });
+
+  test('the Music tab search filters the selected region\'s track list', async () => {
+    await openMusicTab();
+    await pickFiles('Calm Road', 'War Drums', 'Sea Surf');
+    await expect(win.locator('.track-list__track')).toHaveCount(3);
+
+    await win.fill('input[aria-label="Search tracks"]', 'road');
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
+    await expect(win.locator('.track-list__track')).toContainText('Calm Road');
+    await expect(win.locator('.music-library__search-count')).toHaveText('1 of 3 tracks shown');
+
+    await win.fill('input[aria-label="Search tracks"]', 'xyz-no-match');
+    await expect(win.locator('.track-list__track')).toHaveCount(0);
+    await expect(win.locator('.music-library__status')).toContainText('No tracks in this region match');
+
+    await win.fill('input[aria-label="Search tracks"]', '');
+    await expect(win.locator('.track-list__track')).toHaveCount(3);
+  });
 });

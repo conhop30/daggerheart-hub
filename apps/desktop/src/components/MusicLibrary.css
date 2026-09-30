@@ -1,13 +1,56 @@
 .music-library {
+  animation: fadeInUp 280ms var(--ease);
+}
+
+.music-library__guide {
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  max-width: 68ch;
+  margin: 0 0 var(--space-3);
+}
+
+.music-library__guide strong {
+  color: var(--ink);
+}
+
+.music-library__overview-title {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: var(--space-2);
+}
+
+.music-library__layout {
   display: grid;
   grid-template-columns: 220px 1fr;
   gap: var(--space-4);
   align-items: start;
-  animation: fadeInUp 280ms var(--ease);
+  margin-top: var(--space-4);
 }
 
 .music-library__main {
   min-width: 0;
+}
+
+.music-library__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.music-library__search input {
+  max-width: 320px;
+}
+
+.music-library__search-count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .music-library__status {
@@ -19,7 +62,7 @@
 }
 
 @media (max-width: 800px) {
-  .music-library {
+  .music-library__layout {
     grid-template-columns: 1fr;
   }
 }

@@ -1,0 +1,15 @@
+.region-overview__row {
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  margin: 0 0 4px;
+}
+
+.region-overview__row strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.region-overview__unset {
+  color: var(--fear-on-dark, #c66) !important;
+  font-weight: 600 !important;
+}
