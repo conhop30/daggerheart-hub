@@ -67,11 +67,11 @@ test.describe('Music library and session playback', () => {
 
   test('add files, file them into regions, set defaults, and it all persists', async () => {
     await openMusicTab();
-    await expect(win.locator('.music-library__region--active')).toContainText('Everywhere');
-    await expect(win.locator('.music-library__status')).toContainText('No music in this region yet');
+    await expect(win.locator('.region-list__region--active')).toContainText('Everywhere');
+    await expect(win.locator('.track-list__empty')).toContainText('No music in this region yet');
 
     await pickFiles('Calm Road', 'War Drums', 'Sea Surf');
-    await expect(win.locator('.music-library__track')).toHaveCount(3);
+    await expect(win.locator('.track-list__track')).toHaveCount(3);
     // Copied into the app's own folder, under generated names (not the originals).
     const stored = fs.readdirSync(path.join(tempDir, 'music'));
     expect(stored).toHaveLength(3);
@@ -79,18 +79,19 @@ test.describe('Music library and session playback', () => {
 
     await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
     await win.selectOption('select[aria-label="Combat default"]', { label: 'War Drums' });
-    await expect(win.locator('.music-library__track', { hasText: 'Calm Road' })).toContainText('Adventuring');
+    await expect(win.locator('.track-list__track', { hasText: 'Calm Road' })).toContainText('ADV');
 
     // A region, with one track moved into it and its own combat default.
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
-    await win.click('.music-library__inline-form button:has-text("Add")');
-    await expect(win.locator('.music-library__title')).toHaveText('The Sunken Coast');
+    await win.click('.region-list__inline-form button:has-text("Add")');
+    await expect(win.locator('.region-header__title')).toHaveText('The Sunken Coast');
 
-    await win.click('.music-library__region:has-text("Everywhere")');
+    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.locator('.track-list__track', { hasText: 'Sea Surf' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Sea Surf to region"]', { label: 'The Sunken Coast' });
-    await win.click('.music-library__region:has-text("The Sunken Coast")');
-    await expect(win.locator('.music-library__track')).toHaveCount(1);
+    await win.click('.region-list__region:has-text("The Sunken Coast")');
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
     await win.selectOption('select[aria-label="Combat default"]', { label: 'Sea Surf' });
 
     // A region can only pick from its own tracks.
@@ -100,42 +101,46 @@ test.describe('Music library and session playback', () => {
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await openMusicTab();
-    await win.click('.music-library__region:has-text("The Sunken Coast")');
+    await win.click('.region-list__region:has-text("The Sunken Coast")');
     await expect(win.locator('select[aria-label="Combat default"]')).toHaveValue(/.+/);
-    await win.click('.music-library__region:has-text("Everywhere")');
-    await expect(win.locator('.music-library__track')).toHaveCount(2);
+    await win.click('.region-list__region:has-text("Everywhere")');
+    await expect(win.locator('.track-list__track')).toHaveCount(2);
   });
 
   test('renaming a track, removing one deletes its copied file, deleting a region keeps its tracks', async () => {
     await openMusicTab();
     await pickFiles('Calm Road', 'War Drums');
-    await expect(win.locator('.music-library__track')).toHaveCount(2);
+    await expect(win.locator('.track-list__track')).toHaveCount(2);
 
-    const row = win.locator('.music-library__track', { hasText: 'Calm Road' });
+    const row = win.locator('.track-list__track', { hasText: 'Calm Road' });
+    await row.getByRole('button', { name: /More actions/ }).click();
     await row.getByRole('button', { name: 'Rename' }).click();
     await win.fill('input[aria-label="Track name"]', 'Golden Road');
     await win.press('input[aria-label="Track name"]', 'Enter');
-    await expect(win.locator('.music-library__track', { hasText: 'Golden Road' })).toBeVisible();
+    await expect(win.locator('.track-list__track', { hasText: 'Golden Road' })).toBeVisible();
 
-    await win.locator('.music-library__track', { hasText: 'War Drums' }).getByRole('button', { name: 'Remove' }).click();
-    await expect(win.locator('.music-library__track')).toHaveCount(1);
+    const warDrumsRow = win.locator('.track-list__track', { hasText: 'War Drums' });
+    await warDrumsRow.getByRole('button', { name: /More actions/ }).click();
+    await warDrumsRow.getByRole('button', { name: 'Remove' }).click();
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
     await expect.poll(() => fs.readdirSync(path.join(tempDir, 'music')).length).toBe(1);
 
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'Doomed');
-    await win.click('.music-library__inline-form button:has-text("Add")');
-    await win.click('.music-library__region:has-text("Everywhere")');
+    await win.click('.region-list__inline-form button:has-text("Add")');
+    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.locator('.track-list__track', { hasText: 'Golden Road' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Golden Road to region"]', { label: 'Doomed' });
-    await win.click('.music-library__region:has-text("Doomed")');
+    await win.click('.region-list__region:has-text("Doomed")');
     await win.click('button:has-text("Delete Region")');
-    await expect(win.locator('.music-library__title')).toHaveText('Everywhere');
-    await expect(win.locator('.music-library__track', { hasText: 'Golden Road' })).toBeVisible();
+    await expect(win.locator('.region-header__title')).toHaveText('Everywhere');
+    await expect(win.locator('.track-list__track', { hasText: 'Golden Road' })).toBeVisible();
   });
 
   test('the stored audio is served with byte ranges so a looping <audio> can seek', async () => {
     await openMusicTab();
     await pickFiles('Calm Road');
-    await expect(win.locator('.music-library__track')).toHaveCount(1);
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
     const fileName = fs.readdirSync(path.join(tempDir, 'music'))[0];
 
     const result = await win.evaluate(async (name) => {
@@ -164,17 +169,18 @@ test.describe('Music library and session playback', () => {
     test.setTimeout(60000); // sets up a library and a session before it gets to the assertions
     await openMusicTab();
     await pickFiles('Calm Road', 'War Drums', 'Sea Surf');
-    await expect(win.locator('.music-library__track')).toHaveCount(3);
+    await expect(win.locator('.track-list__track')).toHaveCount(3);
     await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
     await win.selectOption('select[aria-label="Combat default"]', { label: 'War Drums' });
 
     // A region with only a combat override.
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
-    await win.click('.music-library__inline-form button:has-text("Add")');
-    await win.click('.music-library__region:has-text("Everywhere")');
+    await win.click('.region-list__inline-form button:has-text("Add")');
+    await win.click('.region-list__region:has-text("Everywhere")');
+    await win.locator('.track-list__track', { hasText: 'Sea Surf' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Sea Surf to region"]', { label: 'The Sunken Coast' });
-    await win.click('.music-library__region:has-text("The Sunken Coast")');
+    await win.click('.region-list__region:has-text("The Sunken Coast")');
     await win.selectOption('select[aria-label="Combat default"]', { label: 'Sea Surf' });
 
     // Into a session (we are still on the Music tab, so switch back to Campaigns).

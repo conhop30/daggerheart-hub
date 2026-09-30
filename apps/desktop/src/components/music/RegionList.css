@@ -1,0 +1,75 @@
+.region-list {
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) 0;
+}
+
+.region-list__title {
+  font-size: 1.05rem;
+  margin-bottom: var(--space-2);
+}
+
+.region-list__regions {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.region-list__region {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  background: none;
+  border: 1px solid transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.region-list__region:hover {
+  border-color: var(--hairline);
+}
+
+.region-list__region--active {
+  border-color: var(--hope);
+  background: rgba(228, 179, 65, 0.1);
+}
+
+.region-list__count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.region-list__inline-form {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.region-list__inline-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.region-list__btn {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.74rem;
+  padding: 0.35rem 0.75rem;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.region-list__btn:hover:not(:disabled) {
+  border-color: var(--hope);
+  color: var(--hope);
+}
