@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { domainsApi, type Domain } from '../api/domains';
 import { heroClassesApi, type HeroClass } from '../api/heroClasses';
 import { cardsApi, type Card } from '../api/cards';
@@ -62,15 +62,25 @@ export default function DomainsPage() {
     setEditingDomainId(null);
   }
 
-  async function handleDeleteDomain(domain: Domain) {
-    if (!window.confirm(`Delete "${domain.name}"? This can't be undone.`)) return;
-    try {
-      await domainsApi.remove(domain.id);
-      setDomains((prev) => prev.filter((d) => d.id !== domain.id));
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Domain.');
-    }
-  }
+  // Stabilized so DomainBanner (memoized) can actually skip re-rendering
+  // siblings when only one banner's state changes — an inline
+  // `() => handleDeleteDomain(domain)` closure would defeat that regardless
+  // of the memo, since it's a fresh function every render either way.
+  const handleOpenDomain = useCallback((id: string) => setSelectedDomainId(id), []);
+  const handleEditDomain = useCallback((id: string) => setEditingDomainId(id), []);
+  const handleDeleteDomain = useCallback(
+    async (id: string) => {
+      const domain = domains.find((d) => d.id === id);
+      if (!domain || !window.confirm(`Delete "${domain.name}"? This can't be undone.`)) return;
+      try {
+        await domainsApi.remove(domain.id);
+        setDomains((prev) => prev.filter((d) => d.id !== domain.id));
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Domain.');
+      }
+    },
+    [domains]
+  );
 
   function handleCardsChangedForDomain(domainId: string, cardsForDomain: Card[]) {
     setCards((prev) => [...prev.filter((c) => c.domainId !== domainId), ...cardsForDomain]);
@@ -147,9 +157,9 @@ export default function DomainsPage() {
                 key={domain.id}
                 domain={domain}
                 cardCount={cardCountByDomain.get(domain.id) ?? 0}
-                onOpen={() => setSelectedDomainId(domain.id)}
-                onEdit={() => setEditingDomainId(domain.id)}
-                onDelete={() => handleDeleteDomain(domain)}
+                onOpen={handleOpenDomain}
+                onEdit={handleEditDomain}
+                onDelete={handleDeleteDomain}
               />
             ))}
             <DomainBannerCreate onClick={() => setCreatingDomain(true)} />

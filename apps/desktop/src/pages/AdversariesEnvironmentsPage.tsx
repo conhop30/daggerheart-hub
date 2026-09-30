@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { adversariesApi, type Adversary } from '../api/adversaries';
 import { environmentsApi, type Environment } from '../api/environments';
 import { useApiList } from '../lib/useApiList';
@@ -13,7 +13,11 @@ import EnvironmentSheet from '../components/EnvironmentSheet';
 import './BrowsePage.css';
 import './AdversariesEnvironmentsPage.css';
 
-function AdversaryTile({ a }: { a: Adversary }) {
+// Memoized — StatGallery re-renders on every search keystroke/filter click
+// (its own internal state), calling renderTile for every item each time;
+// with no callback props to go stale, a plain memo is enough to let an
+// unaffected tile skip re-rendering.
+const AdversaryTile = memo(function AdversaryTile({ a }: { a: Adversary }) {
   return (
     <>
       <span className="stat-gallery__tile-name">{a.name}</span>
@@ -28,9 +32,9 @@ function AdversaryTile({ a }: { a: Adversary }) {
       />
     </>
   );
-}
+});
 
-function AdversaryTileCondensed({ a }: { a: Adversary }) {
+const AdversaryTileCondensed = memo(function AdversaryTileCondensed({ a }: { a: Adversary }) {
   return (
     <>
       <span className="stat-gallery__tile-name">{a.name}</span>
@@ -40,9 +44,22 @@ function AdversaryTileCondensed({ a }: { a: Adversary }) {
       </span>
     </>
   );
-}
+});
 
-function AdversarySpotlight({ a, onEdit, onDelete }: { a: Adversary; onEdit: () => void; onDelete: () => void }) {
+// Also memoized: in StatGallery's Expanded mode, renderSpotlight is called
+// once per visible item (not just the single selected one), so this is a
+// real per-item list callback too — same onEdit/onDelete-takes-an-id
+// pattern as EquipmentPage's cards, so a stable handler is what makes the
+// memo comparison actually pass.
+const AdversarySpotlight = memo(function AdversarySpotlight({
+  a,
+  onEdit,
+  onDelete,
+}: {
+  a: Adversary;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -61,22 +78,22 @@ function AdversarySpotlight({ a, onEdit, onDelete }: { a: Adversary; onEdit: () 
   return (
     <>
       <div className="stat-sheet-spotlight__toolbar">
-        <button type="button" className="content-card__action" onClick={onEdit}>
+        <button type="button" className="content-card__action" onClick={() => onEdit(a.id)}>
           Edit
         </button>
         <button type="button" className="content-card__action" onClick={handleExport} disabled={exporting}>
           {exporting ? 'Exporting…' : 'Export as Image'}
         </button>
-        <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+        <button type="button" className="content-card__action content-card__action--danger" onClick={() => onDelete(a.id)}>
           Delete
         </button>
       </div>
       <AdversarySheet a={a} ref={sheetRef} />
     </>
   );
-}
+});
 
-function EnvironmentTile({ e }: { e: Environment }) {
+const EnvironmentTile = memo(function EnvironmentTile({ e }: { e: Environment }) {
   return (
     <>
       <span className="stat-gallery__tile-name">{e.name}</span>
@@ -89,9 +106,9 @@ function EnvironmentTile({ e }: { e: Environment }) {
       />
     </>
   );
-}
+});
 
-function EnvironmentTileCondensed({ e }: { e: Environment }) {
+const EnvironmentTileCondensed = memo(function EnvironmentTileCondensed({ e }: { e: Environment }) {
   return (
     <>
       <span className="stat-gallery__tile-name">{e.name}</span>
@@ -101,16 +118,16 @@ function EnvironmentTileCondensed({ e }: { e: Environment }) {
       </span>
     </>
   );
-}
+});
 
-function EnvironmentSpotlight({
+const EnvironmentSpotlight = memo(function EnvironmentSpotlight({
   e,
   onEdit,
   onDelete,
 }: {
   e: Environment;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -130,20 +147,20 @@ function EnvironmentSpotlight({
   return (
     <>
       <div className="stat-sheet-spotlight__toolbar">
-        <button type="button" className="content-card__action" onClick={onEdit}>
+        <button type="button" className="content-card__action" onClick={() => onEdit(e.id)}>
           Edit
         </button>
         <button type="button" className="content-card__action" onClick={handleExport} disabled={exporting}>
           {exporting ? 'Exporting…' : 'Export as Image'}
         </button>
-        <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+        <button type="button" className="content-card__action content-card__action--danger" onClick={() => onDelete(e.id)}>
           Delete
         </button>
       </div>
       <EnvironmentSheet e={e} ref={sheetRef} />
     </>
   );
-}
+});
 
 export default function AdversariesEnvironmentsPage() {
   const adversaries = useApiList(adversariesApi.list);
@@ -153,25 +170,35 @@ export default function AdversariesEnvironmentsPage() {
   const [creatingAdversary, setCreatingAdversary] = useState(false);
   const [creatingEnvironment, setCreatingEnvironment] = useState(false);
 
-  async function handleDeleteAdversary(a: Adversary) {
-    if (!window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
-    try {
-      await adversariesApi.remove(a.id);
-      adversaries.remove(a.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Adversary.');
-    }
-  }
+  const handleEditAdversary = useCallback((id: string) => setEditingAdversaryId(id), []);
+  const handleDeleteAdversary = useCallback(
+    async (id: string) => {
+      const a = adversaries.items.find((x) => x.id === id);
+      if (!a || !window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
+      try {
+        await adversariesApi.remove(a.id);
+        adversaries.remove(a.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Adversary.');
+      }
+    },
+    [adversaries.items]
+  );
 
-  async function handleDeleteEnvironment(e: Environment) {
-    if (!window.confirm(`Delete "${e.name}"? This can't be undone.`)) return;
-    try {
-      await environmentsApi.remove(e.id);
-      environments.remove(e.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Environment.');
-    }
-  }
+  const handleEditEnvironment = useCallback((id: string) => setEditingEnvironmentId(id), []);
+  const handleDeleteEnvironment = useCallback(
+    async (id: string) => {
+      const e = environments.items.find((x) => x.id === id);
+      if (!e || !window.confirm(`Delete "${e.name}"? This can't be undone.`)) return;
+      try {
+        await environmentsApi.remove(e.id);
+        environments.remove(e.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Environment.');
+      }
+    },
+    [environments.items]
+  );
 
   return (
     <div className="browse-page browse-page--wide">
@@ -220,11 +247,7 @@ export default function AdversariesEnvironmentsPage() {
                   onCancel={() => setEditingAdversaryId(null)}
                 />
               ) : (
-                <AdversarySpotlight
-                  a={a}
-                  onEdit={() => setEditingAdversaryId(a.id)}
-                  onDelete={() => handleDeleteAdversary(a)}
-                />
+                <AdversarySpotlight a={a} onEdit={handleEditAdversary} onDelete={handleDeleteAdversary} />
               )
             }
           />
@@ -276,11 +299,7 @@ export default function AdversariesEnvironmentsPage() {
                   onCancel={() => setEditingEnvironmentId(null)}
                 />
               ) : (
-                <EnvironmentSpotlight
-                  e={e}
-                  onEdit={() => setEditingEnvironmentId(e.id)}
-                  onDelete={() => handleDeleteEnvironment(e)}
-                />
+                <EnvironmentSpotlight e={e} onEdit={handleEditEnvironment} onDelete={handleDeleteEnvironment} />
               )
             }
           />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { weaponsApi, type Weapon, type WeaponSlot } from '../api/weapons';
 import { armorsApi, type Armor } from '../api/armors';
 import { lootApi, type Loot } from '../api/loot';
@@ -70,12 +70,20 @@ const CONSUMABLE_COLUMNS: EquipmentTableColumn<Consumable>[] = [
   { key: 'description', label: 'Description', render: (c) => dash(c.description), width: '2.5fr' },
 ];
 
-function WeaponCard({ w, onEdit, onDelete }: { w: Weapon; onEdit: () => void; onDelete: () => void }) {
+const WeaponCard = memo(function WeaponCard({
+  w,
+  onEdit,
+  onDelete,
+}: {
+  w: Weapon;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
   return (
     <ContentCard
       title={w.name}
-      onEdit={onEdit}
-      onDelete={onDelete}
+      onEdit={() => onEdit(w.id)}
+      onDelete={() => onDelete(w.id)}
       meta={
         <>
           <MetaChip label="Slot" value={titleCaseEnum(w.weaponSlot)} />
@@ -90,14 +98,22 @@ function WeaponCard({ w, onEdit, onDelete }: { w: Weapon; onEdit: () => void; on
       {w.feature && <p className="content-card__description">{w.feature}</p>}
     </ContentCard>
   );
-}
+});
 
-function ArmorCard({ a, onEdit, onDelete }: { a: Armor; onEdit: () => void; onDelete: () => void }) {
+const ArmorCard = memo(function ArmorCard({
+  a,
+  onEdit,
+  onDelete,
+}: {
+  a: Armor;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
   return (
     <ContentCard
       title={a.name}
-      onEdit={onEdit}
-      onDelete={onDelete}
+      onEdit={() => onEdit(a.id)}
+      onDelete={() => onDelete(a.id)}
       meta={
         <>
           <MetaChip label="Tier" value={a.tier} />
@@ -112,49 +128,49 @@ function ArmorCard({ a, onEdit, onDelete }: { a: Armor; onEdit: () => void; onDe
       {a.feature && <p className="content-card__description">{a.feature}</p>}
     </ContentCard>
   );
-}
+});
 
-function NameDescriptionCard({
+const NameDescriptionCard = memo(function NameDescriptionCard({
   item,
   onEdit,
   onDelete,
 }: {
   item: Loot | Consumable;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
-    <ContentCard title={item.name} onEdit={onEdit} onDelete={onDelete}>
+    <ContentCard title={item.name} onEdit={() => onEdit(item.id)} onDelete={() => onDelete(item.id)}>
       {item.description && <p className="content-card__description">{item.description}</p>}
     </ContentCard>
   );
-}
+});
 
 function totalEntries(entries: { COMMON: unknown[]; UNCOMMON: unknown[]; RARE: unknown[]; LEGENDARY: unknown[] }): number {
   return RARITIES.reduce((sum, rarity) => sum + entries[rarity].length, 0);
 }
 
-function TableCard({
+const TableCard = memo(function TableCard({
   table,
   onOpen,
   onDelete,
 }: {
   table: LootTable | ConsumableTable;
-  onOpen: () => void;
-  onDelete: () => void;
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <ContentCard
       title={table.name}
-      onEdit={onOpen}
+      onEdit={() => onOpen(table.id)}
       editLabel="Open"
-      onDelete={onDelete}
+      onDelete={() => onDelete(table.id)}
       meta={<MetaChip label="Entries" value={totalEntries(table.entries)} />}
     >
       {table.description && <p className="content-card__description">{table.description}</p>}
     </ContentCard>
   );
-}
+});
 
 export default function EquipmentPage() {
   const weapons = useApiList(weaponsApi.list);
@@ -186,65 +202,100 @@ export default function EquipmentPage() {
   const [openLootTableId, setOpenLootTableId] = useState<string | null>(null);
   const [openConsumableTableId, setOpenConsumableTableId] = useState<string | null>(null);
 
-  async function handleDeleteWeapon(w: Weapon) {
-    if (!window.confirm(`Delete "${w.name}"? This can't be undone.`)) return;
-    try {
-      await weaponsApi.remove(w.id);
-      weapons.remove(w.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Weapon.');
-    }
-  }
+  // Stabilized (useCallback) so list-item cards below can be memoized: an
+  // inline `() => handleDeleteWeapon(w)` closure is a fresh function every
+  // render regardless, which defeats React.memo on the card component no
+  // matter what. These take an id and look the record up, so their own
+  // identity only changes when the relevant list actually changes.
+  const handleEditWeapon = useCallback((id: string) => setEditingWeaponId(id), []);
+  const handleDeleteWeapon = useCallback(
+    async (id: string) => {
+      const w = weapons.items.find((x) => x.id === id);
+      if (!w || !window.confirm(`Delete "${w.name}"? This can't be undone.`)) return;
+      try {
+        await weaponsApi.remove(w.id);
+        weapons.remove(w.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Weapon.');
+      }
+    },
+    [weapons.items]
+  );
 
-  async function handleDeleteArmor(a: Armor) {
-    if (!window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
-    try {
-      await armorsApi.remove(a.id);
-      armors.remove(a.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Armor.');
-    }
-  }
+  const handleEditArmor = useCallback((id: string) => setEditingArmorId(id), []);
+  const handleDeleteArmor = useCallback(
+    async (id: string) => {
+      const a = armors.items.find((x) => x.id === id);
+      if (!a || !window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
+      try {
+        await armorsApi.remove(a.id);
+        armors.remove(a.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Armor.');
+      }
+    },
+    [armors.items]
+  );
 
-  async function handleDeleteLoot(l: Loot) {
-    if (!window.confirm(`Delete "${l.name}"? This can't be undone.`)) return;
-    try {
-      await lootApi.remove(l.id);
-      loot.remove(l.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Loot.');
-    }
-  }
+  const handleEditLoot = useCallback((id: string) => setEditingLootId(id), []);
+  const handleDeleteLoot = useCallback(
+    async (id: string) => {
+      const l = loot.items.find((x) => x.id === id);
+      if (!l || !window.confirm(`Delete "${l.name}"? This can't be undone.`)) return;
+      try {
+        await lootApi.remove(l.id);
+        loot.remove(l.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Loot.');
+      }
+    },
+    [loot.items]
+  );
 
-  async function handleDeleteConsumable(c: Consumable) {
-    if (!window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
-    try {
-      await consumablesApi.remove(c.id);
-      consumables.remove(c.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable.');
-    }
-  }
+  const handleEditConsumable = useCallback((id: string) => setEditingConsumableId(id), []);
+  const handleDeleteConsumable = useCallback(
+    async (id: string) => {
+      const c = consumables.items.find((x) => x.id === id);
+      if (!c || !window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
+      try {
+        await consumablesApi.remove(c.id);
+        consumables.remove(c.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable.');
+      }
+    },
+    [consumables.items]
+  );
 
-  async function handleDeleteLootTable(t: LootTable) {
-    if (!window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-    try {
-      await lootTablesApi.remove(t.id);
-      lootTables.remove(t.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Loot Table.');
-    }
-  }
+  const handleOpenLootTable = useCallback((id: string) => setOpenLootTableId(id), []);
+  const handleDeleteLootTable = useCallback(
+    async (id: string) => {
+      const t = lootTables.items.find((x) => x.id === id);
+      if (!t || !window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
+      try {
+        await lootTablesApi.remove(t.id);
+        lootTables.remove(t.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Loot Table.');
+      }
+    },
+    [lootTables.items]
+  );
 
-  async function handleDeleteConsumableTable(t: ConsumableTable) {
-    if (!window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-    try {
-      await consumableTablesApi.remove(t.id);
-      consumableTables.remove(t.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable Table.');
-    }
-  }
+  const handleOpenConsumableTable = useCallback((id: string) => setOpenConsumableTableId(id), []);
+  const handleDeleteConsumableTable = useCallback(
+    async (id: string) => {
+      const t = consumableTables.items.find((x) => x.id === id);
+      if (!t || !window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
+      try {
+        await consumableTablesApi.remove(t.id);
+        consumableTables.remove(t.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable Table.');
+      }
+    },
+    [consumableTables.items]
+  );
 
   const openLootTable = openLootTableId ? lootTables.items.find((t) => t.id === openLootTableId) ?? null : null;
   const openConsumableTable = openConsumableTableId
@@ -392,7 +443,7 @@ export default function EquipmentPage() {
                     onCancel={() => setEditingWeaponId(null)}
                   />
                 ) : (
-                  <WeaponCard w={w} onEdit={() => setEditingWeaponId(w.id)} onDelete={() => handleDeleteWeapon(w)} />
+                  <WeaponCard w={w} onEdit={handleEditWeapon} onDelete={handleDeleteWeapon} />
                 )
               }
             />
@@ -402,8 +453,8 @@ export default function EquipmentPage() {
                 columns={WEAPON_COLUMNS}
                 items={weaponFilters.filtered}
                 getKey={(w) => w.id}
-                onEdit={(w) => setEditingWeaponId(w.id)}
-                onDelete={handleDeleteWeapon}
+                onEdit={(w) => handleEditWeapon(w.id)}
+                onDelete={(w) => handleDeleteWeapon(w.id)}
                 emptyMessage={
                   weaponFilters.hasActiveFilters
                     ? 'No Weapons match those filters.'
@@ -474,7 +525,7 @@ export default function EquipmentPage() {
                     onCancel={() => setEditingArmorId(null)}
                   />
                 ) : (
-                  <ArmorCard a={a} onEdit={() => setEditingArmorId(a.id)} onDelete={() => handleDeleteArmor(a)} />
+                  <ArmorCard a={a} onEdit={handleEditArmor} onDelete={handleDeleteArmor} />
                 )
               }
             />
@@ -484,8 +535,8 @@ export default function EquipmentPage() {
                 columns={ARMOR_COLUMNS}
                 items={armorFilters.filtered}
                 getKey={(a) => a.id}
-                onEdit={(a) => setEditingArmorId(a.id)}
-                onDelete={handleDeleteArmor}
+                onEdit={(a) => handleEditArmor(a.id)}
+                onDelete={(a) => handleDeleteArmor(a.id)}
                 emptyMessage={
                   armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
                 }
@@ -556,7 +607,7 @@ export default function EquipmentPage() {
                     onCancel={() => setEditingLootId(null)}
                   />
                 ) : (
-                  <NameDescriptionCard item={l} onEdit={() => setEditingLootId(l.id)} onDelete={() => handleDeleteLoot(l)} />
+                  <NameDescriptionCard item={l} onEdit={handleEditLoot} onDelete={handleDeleteLoot} />
                 )
               }
             />
@@ -566,8 +617,8 @@ export default function EquipmentPage() {
                 columns={LOOT_COLUMNS}
                 items={loot.items}
                 getKey={(l) => l.id}
-                onEdit={(l) => setEditingLootId(l.id)}
-                onDelete={handleDeleteLoot}
+                onEdit={(l) => handleEditLoot(l.id)}
+                onDelete={(l) => handleDeleteLoot(l.id)}
                 emptyMessage="No Loot yet — click + New Loot above to create one."
               />
             )
@@ -636,11 +687,7 @@ export default function EquipmentPage() {
                     onCancel={() => setEditingConsumableId(null)}
                   />
                 ) : (
-                  <NameDescriptionCard
-                    item={c}
-                    onEdit={() => setEditingConsumableId(c.id)}
-                    onDelete={() => handleDeleteConsumable(c)}
-                  />
+                  <NameDescriptionCard item={c} onEdit={handleEditConsumable} onDelete={handleDeleteConsumable} />
                 )
               }
             />
@@ -650,8 +697,8 @@ export default function EquipmentPage() {
                 columns={CONSUMABLE_COLUMNS}
                 items={consumables.items}
                 getKey={(c) => c.id}
-                onEdit={(c) => setEditingConsumableId(c.id)}
-                onDelete={handleDeleteConsumable}
+                onEdit={(c) => handleEditConsumable(c.id)}
+                onDelete={(c) => handleDeleteConsumable(c.id)}
                 emptyMessage="No Consumables yet — click + New Consumable above to create one."
               />
             )
@@ -687,9 +734,7 @@ export default function EquipmentPage() {
             items={lootTables.items}
             emptyMessage="No Loot Tables yet — click + New Loot Table above, then open it to add rollable entries."
             getKey={(t) => t.id}
-            renderItem={(t) => (
-              <TableCard table={t} onOpen={() => setOpenLootTableId(t.id)} onDelete={() => handleDeleteLootTable(t)} />
-            )}
+            renderItem={(t) => <TableCard table={t} onOpen={handleOpenLootTable} onDelete={handleDeleteLootTable} />}
           />
         )}
       </div>
@@ -726,11 +771,7 @@ export default function EquipmentPage() {
             emptyMessage="No Consumable Tables yet — click + New Consumable Table above, then open it to add rollable entries."
             getKey={(t) => t.id}
             renderItem={(t) => (
-              <TableCard
-                table={t}
-                onOpen={() => setOpenConsumableTableId(t.id)}
-                onDelete={() => handleDeleteConsumableTable(t)}
-              />
+              <TableCard table={t} onOpen={handleOpenConsumableTable} onDelete={handleDeleteConsumableTable} />
             )}
           />
         )}

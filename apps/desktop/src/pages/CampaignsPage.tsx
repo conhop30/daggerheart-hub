@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
 import { partyMembersApi, type PartyMember } from '../api/partyMembers';
 import { sessionsApi, type Session } from '../api/sessions';
@@ -97,16 +97,33 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
     setEditingId(null);
   }
 
-  async function handleDelete(campaign: Campaign) {
-    if (!window.confirm(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`))
-      return;
-    try {
-      await campaignsApi.remove(campaign.id);
-      remove(campaign.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Campaign.');
-    }
-  }
+  // Stabilized so CampaignBanner (memoized) can skip re-rendering siblings
+  // when only one banner's edit/delete happens — same reasoning as
+  // DomainBanner/EquipmentPage.
+  const handleOpenCampaign = useCallback((id: string) => setSelectedCampaignId(id), []);
+  const handleEditCampaign = useCallback((id: string) => setEditingId(id), []);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const campaign = campaigns.find((c) => c.id === id);
+      if (
+        !campaign ||
+        !window.confirm(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`)
+      )
+        return;
+      try {
+        await campaignsApi.remove(campaign.id);
+        remove(campaign.id);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not delete the Campaign.');
+      }
+    },
+    // `remove` (from useApiList) is a fresh function each render but always
+    // functionally equivalent — a stale reference to it is safe to call, so
+    // it's deliberately left out of the deps to keep this stable across
+    // renders that don't actually change the campaigns list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaigns]
+  );
 
   if (selectedCampaign && selectedSession) {
     return (
@@ -203,9 +220,9 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
                 campaign={campaign}
                 partyNames={partyNamesByCampaign.get(campaign.id) ?? []}
                 sessionCount={sessionCountByCampaign.get(campaign.id) ?? 0}
-                onOpen={() => setSelectedCampaignId(campaign.id)}
-                onEdit={() => setEditingId(campaign.id)}
-                onDelete={() => handleDelete(campaign)}
+                onOpen={handleOpenCampaign}
+                onEdit={handleEditCampaign}
+                onDelete={handleDelete}
               />
             ))}
             <CampaignBannerCreate onClick={() => setCreating(true)} />

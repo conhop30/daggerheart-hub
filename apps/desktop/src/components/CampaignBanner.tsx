@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Campaign } from '../api/campaigns';
 import { gradientForColor } from '../lib/color';
 import './CampaignBanner.css';
@@ -6,9 +7,9 @@ interface CampaignBannerProps {
   campaign: Campaign;
   partyNames: string[];
   sessionCount: number;
-  onOpen: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onOpen: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 // The Campaigns gallery tile — same gradient-swatch treatment as
@@ -17,7 +18,16 @@ interface CampaignBannerProps {
 // Most names that fit on the tile before the rest collapse to "+N more".
 const MAX_NAMES = 4;
 
-export function CampaignBanner({ campaign, partyNames, sessionCount, onOpen, onEdit, onDelete }: CampaignBannerProps) {
+// Memoized like DomainBanner — the page passes stabilized (useCallback)
+// onOpen/onEdit/onDelete, so an unrelated banner can skip re-rendering.
+export const CampaignBanner = memo(function CampaignBanner({
+  campaign,
+  partyNames,
+  sessionCount,
+  onOpen,
+  onEdit,
+  onDelete,
+}: CampaignBannerProps) {
   const shown = partyNames.slice(0, MAX_NAMES);
   const extra = partyNames.length - shown.length;
   return (
@@ -25,7 +35,7 @@ export function CampaignBanner({ campaign, partyNames, sessionCount, onOpen, onE
       <button
         type="button"
         className="campaign-banner__hit"
-        onClick={onOpen}
+        onClick={() => onOpen(campaign.id)}
         aria-label={`Open ${campaign.name}`}
       />
       <div className="campaign-banner__actions">
@@ -34,7 +44,7 @@ export function CampaignBanner({ campaign, partyNames, sessionCount, onOpen, onE
           className="campaign-banner__action"
           onClick={(e) => {
             e.stopPropagation();
-            onEdit();
+            onEdit(campaign.id);
           }}
         >
           Edit
@@ -44,7 +54,7 @@ export function CampaignBanner({ campaign, partyNames, sessionCount, onOpen, onE
           className="campaign-banner__action campaign-banner__action--danger"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            onDelete(campaign.id);
           }}
         >
           Delete
@@ -63,7 +73,7 @@ export function CampaignBanner({ campaign, partyNames, sessionCount, onOpen, onE
       </div>
     </div>
   );
-}
+});
 
 // The hollow "+ Create Campaign" tile — same footprint as a real banner, no
 // fill, so it reads as an empty slot in the grid.

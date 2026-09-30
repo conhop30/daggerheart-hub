@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Domain } from '../api/domains';
 import { gradientForColor } from '../lib/color';
 import './DomainBanner.css';
@@ -11,9 +12,9 @@ export const domainGradient = gradientForColor;
 interface DomainBannerProps {
   domain: Domain;
   cardCount: number;
-  onOpen: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onOpen: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 // One Domain's clickable row — book-spread layout: a color banner on the
@@ -21,10 +22,19 @@ interface DomainBannerProps {
 // a boxed gallery tile. Hovering enlarges the banner and it's the whole
 // row's click target; Edit/Delete sit off to the side, only visible on
 // hover, and stop the click from also opening the Domain.
-export function DomainBanner({ domain, cardCount, onOpen, onEdit, onDelete }: DomainBannerProps) {
+//
+// Wrapped in memo — the page passes stabilized (useCallback) onOpen/onEdit/
+// onDelete, so a banner whose own domain/cardCount didn't change can skip
+// re-rendering when e.g. a sibling banner's edit form opens.
+export const DomainBanner = memo(function DomainBanner({ domain, cardCount, onOpen, onEdit, onDelete }: DomainBannerProps) {
   return (
     <div className="domain-banner">
-      <button type="button" className="domain-banner__hit" onClick={onOpen} aria-label={`Open ${domain.name}`} />
+      <button
+        type="button"
+        className="domain-banner__hit"
+        onClick={() => onOpen(domain.id)}
+        aria-label={`Open ${domain.name}`}
+      />
       <div className="domain-banner__art" style={{ background: domainGradient(domain.colorHex) }} />
       <div className="domain-banner__body">
         <h3 className="domain-banner__title">{domain.name}</h3>
@@ -40,7 +50,7 @@ export function DomainBanner({ domain, cardCount, onOpen, onEdit, onDelete }: Do
             className="domain-banner__action"
             onClick={(e) => {
               e.stopPropagation();
-              onEdit();
+              onEdit(domain.id);
             }}
           >
             Edit
@@ -50,7 +60,7 @@ export function DomainBanner({ domain, cardCount, onOpen, onEdit, onDelete }: Do
             className="domain-banner__action domain-banner__action--danger"
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              onDelete(domain.id);
             }}
           >
             Delete
@@ -59,7 +69,7 @@ export function DomainBanner({ domain, cardCount, onOpen, onEdit, onDelete }: Do
       </div>
     </div>
   );
-}
+});
 
 // The hollow "+ Create Domain" row — same footprint as a real row, no
 // banner, so it reads as an empty slot in the list rather than another
