@@ -52,8 +52,6 @@ export default function AppShell({ view, onNavigate, children }: AppShellProps) 
         <button type="button" className="app-shell__brand" onClick={() => onNavigate('home')}>
           <span className="app-shell__brand-mark">
             <TankardMark className="app-shell__brand-mark-svg" />
-            <span className="app-shell__brand-drip app-shell__brand-drip--1" />
-            <span className="app-shell__brand-drip app-shell__brand-drip--2" />
           </span>
           Daggerheart Brewery
         </button>
