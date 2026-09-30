@@ -8,6 +8,7 @@ import { consumableTablesApi, type ConsumableTable, type ConsumableTableEntry } 
 import { useApiList } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, ContentCardList, MetaChip } from '../components/ContentCard';
+import EquipmentSection from '../components/EquipmentSection';
 import WeaponForm from '../components/WeaponForm';
 import ArmorForm from '../components/ArmorForm';
 import SimpleNameDescriptionForm from '../components/SimpleNameDescriptionForm';
@@ -373,20 +374,20 @@ export default function EquipmentPage() {
         </div>
       </div>
 
-      <div className="browse-page__section">
-        <div className="browse-page__section-header">
-          <h2 className="browse-page__section-title">Weapons</h2>
-          <div className="browse-page__section-actions">
+      <EquipmentSection<Weapon>
+        title="Weapons"
+        addButtons={
+          <>
             <button type="button" className="browse-page__add-button" onClick={() => setCreatingWeaponSlot('PRIMARY')}>
               + New Primary
             </button>
             <button type="button" className="browse-page__add-button" onClick={() => setCreatingWeaponSlot('SECONDARY')}>
               + New Secondary
             </button>
-          </div>
-        </div>
-        {creatingWeaponSlot && (
-          <div className="browse-page__inline-form">
+          </>
+        }
+        createForm={
+          creatingWeaponSlot && (
             <WeaponForm
               weaponSlot={creatingWeaponSlot}
               onSaved={(saved) => {
@@ -395,10 +396,10 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setCreatingWeaponSlot(null)}
             />
-          </div>
-        )}
-        {view === 'table' && editingWeapon && (
-          <div className="browse-page__inline-form">
+          )
+        }
+        editForm={
+          editingWeapon && (
             <WeaponForm
               weaponSlot={editingWeapon.weaponSlot}
               initial={editingWeapon}
@@ -408,62 +409,46 @@ export default function EquipmentPage() {
               }}
               onCancel={() => setEditingWeaponId(null)}
             />
-          </div>
-        )}
-        {weapons.loading && <p className="browse-page__status">Loading Weapons&hellip;</p>}
-        {weapons.error && <p className="browse-page__status browse-page__status--error">{weapons.error}</p>}
-        {!weapons.loading && !weapons.error && weapons.items.length > 0 && (
-          <TagFilterBar
-            dimensions={weaponFilters.dimensions}
-            onToggle={weaponFilters.toggle}
-            onClear={weaponFilters.clear}
-            hasActiveFilters={weaponFilters.hasActiveFilters}
-          />
-        )}
-        {!weapons.loading &&
-          !weapons.error &&
-          (view === 'cards' ? (
-            <ContentCardList
-              items={weaponFilters.filtered}
-              emptyMessage={
-                weaponFilters.hasActiveFilters
-                  ? 'No Weapons match those filters.'
-                  : 'No Weapons yet — click + New Primary or + New Secondary above to create one.'
-              }
-              getKey={(w) => w.id}
-              renderItem={(w) =>
-                editingWeaponId === w.id ? (
-                  <WeaponForm
-                    weaponSlot={w.weaponSlot}
-                    initial={w}
-                    onSaved={(saved) => {
-                      weapons.upsert(saved);
-                      setEditingWeaponId(null);
-                    }}
-                    onCancel={() => setEditingWeaponId(null)}
-                  />
-                ) : (
-                  <WeaponCard w={w} onEdit={handleEditWeapon} onDelete={handleDeleteWeapon} />
-                )
-              }
+          )
+        }
+        loading={weapons.loading}
+        error={weapons.error}
+        items={weaponFilters.filtered}
+        getKey={(w) => w.id}
+        emptyMessage={
+          weaponFilters.hasActiveFilters
+            ? 'No Weapons match those filters.'
+            : 'No Weapons yet — click + New Primary or + New Secondary above to create one.'
+        }
+        renderCard={(w) =>
+          editingWeaponId === w.id ? (
+            <WeaponForm
+              weaponSlot={w.weaponSlot}
+              initial={w}
+              onSaved={(saved) => {
+                weapons.upsert(saved);
+                setEditingWeaponId(null);
+              }}
+              onCancel={() => setEditingWeaponId(null)}
             />
           ) : (
-            !editingWeapon && (
-              <EquipmentTable
-                columns={WEAPON_COLUMNS}
-                items={weaponFilters.filtered}
-                getKey={(w) => w.id}
-                onEdit={(w) => handleEditWeapon(w.id)}
-                onDelete={(w) => handleDeleteWeapon(w.id)}
-                emptyMessage={
-                  weaponFilters.hasActiveFilters
-                    ? 'No Weapons match those filters.'
-                    : 'No Weapons yet — click + New Primary or + New Secondary above to create one.'
-                }
-              />
-            )
-          ))}
-      </div>
+            <WeaponCard w={w} onEdit={handleEditWeapon} onDelete={handleDeleteWeapon} />
+          )
+        }
+        table={{
+          view,
+          columns: WEAPON_COLUMNS,
+          onEdit: (w) => handleEditWeapon(w.id),
+          onDelete: (w) => handleDeleteWeapon(w.id),
+          editing: Boolean(editingWeapon),
+        }}
+        filterBar={{
+          dimensions: weaponFilters.dimensions,
+          onToggle: weaponFilters.toggle,
+          onClear: weaponFilters.clear,
+          hasActiveFilters: weaponFilters.hasActiveFilters,
+        }}
+      />
 
       <div className="browse-page__section">
         <div className="browse-page__section-header">
