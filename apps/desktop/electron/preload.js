@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('daggerheart', {
     ipcRenderer.invoke('store:listSessionEnvironmentsBySession', sessionId),
   cloneSession: (sourceId, options) => ipcRenderer.invoke('store:cloneSession', sourceId, options),
   importMusicFiles: (regionId) => ipcRenderer.invoke('music:importFiles', regionId),
+  importDroppedMusicPaths: (regionId, filePaths) => ipcRenderer.invoke('music:importDroppedPaths', regionId, filePaths),
+  copyMusicTrackToRegion: (trackId, targetRegionId) => ipcRenderer.invoke('music:copyTrackToRegion', trackId, targetRegionId),
   create: (collection, data) => ipcRenderer.invoke('store:create', collection, data),
   update: (collection, id, patch, ctx) => ipcRenderer.invoke('store:update', collection, id, patch, ctx),
   remove: (collection, id, ctx) => ipcRenderer.invoke('store:remove', collection, id, ctx),

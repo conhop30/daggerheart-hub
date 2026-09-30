@@ -164,6 +164,37 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     }
   }
 
+  // Files dropped straight from the OS onto the currently-selected region's
+  // track list — same destination/result shape as addFiles above, just
+  // skipping the picker dialog since the paths are already known.
+  async function addDroppedFiles(filePaths: string[]) {
+    if (!selected || filePaths.length === 0) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const result = await musicApi.importDroppedPaths(selected.id, filePaths);
+      setTracks((prev) => [...prev, ...result.tracks]);
+      onLibraryChanged?.();
+    } catch (err) {
+      fail(err, 'Could not add those files.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // Copies a track into another region — a new file + new record, so the
+  // original is left completely untouched (unlike moveTrack, below).
+  async function copyTrackToRegion(track: MusicTrack, targetRegionId: string) {
+    if (targetRegionId === track.regionId) return;
+    try {
+      const copy = await musicApi.copyTrackToRegion(track.id, targetRegionId);
+      setTracks((prev) => [...prev, copy]);
+      onLibraryChanged?.();
+    } catch (err) {
+      fail(err, 'Could not copy the track.');
+    }
+  }
+
   async function setTrackVolume(track: MusicTrack, volume: number) {
     // Optimistic: applied to local state immediately so a dragged slider
     // tracks the pointer smoothly instead of waiting on the IPC round trip.
@@ -243,6 +274,8 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     deleteRegion,
     setDefault,
     addFiles,
+    addDroppedFiles,
+    copyTrackToRegion,
     renameTrack,
     setTrackVolume,
     moveTrack,

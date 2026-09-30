@@ -38,6 +38,8 @@ export interface DaggerheartBridge {
   listSessionEnvironmentsBySession: (sessionId: string) => Promise<unknown[]>;
   cloneSession: (sourceId: string, options?: { name?: string }) => Promise<unknown>;
   importMusicFiles: (regionId: string) => Promise<{ canceled: boolean; tracks: unknown[] }>;
+  importDroppedMusicPaths: (regionId: string, filePaths: string[]) => Promise<{ tracks: unknown[] }>;
+  copyMusicTrackToRegion: (trackId: string, targetRegionId: string) => Promise<unknown>;
   create: (collection: string, data: unknown) => Promise<unknown>;
   update: (collection: string, id: string, patch: unknown, ctx?: SessionContext) => Promise<unknown>;
   remove: (collection: string, id: string, ctx?: SessionContext) => Promise<void>;
@@ -118,6 +120,12 @@ export const apiClient = {
     (await unwrap(bridge().cloneSession(sourceId, options))) as T,
   importMusicFiles: async <T>(regionId: string): Promise<{ canceled: boolean; tracks: T[] }> =>
     (await unwrap(bridge().importMusicFiles(regionId))) as { canceled: boolean; tracks: T[] },
+  /** Same import path as importMusicFiles, but for paths already known from an OS drag-and-drop instead of a dialog pick. */
+  importDroppedMusicPaths: async <T>(regionId: string, filePaths: string[]): Promise<{ tracks: T[] }> =>
+    (await unwrap(bridge().importDroppedMusicPaths(regionId, filePaths))) as { tracks: T[] },
+  /** Copies a track's audio file + record into another region, leaving the original untouched. */
+  copyMusicTrackToRegion: async <T>(trackId: string, targetRegionId: string): Promise<T> =>
+    (await unwrap(bridge().copyMusicTrackToRegion(trackId, targetRegionId))) as T,
   create: async <T>(collection: string, data: unknown): Promise<T> =>
     (await unwrap(bridge().create(collection, data))) as T,
   update: async <T>(collection: string, id: string, patch: unknown, ctx?: SessionContext): Promise<T> =>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MusicRegion, MusicTrack } from '../../api/music';
+import { TRACK_DRAG_MIME, type MusicRegion, type MusicTrack } from '../../api/music';
 import './RegionList.css';
 
 interface RegionListProps {
@@ -8,12 +8,16 @@ interface RegionListProps {
   selectedId: string;
   onSelect: (id: string) => void;
   onCreate: (name: string) => void;
+  /** A track dragged from TrackList and released on a region here — copies it there, see TrackList's draggable rows. */
+  onCopyTrackToRegion: (trackId: string, regionId: string) => void;
 }
 
 // Browse + create regions — the rail on the Music tab, and the region strip
-// inside the in-session collapsible editor.
-export default function RegionList({ regions, tracks, selectedId, onSelect, onCreate }: RegionListProps) {
+// inside the in-session collapsible editor. Also the drop target for
+// copying a track into another region (dragged from TrackList).
+export default function RegionList({ regions, tracks, selectedId, onSelect, onCreate, onCopyTrackToRegion }: RegionListProps) {
   const [newRegionName, setNewRegionName] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   function submitCreate() {
     const name = (newRegionName ?? '').trim();
@@ -30,8 +34,19 @@ export default function RegionList({ regions, tracks, selectedId, onSelect, onCr
           <li key={region.id}>
             <button
               type="button"
-              className={`region-list__region${region.id === selectedId ? ' region-list__region--active' : ''}`}
+              className={`region-list__region${region.id === selectedId ? ' region-list__region--active' : ''}${dragOverId === region.id ? ' region-list__region--drag-over' : ''}`}
               onClick={() => onSelect(region.id)}
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes(TRACK_DRAG_MIME)) return;
+                e.preventDefault();
+                setDragOverId(region.id);
+              }}
+              onDragLeave={() => setDragOverId((id) => (id === region.id ? null : id))}
+              onDrop={(e) => {
+                setDragOverId(null);
+                const trackId = e.dataTransfer.getData(TRACK_DRAG_MIME);
+                if (trackId) onCopyTrackToRegion(trackId, region.id);
+              }}
             >
               <span>{region.name}</span>
               <span className="region-list__count">{tracks.filter((t) => t.regionId === region.id).length}</span>

@@ -25,6 +25,10 @@ export default function MusicLibrary() {
         selectedId={editor.selected.id}
         onSelect={editor.setSelectedId}
         onCreate={editor.addRegion}
+        onCopyTrackToRegion={(trackId, regionId) => {
+          const track = editor.tracks.find((t) => t.id === trackId);
+          if (track) editor.copyTrackToRegion(track, regionId);
+        }}
       />
 
       <section className="music-library__main">
@@ -57,6 +61,7 @@ export default function MusicLibrary() {
           onMove={editor.moveTrack}
           onTrackVolumeChange={editor.setTrackVolume}
           onDelete={editor.deleteTrack}
+          onDropFiles={editor.addDroppedFiles}
         />
       </section>
 

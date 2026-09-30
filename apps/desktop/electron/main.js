@@ -425,15 +425,10 @@ function serveMedia(request) {
   return new Response(body, { status: range ? 206 : 200, headers });
 }
 
-ipcMain.handle('music:importFiles', async (event, regionId) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: 'Add music',
-    properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'Audio', extensions: Object.keys(AUDIO_TYPES).map((ext) => ext.slice(1)) }],
-  });
-  if (canceled || filePaths.length === 0) return { canceled: true, tracks: [] };
-
+// Shared by the dialog-based picker (below) and the drag-and-drop IPC
+// channel — both end up with a plain list of source file paths, the only
+// difference is how that list was gathered.
+async function importFilePaths(filePaths, regionId) {
   fs.mkdirSync(musicDir(), { recursive: true });
   const tracks = [];
   for (const source of filePaths) {
@@ -456,7 +451,54 @@ ipcMain.handle('music:importFiles', async (event, regionId) => {
       throw err;
     }
   }
-  return { canceled: false, tracks };
+  return tracks;
+}
+
+ipcMain.handle('music:importFiles', async (event, regionId) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: 'Add music',
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Audio', extensions: Object.keys(AUDIO_TYPES).map((ext) => ext.slice(1)) }],
+  });
+  if (canceled || filePaths.length === 0) return { canceled: true, tracks: [] };
+  return { canceled: false, tracks: await importFilePaths(filePaths, regionId) };
+});
+
+// Files dragged from the OS straight onto a region's track list — the
+// renderer reads each dropped File's `.path` (an Electron-only extension of
+// the web File API for files that came from a real OS drag) and hands us
+// just the paths; nothing about file contents crosses the IPC boundary,
+// same trust boundary as the dialog-based path above.
+ipcMain.handle('music:importDroppedPaths', async (_event, regionId, filePaths) => {
+  return { tracks: await importFilePaths(filePaths, regionId) };
+});
+
+// Drag a track from one region onto another: a COPY, not a move (moving is
+// already the existing "file in region" select) — a new file on disk under
+// a fresh generated name, and a new track record, so the original is left
+// completely untouched in its own region.
+ipcMain.handle('music:copyTrackToRegion', async (_event, trackId, targetRegionId) => {
+  const source = store.listMusicTracks().find((t) => t.id === trackId);
+  if (!source) throw new Error(`No music track with id ${trackId}`);
+  const ext = path.extname(source.fileName);
+  const fileName = `${randomUUID()}${ext}`;
+  fs.mkdirSync(musicDir(), { recursive: true });
+  const srcPath = path.join(musicDir(), source.fileName);
+  const destPath = path.join(musicDir(), fileName);
+  fs.copyFileSync(srcPath, destPath);
+  try {
+    return await store.createMusicTrack({
+      name: source.name,
+      regionId: targetRegionId,
+      fileName,
+      sizeBytes: source.sizeBytes,
+      volume: source.volume,
+    });
+  } catch (err) {
+    fs.rmSync(destPath, { force: true });
+    throw err;
+  }
 });
 
 app.whenReady().then(() => {

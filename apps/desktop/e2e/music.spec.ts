@@ -229,6 +229,61 @@ test.describe('Music library and session playback', () => {
     await expect(win.locator('select[aria-label="Music region"] option:checked')).toHaveText('The Sunken Coast');
   });
 
+  test('dragging an audio file from the OS onto a region\'s track list imports it, no dialog needed', async () => {
+    await openMusicTab();
+    const filePath = path.join(audioDir, 'Calm Road.wav');
+
+    // Real OS drag-and-drop can't be driven from Playwright — this fires the
+    // same 'drop' event a real one would, with a DataTransfer whose `files`
+    // entries carry `.path` the way Electron's does for a genuine OS drag
+    // (see TrackList.tsx's isFileDrag/handleDrop).
+    await win.evaluate((p) => {
+      const el = document.querySelector('.track-list');
+      if (!el) throw new Error('track-list not found');
+      const dt = new DataTransfer();
+      Object.defineProperty(dt, 'files', { value: [{ path: p, name: 'Calm Road.wav' }] });
+      Object.defineProperty(dt, 'types', { value: ['Files'] });
+      const event = new DragEvent('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: dt });
+      el.dispatchEvent(event);
+    }, filePath);
+
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
+    await expect(win.locator('.track-list__track', { hasText: 'Calm Road' })).toBeVisible();
+    // Copied into the app's own folder under a generated name, same as the dialog-based path.
+    const stored = fs.readdirSync(path.join(tempDir, 'music'));
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).not.toContain('Calm');
+  });
+
+  test('dragging a track from one region onto another copies it there, leaving the original in place', async () => {
+    await openMusicTab();
+    await pickFiles('Calm Road');
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
+
+    await win.click('button:has-text("+ New Region")');
+    await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
+    await win.click('.region-list__inline-form button:has-text("Add")');
+    await win.click('.region-list__region:has-text("Global")');
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
+
+    const dataTransfer = await win.evaluateHandle(() => new DataTransfer());
+    await win.locator('.track-list__handle').dispatchEvent('dragstart', { dataTransfer });
+    await win.locator('.region-list__region:has-text("The Sunken Coast")').dispatchEvent('drop', { dataTransfer });
+
+    // The original is untouched, still in Global.
+    await expect(win.locator('.track-list__track')).toHaveCount(1);
+    await expect(win.locator('.track-list__track', { hasText: 'Calm Road' })).toBeVisible();
+
+    // A copy now exists under The Sunken Coast too.
+    await win.click('.region-list__region:has-text("The Sunken Coast")');
+    await expect(win.locator('.track-list__track', { hasText: 'Calm Road' })).toBeVisible();
+
+    // Two independent files on disk — a copy, not a shared reference.
+    const stored = fs.readdirSync(path.join(tempDir, 'music'));
+    expect(stored).toHaveLength(2);
+  });
+
   test('each track has its own persisted volume, independent of another track\'s', async () => {
     await openMusicTab();
     await pickFiles('Calm Road', 'War Drums');

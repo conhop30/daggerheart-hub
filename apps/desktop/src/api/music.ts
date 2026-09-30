@@ -3,6 +3,9 @@ import { apiClient } from './client';
 /** The built-in region: holds the app-wide default tracks and can't be renamed or removed. */
 export const EVERYWHERE_REGION_ID = 'everywhere';
 
+/** Custom drag MIME type carrying a track id — TrackList sets it, RegionList reads it, for the "drag a track onto a region to copy it there" interaction. A dedicated type (not text/plain) so an unrelated text drag from elsewhere in the app never accidentally triggers a copy. */
+export const TRACK_DRAG_MIME = 'application/x-daggerheart-track';
+
 export interface MusicRegion {
   id: string;
   name: string;
@@ -42,6 +45,10 @@ export const musicApi = {
   removeTrack: (id: string) => apiClient.remove('musicTracks', id),
   /** Opens a file picker and copies the chosen audio files into the library. */
   importFiles: (regionId: string) => apiClient.importMusicFiles<MusicTrack>(regionId),
+  /** Same, but for files dragged straight from the OS onto a track list — filePaths come from the dropped Files' Electron-only `.path`. */
+  importDroppedPaths: (regionId: string, filePaths: string[]) => apiClient.importDroppedMusicPaths<MusicTrack>(regionId, filePaths),
+  /** Copies a track into another region (new file + new record) — the original is left untouched, unlike moving it. */
+  copyTrackToRegion: (trackId: string, targetRegionId: string) => apiClient.copyMusicTrackToRegion<MusicTrack>(trackId, targetRegionId),
 };
 
 /** Where the renderer plays a track from — served by the main process's dhmedia:// protocol. */

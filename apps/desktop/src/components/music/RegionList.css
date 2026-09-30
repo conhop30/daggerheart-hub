@@ -40,6 +40,12 @@
   background: rgba(228, 179, 65, 0.1);
 }
 
+.region-list__region--drag-over {
+  border-style: dashed;
+  border-color: var(--hope);
+  background: rgba(228, 179, 65, 0.14);
+}
+
 .region-list__count {
   font-family: var(--font-mono);
   font-size: 0.72rem;
