@@ -450,85 +450,71 @@ export default function EquipmentPage() {
         }}
       />
 
-      <div className="browse-page__section">
-        <div className="browse-page__section-header">
-          <h2 className="browse-page__section-title">Armor</h2>
-          <button type="button" className="browse-page__add-button" onClick={() => setCreatingArmor(true)}>
-            + New Armor
-          </button>
-        </div>
-        {creatingArmor && (
-          <div className="browse-page__inline-form">
-            <ArmorForm
-              onSaved={(saved) => {
-                armors.upsert(saved);
-                setCreatingArmor(false);
-              }}
-              onCancel={() => setCreatingArmor(false)}
-            />
-          </div>
-        )}
-        {view === 'table' && editingArmor && (
-          <div className="browse-page__inline-form">
-            <ArmorForm
-              initial={editingArmor}
-              onSaved={(saved) => {
-                armors.upsert(saved);
-                setEditingArmorId(null);
-              }}
-              onCancel={() => setEditingArmorId(null)}
-            />
-          </div>
-        )}
-        {armors.loading && <p className="browse-page__status">Loading Armor&hellip;</p>}
-        {armors.error && <p className="browse-page__status browse-page__status--error">{armors.error}</p>}
-        {!armors.loading && !armors.error && armors.items.length > 0 && (
-          <TagFilterBar
-            dimensions={armorFilters.dimensions}
-            onToggle={armorFilters.toggle}
-            onClear={armorFilters.clear}
-            hasActiveFilters={armorFilters.hasActiveFilters}
-          />
-        )}
-        {!armors.loading &&
-          !armors.error &&
-          (view === 'cards' ? (
-            <ContentCardList
-              items={armorFilters.filtered}
-              emptyMessage={
-                armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
-              }
-              getKey={(a) => a.id}
-              renderItem={(a) =>
-                editingArmorId === a.id ? (
-                  <ArmorForm
-                    initial={a}
-                    onSaved={(saved) => {
-                      armors.upsert(saved);
-                      setEditingArmorId(null);
-                    }}
-                    onCancel={() => setEditingArmorId(null)}
-                  />
-                ) : (
-                  <ArmorCard a={a} onEdit={handleEditArmor} onDelete={handleDeleteArmor} />
-                )
-              }
-            />
-          ) : (
-            !editingArmor && (
-              <EquipmentTable
-                columns={ARMOR_COLUMNS}
-                items={armorFilters.filtered}
-                getKey={(a) => a.id}
-                onEdit={(a) => handleEditArmor(a.id)}
-                onDelete={(a) => handleDeleteArmor(a.id)}
-                emptyMessage={
-                  armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
-                }
+        <EquipmentSection<Armor>
+          title="Armor"
+          addButtons={
+            <button type="button" className="browse-page__add-button" onClick={() => setCreatingArmor(true)}>
+              + New Armor
+            </button>
+          }
+          createForm={
+            creatingArmor && (
+              <ArmorForm
+                onSaved={(saved) => {
+                  armors.upsert(saved);
+                  setCreatingArmor(false);
+                }}
+                onCancel={() => setCreatingArmor(false)}
               />
             )
-          ))}
-      </div>
+          }
+          editForm={
+            editingArmor && (
+              <ArmorForm
+                initial={editingArmor}
+                onSaved={(saved) => {
+                  armors.upsert(saved);
+                  setEditingArmorId(null);
+                }}
+                onCancel={() => setEditingArmorId(null)}
+              />
+            )
+          }
+          loading={armors.loading}
+          error={armors.error}
+          items={armorFilters.filtered}
+          getKey={(a) => a.id}
+          emptyMessage={
+            armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
+          }
+          renderCard={(a) =>
+            editingArmorId === a.id ? (
+              <ArmorForm
+                initial={a}
+                onSaved={(saved) => {
+                  armors.upsert(saved);
+                  setEditingArmorId(null);
+                }}
+                onCancel={() => setEditingArmorId(null)}
+              />
+            ) : (
+              <ArmorCard a={a} onEdit={handleEditArmor} onDelete={handleDeleteArmor} />
+            )
+          }
+          table={{
+            view,
+            columns: ARMOR_COLUMNS,
+            onEdit: (a) => handleEditArmor(a.id),
+            onDelete: (a) => handleDeleteArmor(a.id),
+            editing: Boolean(editingArmor),
+          }}
+          filterBar={{
+            dimensions: armorFilters.dimensions,
+            onToggle: armorFilters.toggle,
+            onClear: armorFilters.clear,
+            hasActiveFilters: armorFilters.hasActiveFilters,
+          }}
+        />
 
       <div className="browse-page__section">
         <div className="browse-page__section-header">
