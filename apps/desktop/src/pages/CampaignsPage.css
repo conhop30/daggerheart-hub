@@ -26,10 +26,9 @@
 }
 
 .campaigns-page__edit-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-3);
 }
 
@@ -49,7 +48,8 @@
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.8rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;

@@ -33,27 +33,29 @@
 }
 
 .classes-page__tab {
-  padding: 9px 20px;
+  padding: 9px 18px;
   border-radius: 999px;
-  border: 1px solid var(--hairline);
+  border: none;
   background: transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.8rem;
   transition:
-    border-color 220ms var(--ease),
     color 220ms var(--ease),
-    background 220ms var(--ease);
+    background 220ms var(--ease),
+    box-shadow 220ms var(--ease);
 }
 
 .classes-page__tab:hover {
   color: var(--ink);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.12), transparent 72%);
 }
 
 .classes-page__tab.active {
-  color: var(--ink);
-  border-color: var(--hope);
-  background: rgba(228, 179, 65, 0.14);
+  color: var(--hope);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.22), transparent 72%);
+  box-shadow: 0 0 30px 4px rgba(228, 179, 65, 0.16);
 }
 
 .classes-page__toolbar {
@@ -66,12 +68,12 @@
   background: none;
   border: 1px solid var(--hairline);
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 6px 14px;
-  border-radius: 999px;
   transition:
     border-color 220ms var(--ease),
     color 220ms var(--ease);
@@ -83,8 +85,7 @@
 }
 
 .classes-page__edit-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
 }

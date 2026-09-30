@@ -13,7 +13,8 @@
 
 .session-tile__notes-label {
   display: block;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.7rem;
   color: var(--muted);
   margin-top: var(--space-1);

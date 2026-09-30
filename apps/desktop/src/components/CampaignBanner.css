@@ -68,10 +68,10 @@
 }
 
 .campaign-banner__count {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.92);
 }
 
@@ -91,23 +91,27 @@
 }
 
 .campaign-banner__action {
-  background: rgba(0, 0, 0, 0.35);
+  background: none;
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: #ffffff;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 3px 9px;
-  border-radius: 999px;
+  transition:
+    border-color 200ms var(--ease),
+    color 200ms var(--ease);
 }
 
 .campaign-banner__action:hover {
-  background: rgba(0, 0, 0, 0.55);
+  border-color: #ffffff;
 }
 
 .campaign-banner__action--danger:hover {
   border-color: var(--fear-on-dark, #c66);
+  color: var(--fear-on-dark, #c66);
 }
 
 .campaign-banner--hollow {
@@ -135,7 +139,8 @@
 }
 
 .campaign-banner__hollow-label {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;

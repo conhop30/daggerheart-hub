@@ -3,11 +3,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
   margin-bottom: var(--space-2);
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .tag-filter-bar__group {
@@ -17,10 +15,11 @@
 }
 
 .tag-filter-bar__label {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -28,32 +27,32 @@
 .tag-filter-bar__pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px;
 }
 
 .tag-filter-bar__pill {
-  padding: 3px 10px;
+  padding: 3px 12px;
   border-radius: 999px;
-  border: 1px solid var(--hairline);
+  border: none;
   background: transparent;
   color: var(--ink-dim);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
   transition:
     background 160ms var(--ease),
-    color 160ms var(--ease),
-    border-color 160ms var(--ease);
+    color 160ms var(--ease);
 }
 
 .tag-filter-bar__pill:hover {
-  border-color: var(--hope);
+  color: var(--ink);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.12), transparent 72%);
 }
 
 .tag-filter-bar__pill.active {
-  background: var(--hope);
-  border-color: var(--hope);
-  color: #1a1508;
-  font-weight: 600;
+  color: var(--hope);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.22), transparent 72%);
+  box-shadow: 0 0 24px 3px rgba(228, 179, 65, 0.16);
 }
 
 .tag-filter-bar__clear {
@@ -61,8 +60,9 @@
   background: none;
   border: none;
   color: var(--fear-on-dark);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.74rem;
   text-decoration: underline;
   white-space: nowrap;
 }

@@ -6,7 +6,8 @@
   background: none;
   border: none;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.78rem;
   letter-spacing: 0.03em;
   padding: 0;
@@ -60,29 +61,33 @@
 }
 
 .campaign-detail__hero-action {
-  background: rgba(0, 0, 0, 0.3);
+  background: none;
   border: 1px solid rgba(255, 255, 255, 0.45);
-  color: #ffffff;
-  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 4px 11px;
-  border-radius: 999px;
+  transition:
+    border-color 200ms var(--ease),
+    color 200ms var(--ease);
 }
 
 .campaign-detail__hero-action:hover {
-  background: rgba(0, 0, 0, 0.5);
+  border-color: #ffffff;
+  color: #ffffff;
 }
 
 .campaign-detail__hero-action--danger:hover {
   border-color: var(--fear-on-dark, #c66);
+  color: var(--fear-on-dark, #c66);
 }
 
 .campaign-detail__edit-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-4);
 }

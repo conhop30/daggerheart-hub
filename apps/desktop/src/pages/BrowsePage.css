@@ -57,12 +57,12 @@
   background: none;
   border: 1px solid var(--hairline);
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 4px 12px;
-  border-radius: 999px;
   white-space: nowrap;
   transition:
     border-color 200ms var(--ease),

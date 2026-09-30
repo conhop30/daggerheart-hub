@@ -36,9 +36,9 @@
 .entry-card__toggle {
   background: none;
   border: 1px solid var(--hairline);
-  border-radius: 999px;
   padding: 0.3rem 0.75rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.68rem;
   letter-spacing: 0.04em;
   color: var(--ink-dim);
@@ -61,7 +61,8 @@
   background: none;
   border: 1px solid var(--hairline);
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.68rem;
   padding: 2px 8px;
   white-space: nowrap;

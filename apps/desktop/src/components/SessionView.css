@@ -6,7 +6,8 @@
   background: none;
   border: none;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.78rem;
   letter-spacing: 0.03em;
   padding: 0;
@@ -41,12 +42,12 @@
   background: none;
   border: 1px solid var(--hairline);
   color: var(--ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 4px 11px;
-  border-radius: 999px;
 }
 
 .session-view__header-action:hover {
@@ -58,10 +59,9 @@
 }
 
 .session-view__edit-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-3);
 }
 

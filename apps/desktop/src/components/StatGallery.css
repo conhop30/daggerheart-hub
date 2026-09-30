@@ -37,39 +37,42 @@
   border-color: var(--hope);
 }
 
-/* Same segmented-pill visual language as ModeToggle.css (Session combat/
-   adventuring) and SettingsPage's theme picker — a UI-chrome control, not a
-   stat display, so the "no pill shapes" rule from the stat-sheet redesign
-   doesn't apply here. */
+/* Same segmented-selector visual language as ModeToggle.css (Session combat/
+   adventuring) and SettingsPage's theme picker — a persistent multi-option
+   selector, so selection reads as a soft radial-glow wash rather than a
+   filled/bordered pill. */
 .stat-gallery__mode-toggle {
   display: inline-flex;
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  overflow: hidden;
+  gap: 4px;
   flex-shrink: 0;
 }
 
 .stat-gallery__mode-option {
-  background: none;
+  border-radius: 999px;
   border: none;
+  background: transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.72rem;
   letter-spacing: 0.03em;
   padding: 0.45rem 0.85rem;
   white-space: nowrap;
   transition:
+    color 200ms var(--ease),
     background 200ms var(--ease),
-    color 200ms var(--ease);
+    box-shadow 200ms var(--ease);
 }
 
 .stat-gallery__mode-option:hover {
   color: var(--ink);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.12), transparent 72%);
 }
 
 .stat-gallery__mode-option--active {
-  background: rgba(228, 179, 65, 0.16);
   color: var(--hope);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.22), transparent 72%);
+  box-shadow: 0 0 30px 4px rgba(228, 179, 65, 0.16);
 }
 
 /* Standard/Condensed layout: a tile grid alongside a spotlight column. */
@@ -91,11 +94,14 @@
   gap: var(--space-1);
 }
 
+/* Not a boxed card — these are pick-one grid cells (only one tile is ever
+   "selected" at a time), so separation is a hairline outline and selection
+   reads as the same radial-glow wash used for selector chrome elsewhere,
+   rather than a filled panel. */
 .stat-gallery__tile {
   text-align: left;
-  background: var(--panel);
+  background: none;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
   padding: var(--space-2);
   display: flex;
   flex-direction: column;
@@ -105,7 +111,8 @@
   color: inherit;
   transition:
     border-color 150ms var(--ease),
-    background 150ms var(--ease);
+    background 150ms var(--ease),
+    box-shadow 150ms var(--ease);
   animation: fadeInUp 220ms var(--ease);
 }
 
@@ -116,11 +123,13 @@
 
 .stat-gallery__tile:hover {
   border-color: var(--hope);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.1), transparent 72%);
 }
 
 .stat-gallery__tile--selected {
   border-color: var(--hope);
-  background: var(--panel-raised);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.18), transparent 72%);
+  box-shadow: 0 0 30px 4px rgba(228, 179, 65, 0.12);
 }
 
 .stat-gallery__tile-name {
@@ -160,9 +169,6 @@
   top: var(--space-2);
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
   max-height: calc(100vh - var(--space-5));
   overflow: hidden;
 }
@@ -186,11 +192,11 @@
   flex-shrink: 0;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--hairline);
-  background: var(--panel-raised);
 }
 
 .stat-gallery__history-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.64rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;

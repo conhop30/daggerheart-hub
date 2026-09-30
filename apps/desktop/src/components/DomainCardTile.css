@@ -39,12 +39,12 @@
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: #ffffff;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.64rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   padding: 2px 7px;
-  border-radius: 999px;
 }
 
 .domain-card-tile__action:hover {
@@ -120,19 +120,23 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.03em;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
+/* The domain name is a chrome label — Inter, not mono. */
 .domain-card-tile__domain {
+  font-family: var(--font-body);
+  font-weight: 600;
   color: var(--ink-dim);
 }
 
+/* Recall cost is a real game stat, so it keeps the numeric/tabular face. */
 .domain-card-tile__recall {
   margin-left: auto;
+  font-family: var(--font-mono);
   color: var(--hope-on-dark);
 }
 

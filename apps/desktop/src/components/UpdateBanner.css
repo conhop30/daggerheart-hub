@@ -18,9 +18,10 @@
   background: none;
   border: 1px solid var(--hope);
   color: var(--hope-on-dark);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 3px 10px;
   transition: background 200ms var(--ease);
@@ -35,9 +36,10 @@
   background: none;
   border: none;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 3px 6px;
 }

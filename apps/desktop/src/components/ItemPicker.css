@@ -18,7 +18,6 @@
   overflow-y: auto;
   border: 1px solid var(--hairline);
   border-top: none;
-  background: var(--panel);
 }
 
 .item-picker__empty {
@@ -65,7 +64,8 @@
 
 .item-picker__option-set {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.68rem;
   white-space: nowrap;
 }

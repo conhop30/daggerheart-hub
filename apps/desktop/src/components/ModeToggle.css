@@ -1,29 +1,32 @@
 .mode-toggle {
   display: inline-flex;
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  overflow: hidden;
+  gap: 4px;
   margin-bottom: var(--space-4);
 }
 
 .mode-toggle__option {
   background: none;
-  border: none;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--ink-dim);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
   letter-spacing: 0.03em;
   padding: 0.5rem 1.1rem;
   transition:
     background 200ms var(--ease),
-    color 200ms var(--ease);
+    color 200ms var(--ease),
+    border-color 200ms var(--ease);
 }
 
 .mode-toggle__option:hover {
   color: var(--ink);
+  border-color: var(--hope);
 }
 
 .mode-toggle__option--active {
   background: rgba(228, 179, 65, 0.16);
-  color: var(--hope);
+  border-color: var(--hope);
+  color: var(--hope-on-dark);
 }

@@ -1,8 +1,7 @@
 .session-music-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -24,7 +23,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -43,11 +43,17 @@
 .session-music-panel__play {
   width: 100%;
   background: none;
-  border: 1px solid var(--hope);
+  border: 1px solid var(--hairline);
   color: var(--hope);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.78rem;
   padding: 0.45rem 0.9rem;
+  transition: border-color 200ms var(--ease);
+}
+
+.session-music-panel__play:hover:not(:disabled) {
+  border-color: var(--hope);
 }
 
 .session-music-panel__play:disabled {

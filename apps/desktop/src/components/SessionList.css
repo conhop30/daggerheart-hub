@@ -37,7 +37,8 @@
   background: none;
   border: 1px solid var(--hairline);
   color: var(--hope);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.78rem;
   padding: 0.4rem 0.8rem;
 }
@@ -48,10 +49,9 @@
 }
 
 .session-list__form {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-3);
 }
 

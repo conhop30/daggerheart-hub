@@ -19,10 +19,10 @@
   background: none;
   border: none;
   color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 0.3rem 0;
   transition: color 200ms var(--ease);
@@ -45,12 +45,10 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 999px;
-  border: 1px solid transparent;
   color: var(--muted);
   transition:
     color 200ms var(--ease),
-    border-color 200ms var(--ease),
+    filter 200ms var(--ease),
     transform 400ms var(--ease);
 }
 
@@ -59,10 +57,12 @@
   transform: rotate(24deg);
 }
 
+/* No circle chrome for the active state — a soft glow on the glyph itself,
+   the same "selection glows, it doesn't get boxed" language as the nav
+   links and Settings' own option rows. */
 .app-shell__settings.active {
-  color: var(--ink);
-  border-color: var(--hope);
-  background: rgba(228, 179, 65, 0.14);
+  color: var(--hope);
+  filter: drop-shadow(0 0 6px rgba(228, 179, 65, 0.65));
 }
 
 .app-shell__settings-glyph {
@@ -70,20 +70,21 @@
   height: 18px;
 }
 
+/* Inter, not the mono face — nav labels are chrome, not data, and mono
+   read too "code" here. Selection is a soft text glow (see Settings'
+   option rows for the same idiom), never a pill fill. */
 .app-shell__nav-link {
   background: none;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  border: none;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.35rem 0.85rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  padding: 0.35rem 0.7rem;
   transition:
-    border-color 200ms var(--ease),
     color 200ms var(--ease),
-    background 200ms var(--ease);
+    text-shadow 200ms var(--ease);
 }
 
 .app-shell__nav-link:hover {
@@ -92,8 +93,7 @@
 
 .app-shell__nav-link.active {
   color: var(--ink);
-  border-color: var(--hope);
-  background: rgba(228, 179, 65, 0.14);
+  text-shadow: 0 0 18px rgba(228, 179, 65, 0.55);
 }
 
 /* Same entrance signature as every other stage/form transition in the app

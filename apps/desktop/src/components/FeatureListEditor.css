@@ -3,7 +3,8 @@
 }
 
 .feature-editor__label {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.7rem;
   color: var(--muted);
   margin-bottom: var(--space-1);

@@ -128,111 +128,128 @@ export default function SettingsPage() {
     <div className="settings-page">
       <h1 className="settings-page__title">Settings</h1>
 
-      <section className="settings-page__section">
-        <h2 className="settings-page__section-title">Appearance</h2>
-        <p className="settings-page__section-hint">Choose how Daggerheart Brewery looks.</p>
-        <div className="settings-page__options">
-          {THEME_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`settings-page__option${preference === option.value ? ' active' : ''}`}
-              onClick={() => setPreference(option.value)}
-            >
-              <span className="settings-page__option-label">{option.label}</span>
-              <span className="settings-page__option-description">{option.description}</span>
-            </button>
-          ))}
+      <div className="settings-page__ledger">
+        <div className="settings-page__row">
+          <div className="settings-page__row-label">
+            <span className="settings-page__row-index">01</span>
+            <div className="settings-page__row-title">Appearance</div>
+          </div>
+          <div className="settings-page__row-content">
+            <p className="settings-page__section-hint">Choose how Daggerheart Brewery looks.</p>
+            <div className="settings-page__options">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`settings-page__option${preference === option.value ? ' active' : ''}`}
+                  onClick={() => setPreference(option.value)}
+                >
+                  <span className="settings-page__option-label">{option.label}</span>
+                  <span className="settings-page__option-description">{option.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </section>
 
-      <section className="settings-page__section">
-        <h2 className="settings-page__section-title">Window Size</h2>
-        <p className="settings-page__section-hint">
-          {currentSize ? `Current size: ${currentSize[0]} × ${currentSize[1]}` : 'Pick a standard window size.'}
-        </p>
-        <div className="settings-page__options">
-          {WINDOW_PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              className={`settings-page__option${
-                currentSize && currentSize[0] === preset.width && currentSize[1] === preset.height ? ' active' : ''
-              }`}
-              onClick={() => applyPreset(preset)}
-              disabled={applying !== null}
-            >
-              <span className="settings-page__option-label">{preset.label}</span>
-              <span className="settings-page__option-description">
-                {applying === preset.label ? 'Applying…' : `${preset.width} × ${preset.height}`}
-              </span>
-            </button>
-          ))}
-        </div>
-        {error && <p className="settings-page__error">{error}</p>}
-        <label className="settings-page__checkbox">
-          <input
-            type="checkbox"
-            checked={frameless}
-            onChange={(e) => applyFrameless(e.target.checked)}
-            disabled={applyingFrameless}
-          />
-          Frameless fullscreen mode (no title bar — use the close button that appears in the corner to quit)
-        </label>
-      </section>
-
-      <section className="settings-page__section">
-        <h2 className="settings-page__section-title">About &amp; Updates</h2>
-        <p className="settings-page__section-hint">
-          {version ? `You're running version ${version}.` : 'Check whether a newer version is out.'} When one is,
-          you'll be asked — nothing is downloaded or installed unless you say so.
-        </p>
-        <div className="settings-page__update-row">
-          <button type="button" className="settings-page__option" onClick={runUpdateCheck} disabled={checking}>
-            <span className="settings-page__option-label">{checking ? 'Checking…' : 'Check for updates'}</span>
-          </button>
-          {update && (asked || update.phase === 'downloading' || update.phase === 'downloaded') && (
-            <p className="settings-page__update-status" role="status">
-              {describeUpdate(update)}
-              {update.phase === 'available' && (
-                <>
-                  {' '}
-                  <button
-                    type="button"
-                    className="settings-page__link"
-                    onClick={() => apiClient.downloadUpdate().catch(() => {})}
-                  >
-                    {update.canInstall ? 'Update now' : 'View download'}
-                  </button>
-                </>
-              )}
-              {update.phase === 'downloaded' && (
-                <>
-                  {' '}
-                  <button
-                    type="button"
-                    className="settings-page__link"
-                    onClick={() => apiClient.installUpdate().catch(() => {})}
-                  >
-                    Restart &amp; install
-                  </button>
-                </>
-              )}
+        <div className="settings-page__row">
+          <div className="settings-page__row-label">
+            <span className="settings-page__row-index">02</span>
+            <div className="settings-page__row-title">Window Size</div>
+          </div>
+          <div className="settings-page__row-content">
+            <p className="settings-page__section-hint">
+              {currentSize ? `Current size: ${currentSize[0]} × ${currentSize[1]}` : 'Pick a standard window size.'}
             </p>
-          )}
+            <div className="settings-page__options">
+              {WINDOW_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className={`settings-page__option${
+                    currentSize && currentSize[0] === preset.width && currentSize[1] === preset.height ? ' active' : ''
+                  }`}
+                  onClick={() => applyPreset(preset)}
+                  disabled={applying !== null}
+                >
+                  <span className="settings-page__option-label">{preset.label}</span>
+                  <span className="settings-page__option-description">
+                    {applying === preset.label ? 'Applying…' : `${preset.width} × ${preset.height}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {error && <p className="settings-page__error">{error}</p>}
+            <label className="settings-page__checkbox">
+              <input
+                type="checkbox"
+                checked={frameless}
+                onChange={(e) => applyFrameless(e.target.checked)}
+                disabled={applyingFrameless}
+              />
+              Frameless fullscreen mode (no title bar — use the close button that appears in the corner to quit)
+            </label>
+          </div>
         </div>
-        <label className="settings-page__checkbox">
-          <input
-            type="checkbox"
-            checked={launchCheck}
-            onChange={(e) => {
-              setLaunchCheck(e.target.checked);
-              setLaunchCheckEnabled(e.target.checked);
-            }}
-          />
-          Check for updates when the app starts
-        </label>
-      </section>
+
+        <div className="settings-page__row">
+          <div className="settings-page__row-label">
+            <span className="settings-page__row-index">03</span>
+            <div className="settings-page__row-title">About &amp; Updates</div>
+          </div>
+          <div className="settings-page__row-content">
+            <p className="settings-page__section-hint">
+              {version ? `You're running version ${version}.` : 'Check whether a newer version is out.'} When one is,
+              you'll be asked — nothing is downloaded or installed unless you say so.
+            </p>
+            <div className="settings-page__update-row">
+              <button type="button" className="settings-page__option" onClick={runUpdateCheck} disabled={checking}>
+                <span className="settings-page__option-label">{checking ? 'Checking…' : 'Check for updates'}</span>
+              </button>
+              {update && (asked || update.phase === 'downloading' || update.phase === 'downloaded') && (
+                <p className="settings-page__update-status" role="status">
+                  {describeUpdate(update)}
+                  {update.phase === 'available' && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="settings-page__link"
+                        onClick={() => apiClient.downloadUpdate().catch(() => {})}
+                      >
+                        {update.canInstall ? 'Update now' : 'View download'}
+                      </button>
+                    </>
+                  )}
+                  {update.phase === 'downloaded' && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="settings-page__link"
+                        onClick={() => apiClient.installUpdate().catch(() => {})}
+                      >
+                        Restart &amp; install
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+            <label className="settings-page__checkbox">
+              <input
+                type="checkbox"
+                checked={launchCheck}
+                onChange={(e) => {
+                  setLaunchCheck(e.target.checked);
+                  setLaunchCheckEnabled(e.target.checked);
+                }}
+              />
+              Check for updates when the app starts
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,7 @@
 .loot-roller {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) 0;
 }
 
 .loot-roller__title {
@@ -20,27 +19,31 @@
 
 .loot-roller__rarity,
 .loot-roller__pool-size {
-  background: none;
+  background: transparent;
   border: 1px solid var(--hairline);
   border-radius: 999px;
-  color: var(--muted);
-  font-family: var(--font-mono);
+  color: var(--ink-dim);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.75rem;
   padding: 0.3rem 0.8rem;
   transition:
+    background 180ms var(--ease),
     border-color 180ms var(--ease),
     color 180ms var(--ease);
 }
 
 .loot-roller__rarity:hover,
 .loot-roller__pool-size:hover {
+  border-color: var(--hope);
   color: var(--ink);
 }
 
 .loot-roller__rarity--active,
 .loot-roller__pool-size--active {
+  background: var(--hope);
   border-color: var(--hope);
-  color: var(--hope);
+  color: #1a1508;
 }
 
 .loot-roller__hint {
@@ -72,24 +75,28 @@
 
 .loot-roller__table-type {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.7rem;
 }
 
 .loot-roller__roll {
-  background: var(--hope);
+  background: none;
   border: none;
-  color: var(--void);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+  border-bottom: 1px solid var(--hope);
+  color: var(--hope-on-dark);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
   font-weight: 600;
-  padding: 0.5rem 1.2rem;
-  border-radius: 999px;
+  padding: 0.3rem 0;
   margin-bottom: var(--space-2);
+  transition:
+    color 180ms var(--ease),
+    border-color 180ms var(--ease);
 }
 
 .loot-roller__roll:disabled {
-  background: var(--hairline);
+  border-bottom-color: var(--hairline);
   color: var(--muted);
   cursor: not-allowed;
 }
@@ -107,7 +114,8 @@
 .loot-roller__log-header {
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.72rem;
   color: var(--muted);
   margin-bottom: 2px;

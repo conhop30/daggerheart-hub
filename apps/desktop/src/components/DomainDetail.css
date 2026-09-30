@@ -6,9 +6,10 @@
   background: none;
   border: none;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
   padding: 0;
   margin-bottom: var(--space-3);
   transition: color 200ms var(--ease);
@@ -48,15 +49,14 @@
 }
 
 .domain-detail__hero-action {
-  background: rgba(0, 0, 0, 0.3);
+  background: none;
   border: 1px solid rgba(255, 255, 255, 0.45);
   color: #ffffff;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   padding: 4px 11px;
-  border-radius: 999px;
 }
 
 .domain-detail__hero-action:hover {
@@ -69,10 +69,9 @@
 
 .domain-detail__edit-panel,
 .domain-detail__card-form {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-4);
 }
 
@@ -122,8 +121,9 @@
 }
 
 .domain-card-grid__create-label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }

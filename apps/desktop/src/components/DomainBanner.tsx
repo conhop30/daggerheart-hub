@@ -16,48 +16,53 @@ interface DomainBannerProps {
   onDelete: () => void;
 }
 
-// One Domain's clickable gallery tile — a gradient swatch of its own color,
-// like ClassSpread's hero panel but sized for a grid instead of a full
-// two-column spread.
+// One Domain's clickable row — book-spread layout: a color banner on the
+// left, name and description on the right, like a codex entry rather than
+// a boxed gallery tile. Hovering enlarges the banner and it's the whole
+// row's click target; Edit/Delete sit off to the side, only visible on
+// hover, and stop the click from also opening the Domain.
 export function DomainBanner({ domain, cardCount, onOpen, onEdit, onDelete }: DomainBannerProps) {
   return (
-    <div className="domain-banner" style={{ background: domainGradient(domain.colorHex) }}>
+    <div className="domain-banner">
       <button type="button" className="domain-banner__hit" onClick={onOpen} aria-label={`Open ${domain.name}`} />
-      <div className="domain-banner__actions">
-        <button
-          type="button"
-          className="domain-banner__action"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          className="domain-banner__action domain-banner__action--danger"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          Delete
-        </button>
-      </div>
+      <div className="domain-banner__art" style={{ background: domainGradient(domain.colorHex) }} />
       <div className="domain-banner__body">
         <h3 className="domain-banner__title">{domain.name}</h3>
         {domain.description && <p className="domain-banner__description">{domain.description}</p>}
+      </div>
+      <div className="domain-banner__meta">
         <span className="domain-banner__count">
           {cardCount} card{cardCount === 1 ? '' : 's'}
         </span>
+        <div className="domain-banner__actions">
+          <button
+            type="button"
+            className="domain-banner__action"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="domain-banner__action domain-banner__action--danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// The hollow "+ Create Domain" tile — same footprint as a real banner, no
-// fill, so it reads as an empty slot in the grid rather than another
+// The hollow "+ Create Domain" row — same footprint as a real row, no
+// banner, so it reads as an empty slot in the list rather than another
 // Domain.
 export function DomainBannerCreate({ onClick }: { onClick: () => void }) {
   return (

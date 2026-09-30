@@ -32,40 +32,43 @@
   margin-bottom: var(--space-3);
 }
 
+/* Selection glows instead of filling a pill — no border, no flat fill. */
 .domains-page__filter {
-  padding: 9px 20px;
+  padding: 9px 18px;
   border-radius: 999px;
-  border: 1px solid var(--hairline);
+  border: none;
   background: transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.8rem;
   transition:
-    border-color 220ms var(--ease),
     color 220ms var(--ease),
-    background 220ms var(--ease);
+    background 220ms var(--ease),
+    box-shadow 220ms var(--ease);
 }
 
 .domains-page__filter:hover {
   color: var(--ink);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.12), transparent 72%);
 }
 
 .domains-page__filter.active {
-  color: var(--ink);
-  border-color: var(--hope);
-  background: rgba(228, 179, 65, 0.14);
+  color: var(--hope);
+  background: radial-gradient(circle, rgba(228, 179, 65, 0.22), transparent 72%);
+  box-shadow: 0 0 30px 4px rgba(228, 179, 65, 0.16);
 }
 
 .domains-page__edit-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-3);
 }
 
+/* Book-spread list, not a tile grid — each Domain is a row (see
+   DomainBanner.css), separated by its own hairline; the list itself just
+   needs a closing rule at top. */
 .domain-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-3);
+  border-top: 1px solid var(--hairline);
 }

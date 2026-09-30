@@ -7,10 +7,9 @@
 }
 
 .music-library__rail {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) 0;
 }
 
 .music-library__rail-title {
@@ -94,7 +93,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -115,7 +115,8 @@
   background: none;
   border: 1px solid var(--hairline);
   color: var(--ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.74rem;
   padding: 0.35rem 0.75rem;
   transition:
@@ -146,10 +147,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--space-3);
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) 0;
   margin-bottom: var(--space-3);
 }
 
@@ -157,7 +157,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -177,8 +178,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  background: var(--panel);
-  border: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
   padding: 0.5rem 0.75rem;
 }
 
@@ -197,7 +197,8 @@
 }
 
 .music-library__tag {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.64rem;
   font-style: normal;
   letter-spacing: 0.05em;

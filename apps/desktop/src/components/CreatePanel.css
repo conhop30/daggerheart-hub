@@ -1,7 +1,7 @@
+/* No panel box — the gradient accent bar is the only boundary, same idiom
+   as EntryCard's left accent. */
 .create-panel {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-left: 4px solid transparent;
+  border-left: 3px solid transparent;
   border-image: linear-gradient(180deg, var(--hope), var(--fear)) 1;
   margin-bottom: var(--space-4);
 }
@@ -20,7 +20,7 @@
 }
 
 .create-panel__toggle:hover {
-  background: var(--panel-raised);
+  background: radial-gradient(ellipse at left, rgba(228, 179, 65, 0.1), transparent 75%);
 }
 
 .create-panel__toggle-label {
@@ -104,7 +104,7 @@
 .chip:hover,
 .banner:hover {
   border-color: var(--hope);
-  background: var(--panel-raised);
+  background: radial-gradient(ellipse, rgba(228, 179, 65, 0.1), transparent 75%);
 }
 
 .banner {
@@ -127,6 +127,5 @@
 
 .create-panel__loading {
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
 }
