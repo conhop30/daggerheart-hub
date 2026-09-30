@@ -1,7 +1,7 @@
 {
   "name": "daggerheart-brewery-desktop",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "A local brewery for crafting Daggerheart homebrew content — Classes, Domains, Adversaries, Equipment, and more.",
   "author": "Connor Hopkins",
   "type": "module",
