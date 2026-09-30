@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { SessionEnvironment } from '../api/sessionEnvironments';
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
@@ -17,6 +18,8 @@ interface SessionEnvironmentTileProps {
 // only things a GM actually touches during play. (These notes travel with the
 // Environment into later sessions; they're not the per-session "Session Notes".)
 export default function SessionEnvironmentTile({ environment, masterFeatures, onChange, onRemove }: SessionEnvironmentTileProps) {
+  const [featuresOpen, setFeaturesOpen] = useState(true);
+  const featureRows = featureRowsFor(masterFeatures);
   return (
     <ContentCard
       title={environment.label}
@@ -40,7 +43,19 @@ export default function SessionEnvironmentTile({ environment, masterFeatures, on
           rows={2}
         />
       </label>
-      <FeatureRowLines rows={featureRowsFor(masterFeatures)} />
+      {featureRows.length > 0 && (
+        <div className="session-tile__features">
+          <button
+            type="button"
+            className="session-tile__features-toggle"
+            onClick={() => setFeaturesOpen((open) => !open)}
+            aria-expanded={featuresOpen}
+          >
+            {featuresOpen ? '▾' : '▸'} Features
+          </button>
+          {featuresOpen && <FeatureRowLines label={null} rows={featureRows} />}
+        </div>
+      )}
     </ContentCard>
   );
 }

@@ -18,13 +18,15 @@ interface PartyRosterProps {
   sessionId?: string;
   /** Called with the roster whenever it loads or changes, so a parent can share it. */
   onChange?: (members: PartyMember[]) => void;
+  /** 'grid' packs members into responsive columns — used on the Campaign page and during Combat, where a full-width row per member wastes space. Defaults to 'list'. */
+  layout?: 'list' | 'grid';
 }
 
 // The party for a Campaign, carried across its Sessions. Same fetch-by-parent
 // shape as DomainDetail's Cards list: its own effect keyed on the parent id,
 // not useApiList (which only fetches once on mount and can't refetch on a
 // changing parent).
-export default function PartyRoster({ campaignId, sessionId, onChange }: PartyRosterProps) {
+export default function PartyRoster({ campaignId, sessionId, onChange, layout = 'list' }: PartyRosterProps) {
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +125,7 @@ export default function PartyRoster({ campaignId, sessionId, onChange }: PartyRo
           items={members}
           emptyMessage="No party members yet."
           getKey={(m) => m.id}
+          layout={layout}
           renderItem={(member) =>
             editingId === member.id ? (
               <div className="party-roster__form">

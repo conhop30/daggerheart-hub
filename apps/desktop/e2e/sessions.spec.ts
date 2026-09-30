@@ -183,10 +183,17 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.item-picker__option:has-text("Ashen Warden")');
 
     const tile = win.locator('.content-card', { hasText: 'Ashen Warden' });
-    await expect(tile.locator('.content-card__section-label:has-text("Features")')).toBeVisible();
+    // Features start expanded and grouped by section (Passives/Actions/…).
+    await expect(tile.locator('.session-tile__features-toggle')).toBeVisible();
+    await expect(tile.locator('.content-card__feature-group-label:has-text("Passives")')).toBeVisible();
     await expect(tile).toContainText('Smoldering Grip');
-    await expect(tile).toContainText('Passive');
     await expect(tile).toContainText('Once per rest, mark a Stress to make an attack ignore Armor.');
+
+    // Collapsing hides the group, expanding brings it back.
+    await tile.locator('.session-tile__features-toggle').click();
+    await expect(tile.locator('.content-card__feature-group-label:has-text("Passives")')).toHaveCount(0);
+    await tile.locator('.session-tile__features-toggle').click();
+    await expect(tile.locator('.content-card__feature-group-label:has-text("Passives")')).toBeVisible();
 
     // Math.floor(0.5 * 10) + 1 === 6, so 1d10+2 always resolves to 6 + 2 = 8.
     await win.evaluate(() => {

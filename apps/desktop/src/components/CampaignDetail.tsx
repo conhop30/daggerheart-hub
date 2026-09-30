@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
-import type { Session } from '../api/sessions';
+import { sessionsApi, type Session } from '../api/sessions';
+import CampaignCombatSidebar from './CampaignCombatSidebar';
 import CampaignForm from './CampaignForm';
 import PartyRoster from './PartyRoster';
 import SessionList from './SessionList';
@@ -23,6 +24,21 @@ export default function CampaignDetail({
   onOpenSession,
 }: CampaignDetailProps) {
   const [editing, setEditing] = useState(false);
+  const [mostRecentSession, setMostRecentSession] = useState<Session | null>(null);
+
+  // Sessions come back in creation order, so the last one is the most
+  // recent — same convention SessionList already relies on for "Clone Most
+  // Recent". Only used to seed the sidebar preview; SessionList owns the
+  // actual list and its own create/delete.
+  useEffect(() => {
+    let cancelled = false;
+    sessionsApi.listByCampaign(campaign.id).then((list) => {
+      if (!cancelled) setMostRecentSession(list.length > 0 ? list[list.length - 1] : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaign.id]);
 
   async function handleDelete() {
     if (!window.confirm(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`))
@@ -72,8 +88,15 @@ export default function CampaignDetail({
         </div>
       )}
 
-      <PartyRoster campaignId={campaign.id} />
-      <SessionList campaignId={campaign.id} onOpenSession={onOpenSession} />
+      <div className="campaign-detail__layout">
+        <div className="campaign-detail__main">
+          <PartyRoster campaignId={campaign.id} layout="grid" />
+          <SessionList campaignId={campaign.id} onOpenSession={onOpenSession} />
+        </div>
+        <aside className="campaign-detail__sidebar">
+          <CampaignCombatSidebar campaignId={campaign.id} session={mostRecentSession} />
+        </aside>
+      </div>
     </div>
   );
 }

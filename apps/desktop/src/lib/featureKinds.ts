@@ -86,3 +86,23 @@ export function featureRowsFor(features: FeatureSections | undefined): FeatureRo
     (data[kind.key] ?? []).map((f) => ({ ...f, kind: kind.label })),
   );
 }
+
+const PLURAL_BY_SINGULAR: Record<string, string> = Object.fromEntries(FEATURE_KINDS.map((k) => [k.label, k.plural]));
+
+export interface FeatureRowGroup {
+  /** Section heading — the registered plural ("Passives") or, for a custom section, whatever was typed (already plural-shaped, e.g. "Lair Actions"). */
+  heading: string;
+  rows: FeatureRow[];
+}
+
+/** Bucket already-flattened rows back into their sections, for a display that wants Passives/Actions/Reactions kept apart rather than one long list. */
+export function groupFeatureRows(rows: FeatureRow[]): FeatureRowGroup[] {
+  const groups: FeatureRowGroup[] = [];
+  for (const row of rows) {
+    const heading = PLURAL_BY_SINGULAR[row.kind] ?? row.kind;
+    const last = groups[groups.length - 1];
+    if (last && last.heading === heading) last.rows.push(row);
+    else groups.push({ heading, rows: [row] });
+  }
+  return groups;
+}

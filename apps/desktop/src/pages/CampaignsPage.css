@@ -4,6 +4,14 @@
   padding: var(--space-4);
 }
 
+/* Combat wants every inch of the window — Adversaries carry full Feature
+   lists now, and Players + Adversaries both flow into responsive rows (see
+   CombatPanel/ContentCardList's grid layout), so the usual reading-width
+   cap works against it instead of for it. */
+.campaigns-page--wide {
+  max-width: none;
+}
+
 .campaigns-page__header {
   display: flex;
   align-items: baseline;

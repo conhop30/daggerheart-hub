@@ -29,7 +29,9 @@ function formatDamageRoll(result: DamageRollResult): string {
 // only piece that has to know sessionAdversariesApi exists.
 export default function SessionAdversaryTile({ adversary, masterFeatures, onChange, onRemove }: SessionAdversaryTileProps) {
   const [rollResult, setRollResult] = useState<DamageRollResult | null>(null);
+  const [featuresOpen, setFeaturesOpen] = useState(true);
   const parsedDamage = parseDamageNotation(adversary.attackDescription);
+  const featureRows = featureRowsFor(masterFeatures);
 
   function handleRollDamage() {
     if (!parsedDamage) return;
@@ -92,7 +94,19 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, onChan
         values={adversary.conditions}
         onChange={(conditions) => onChange({ conditions })}
       />
-      <FeatureRowLines rows={featureRowsFor(masterFeatures)} />
+      {featureRows.length > 0 && (
+        <div className="session-tile__features">
+          <button
+            type="button"
+            className="session-tile__features-toggle"
+            onClick={() => setFeaturesOpen((open) => !open)}
+            aria-expanded={featuresOpen}
+          >
+            {featuresOpen ? '▾' : '▸'} Features
+          </button>
+          {featuresOpen && <FeatureRowLines label={null} rows={featureRows} />}
+        </div>
+      )}
     </ContentCard>
   );
 }

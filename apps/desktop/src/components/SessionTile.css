@@ -53,3 +53,24 @@
   width: 100%;
   margin-top: 4px;
 }
+
+.session-tile__features {
+  margin-top: var(--space-1);
+}
+
+.session-tile__features-toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0;
+  transition: color 160ms var(--ease);
+}
+
+.session-tile__features-toggle:hover {
+  color: var(--ink);
+}

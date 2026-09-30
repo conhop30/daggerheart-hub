@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { FeatureRow } from '../lib/featureKinds';
+import { groupFeatureRows, type FeatureRow } from '../lib/featureKinds';
 import './ContentCard.css';
 
 interface ContentCardProps {
@@ -82,22 +82,30 @@ export function FeatureLines({ label, features }: { label?: string; features: Na
 }
 
 // Like FeatureLines, but for rows already flattened by featureRowsFor() —
-// each one prints its section (Passive/Action/Reaction/Evolution/…)
-// alongside its name, which matters a lot mid-combat (a Reaction reads very
-// differently from a Passive).
-export function FeatureRowLines({ label = 'Features', rows }: { label?: string; rows: FeatureRow[] }) {
+// grouped back into their sections (Passives/Actions/Reactions/…) since
+// that distinction matters a lot mid-combat (a Reaction reads very
+// differently from a Passive) and reading three run-together lists is
+// slower than reading three short ones. Pass `label={null}` when a caller
+// supplies its own heading (e.g. a collapsible toggle) instead of this one.
+export function FeatureRowLines({ label = 'Features', rows }: { label?: string | null; rows: FeatureRow[] }) {
   if (!rows || rows.length === 0) return null;
+  const groups = groupFeatureRows(rows);
   return (
     <div className="content-card__section">
-      <p className="content-card__section-label">{label}</p>
-      <ul className="content-card__feature-list">
-        {rows.map((f, i) => (
-          <li key={i}>
-            <strong>{f.name}</strong> <span className="content-card__feature-kind">— {f.kind}</span>
-            {f.description ? `: ${f.description}` : ''}
-          </li>
-        ))}
-      </ul>
+      {label && <p className="content-card__section-label">{label}</p>}
+      {groups.map((group) => (
+        <div className="content-card__feature-group" key={group.heading}>
+          <p className="content-card__feature-group-label">{group.heading}</p>
+          <ul className="content-card__feature-list">
+            {group.rows.map((f, i) => (
+              <li key={i}>
+                <strong>{f.name}</strong>
+                {f.description ? `: ${f.description}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
@@ -121,14 +129,16 @@ interface ContentCardListProps<T> {
   emptyMessage: string;
   getKey: (item: T) => string;
   renderItem: (item: T) => ReactNode;
+  /** 'grid' packs items into responsive columns instead of one full-width row each — see PartyRoster/CombatPanel. Defaults to 'list'. */
+  layout?: 'list' | 'grid';
 }
 
-export function ContentCardList<T>({ items, emptyMessage, getKey, renderItem }: ContentCardListProps<T>) {
+export function ContentCardList<T>({ items, emptyMessage, getKey, renderItem, layout = 'list' }: ContentCardListProps<T>) {
   if (items.length === 0) {
     return <p className="content-card-list__empty">{emptyMessage}</p>;
   }
   return (
-    <div className="content-card-list">
+    <div className={layout === 'grid' ? 'content-card-list content-card-list--grid' : 'content-card-list'}>
       {items.map((item) => (
         <div key={getKey(item)}>{renderItem(item)}</div>
       ))}

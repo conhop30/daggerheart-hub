@@ -1,0 +1,63 @@
+.campaign-combat-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.campaign-combat-sidebar__hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.campaign-combat-sidebar__combatants {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-2);
+}
+
+.campaign-combat-sidebar__label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 var(--space-1);
+}
+
+.campaign-combat-sidebar__combatant {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.campaign-combat-sidebar__combatant:last-child {
+  border-bottom: none;
+}
+
+.campaign-combat-sidebar__combatant-name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+/* Condensed: the stepper's own label/gaps shrink so two stats fit in one
+   tight column instead of the roomier row CombatPanel's full tiles use. */
+.campaign-combat-sidebar__combatant .stat-stepper {
+  padding: 1px 0;
+  gap: var(--space-1);
+}
+
+.campaign-combat-sidebar__combatant .stat-stepper__label {
+  font-size: 0.68rem;
+}
+
+.campaign-combat-sidebar__combatant .stat-stepper__button {
+  width: 18px;
+  height: 18px;
+}
+
+.campaign-combat-sidebar__combatant .stat-stepper__value {
+  font-size: 0.78rem;
+  min-width: 2.6rem;
+}

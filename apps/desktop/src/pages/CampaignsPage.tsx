@@ -110,7 +110,7 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
 
   if (selectedCampaign && selectedSession) {
     return (
-      <div className="campaigns-page">
+      <div className={`campaigns-page${selectedSession.mode === 'combat' ? ' campaigns-page--wide' : ''}`}>
         <SessionView
           session={selectedSession}
           campaignId={selectedCampaign.id}

@@ -112,7 +112,12 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
           <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
           <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
 
-          <PartyRoster campaignId={campaignId} sessionId={session.id} onChange={setMembers} />
+          <PartyRoster
+            campaignId={campaignId}
+            sessionId={session.id}
+            onChange={setMembers}
+            layout={session.mode === 'combat' ? 'grid' : 'list'}
+          />
 
           {session.mode === 'combat' ? (
             <CombatPanel sessionId={session.id} />

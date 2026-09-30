@@ -91,3 +91,34 @@
   padding: var(--space-4) 0;
   margin-bottom: var(--space-4);
 }
+
+/* The right-hand "side window" the music preview + condensed Adversaries
+   live in — same collapse-to-one-column shape as SessionView's sidebar. */
+.campaign-detail__layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.campaign-detail__sidebar {
+  position: sticky;
+  top: var(--space-3);
+}
+
+@media (max-width: 880px) {
+  .campaign-detail__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-detail__sidebar {
+    position: static;
+  }
+}
+
+/* Party sits directly above Sessions with no extra breathing room — with
+   the grid layout doing the actual compaction, this just removes the
+   leftover vertical gap between the two sections. */
+.campaign-detail__main .party-roster {
+  margin-bottom: var(--space-3);
+}

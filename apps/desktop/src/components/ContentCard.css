@@ -4,6 +4,17 @@
   border-top: 1px solid var(--hairline);
 }
 
+/* Packs items into responsive columns instead of one full-width row each —
+   the same shape as CombatPanel's grid, reused wherever a vertical list of
+   short cards was wasting width (PartyRoster on the Campaign page and
+   during Combat). */
+.content-card-list--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0 var(--space-3);
+  align-items: start;
+}
+
 .content-card-list__empty {
   color: var(--muted);
   font-size: 0.9rem;
@@ -128,9 +139,20 @@
   color: var(--ink);
 }
 
-.content-card__feature-kind {
-  color: var(--muted);
-  font-size: 0.78em;
+.content-card__feature-group {
+  margin-bottom: var(--space-1);
+}
+
+.content-card__feature-group:last-child {
+  margin-bottom: 0;
+}
+
+.content-card__feature-group-label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin: 0 0 1px;
 }
