@@ -1,0 +1,47 @@
+.domain-ribbon {
+  position: relative;
+  width: 84px;
+  height: 132px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45));
+  transition: transform 220ms var(--ease);
+}
+
+/* Swallow-tailed pennant: rectangle top, two pointed "legs" at the bottom
+   with a V notch cut between them. The border layer sits full-size behind
+   a 2px-inset fill layer of the same relative shape, giving a thin gold
+   outline without needing an SVG stroke. */
+.domain-ribbon__border,
+.domain-ribbon__fill {
+  position: absolute;
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 75% 100%, 50% 83%, 25% 100%, 0 78%);
+}
+
+.domain-ribbon__border {
+  inset: 0;
+  background: #d9b64a;
+}
+
+.domain-ribbon__fill {
+  inset: 2px;
+  background-color: currentColor;
+}
+
+.domain-ribbon__icon {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 38px;
+  height: 38px;
+  color: #ffffff;
+}
+
+.domain-ribbon__divider {
+  position: absolute;
+  top: 64px;
+  left: 14%;
+  right: 14%;
+  height: 2px;
+  background: #d9b64a;
+}

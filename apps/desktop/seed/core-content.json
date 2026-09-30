@@ -2,15 +2,15 @@
   "_note": "Core Set Domain and Class flavor text, carried over from the old create-domains.ps1/create-classes.ps1 seed scripts when the Spring Boot backend was removed in favor of a local-first JSON store. Cross-references use names, not the old server-assigned numeric ids, since nothing here is wired to a datastore yet — this is just the content, waiting for the local-store/import work to actually load it. All description/feature text is an original paraphrase, not a rulebook transcription — mechanics (numbers, ranges, costs) are kept exact, wording is rewritten.",
   "gameSet": "Core",
   "domains": [
-    { "name": "Arcana", "description": "Raw, instinctual magic drawn from within. Volatile in untrained hands, but capable of commanding energy and the elements when properly channeled.", "colorHex": "#7C5FC4" },
-    { "name": "Blade", "description": "Mastery of weapons in all their forms, from steel to bow to the improvised. Its adherents pursue lethal precision and dominion over death itself.", "colorHex": "#B23A3A" },
-    { "name": "Bone", "description": "Command over one's own body and a sharp read on the battlefield. Practitioners combine physical discipline with tactical instinct.", "colorHex": "#C9B896" },
-    { "name": "Codex", "description": "Magic built on study rather than instinct - equations, texts, and recorded lore. Offers broad, versatile command of magical knowledge.", "colorHex": "#3A5A8C" },
-    { "name": "Grace", "description": "Charisma as a form of power. Through performance, charm, or deception, its wielders bend how others perceive reality.", "colorHex": "#D46A9F" },
-    { "name": "Midnight", "description": "Shadow, secrecy, and obscurity. Practitioners specialize in stealth, misdirection, and uncovering what's hidden.", "colorHex": "#2E2054" },
-    { "name": "Sage", "description": "Power drawn from the natural world. Grants the vitality of growing things and the ferocity of a predator alike.", "colorHex": "#5B8C51" },
-    { "name": "Splendor", "description": "Command over life itself - the power to heal, sustain, and in rare cases, end it.", "colorHex": "#D9A93A" },
-    { "name": "Valor", "description": "Protection through strength, whether offered by shield or by blade. Its followers exist to guard others in battle.", "colorHex": "#5B7A99" }
+    { "name": "Arcana", "description": "Raw, instinctual magic drawn from within. Volatile in untrained hands, but capable of commanding energy and the elements when properly channeled.", "colorHex": "#593A76" },
+    { "name": "Blade", "description": "Mastery of weapons in all their forms, from steel to bow to the improvised. Its adherents pursue lethal precision and dominion over death itself.", "colorHex": "#8A231D" },
+    { "name": "Bone", "description": "Command over one's own body and a sharp read on the battlefield. Practitioners combine physical discipline with tactical instinct.", "colorHex": "#D4E4E7" },
+    { "name": "Codex", "description": "Magic built on study rather than instinct - equations, texts, and recorded lore. Offers broad, versatile command of magical knowledge.", "colorHex": "#164476" },
+    { "name": "Grace", "description": "Charisma as a form of power. Through performance, charm, or deception, its wielders bend how others perceive reality.", "colorHex": "#B5387B" },
+    { "name": "Midnight", "description": "Shadow, secrecy, and obscurity. Practitioners specialize in stealth, misdirection, and uncovering what's hidden.", "colorHex": "#181B1B" },
+    { "name": "Sage", "description": "Power drawn from the natural world. Grants the vitality of growing things and the ferocity of a predator alike.", "colorHex": "#17542C" },
+    { "name": "Splendor", "description": "Command over life itself - the power to heal, sustain, and in rare cases, end it.", "colorHex": "#D2A92F" },
+    { "name": "Valor", "description": "Protection through strength, whether offered by shield or by blade. Its followers exist to guard others in battle.", "colorHex": "#C5571D" }
   ],
   "classes": [
     {

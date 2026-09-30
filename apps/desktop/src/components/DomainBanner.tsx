@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import type { Domain } from '../api/domains';
 import { gradientForColor } from '../lib/color';
-import DomainIcon from './DomainIcon';
+import DomainRibbon from './DomainRibbon';
 import './DomainBanner.css';
 
 // Kept as a re-export so every existing `import { domainGradient } from
@@ -36,9 +36,7 @@ export const DomainBanner = memo(function DomainBanner({ domain, cardCount, onOp
         onClick={() => onOpen(domain.id)}
         aria-label={`Open ${domain.name}`}
       />
-      <div className="domain-banner__art" style={{ background: domainGradient(domain.colorHex) }}>
-        <DomainIcon domainName={domain.name} className="domain-banner__icon" />
-      </div>
+      <DomainRibbon domainName={domain.name} colorHex={domain.colorHex} className="domain-banner__ribbon" />
       <div className="domain-banner__body">
         <h3 className="domain-banner__title">{domain.name}</h3>
         {domain.description && <p className="domain-banner__description">{domain.description}</p>}
