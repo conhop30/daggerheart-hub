@@ -27,7 +27,6 @@ export default function SessionEnvironmentTile({ environment, masterFeatures, on
       deleteLabel="Push Out"
       meta={
         <>
-          {environment.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={environment.tier} />
           <EditableMetaField
             label="Difficulty"

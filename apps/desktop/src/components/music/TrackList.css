@@ -167,7 +167,21 @@
 }
 
 .track-list__popover-move select {
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  color: var(--ink);
   font-size: 0.78rem;
+  padding: 0.3rem 0.4rem;
+  transition: border-color 160ms var(--ease);
+}
+
+.track-list__popover-move select:hover {
+  border-color: var(--muted);
+}
+
+.track-list__popover-move select:focus-visible {
+  border-color: var(--hope);
 }
 
 .track-list__empty {

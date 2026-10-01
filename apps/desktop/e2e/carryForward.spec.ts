@@ -98,7 +98,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
     await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(ogreHp()).toHaveText('7 / 8');
-    await expect(win.locator('.combat-panel .content-card')).toContainText('Carried over');
 
     // Change things in Session 2.
     await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Decrease HP' }).click();

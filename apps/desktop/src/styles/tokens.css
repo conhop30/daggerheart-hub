@@ -63,6 +63,13 @@
   --dur-field: 520ms;
   --ease-field: var(--ease);
 
+  /* Tells Chromium to draw native, unstyled form chrome (a <select>'s own
+     closed-state box and its options popup, scrollbars, etc.) in a dark
+     palette instead of the OS default light one — the fix for native
+     dropdowns (e.g. the Music region/default pickers) looking like a
+     jarring white box dropped into an otherwise dark app. */
+  color-scheme: dark;
+
   /* Text size preference (Settings > Text Size, TextSizeContext) — 'small'
      is the app's original density and needs no override. Since almost
      every component sizes its text in rem, scaling the root font-size is
@@ -118,6 +125,8 @@
      which the base tones already clear on this surface too. */
   --hope-on-dark: #6e561e;
   --fear-on-dark: #43307a;
+
+  color-scheme: light;
 }
 
 * {

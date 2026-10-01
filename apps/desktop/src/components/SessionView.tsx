@@ -12,7 +12,7 @@ import AdventuringPanel from './AdventuringPanel';
 import PartyRoster from './PartyRoster';
 import DiceTray from './DiceTray';
 import RollLogPanel from './RollLogPanel';
-import { makeRollLogEntry, type RollLogEntry } from '../lib/rollLog';
+import { useRollLog } from '../context/RollLogContext';
 import { useMusicContext } from '../context/MusicContext';
 import './SessionView.css';
 
@@ -48,13 +48,11 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   const [adversariesLoading, setAdversariesLoading] = useState(true);
   const [adversariesError, setAdversariesError] = useState<string | null>(null);
 
-  // Table chatter, not campaign data — reset on leaving the Session (never
-  // persisted, see lib/rollLog), but shared between Roll Damage and the
-  // DiceTray since both fire into the same log.
-  const [rollLog, setRollLog] = useState<RollLogEntry[]>([]);
-  function addRoll(label: string, total: number) {
-    setRollLog((prev) => [makeRollLogEntry(label, total), ...prev].slice(0, 50));
-  }
+  // Table chatter, not campaign data (never persisted to disk, see
+  // lib/rollLog) but kept alive for the life of the app run even while this
+  // view unmounts — see RollLogContext. Shared between Roll Damage/Roll
+  // Attack and the DiceTray since both fire into the same log.
+  const { entries: rollLog, addRoll, clear: clearRollLog } = useRollLog(session.id);
 
   const { setSession: setMusicSession, setViewingSessionId, clearIfSession } = useMusicContext();
 
@@ -210,7 +208,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
       </div>
 
       <DiceTray onRoll={addRoll} />
-      <RollLogPanel entries={rollLog} onClear={() => setRollLog([])} />
+      <RollLogPanel entries={rollLog} onClear={clearRollLog} />
     </div>
   );
 }

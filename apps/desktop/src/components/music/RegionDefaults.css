@@ -19,3 +19,25 @@
   letter-spacing: 0.05em;
   color: var(--muted);
 }
+
+.region-defaults select {
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 0.45rem 0.6rem;
+  transition: border-color 160ms var(--ease);
+}
+
+.region-defaults select:hover {
+  border-color: var(--muted);
+}
+
+.region-defaults select:focus-visible {
+  border-color: var(--hope);
+}

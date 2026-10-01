@@ -52,9 +52,8 @@ function computeDuplicateSuffixes(list: SessionAdversary[]): Map<string, number>
 // own collection" shape PartyRoster already uses for campaignId.
 // SessionAdversaries are handed down from SessionView instead (see the
 // props comment above). What was pulled in during earlier sessions shows
-// here too (marked "Carried over"); changing one of those takes effect from
-// this session onward, and pushing one out removes it from this session
-// only.
+// here too; changing one of those takes effect from this session onward,
+// and pushing one out removes it from this session only.
 export default function CombatPanel({
   sessionId,
   sessionAdversaries,

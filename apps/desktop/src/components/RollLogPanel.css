@@ -3,11 +3,12 @@
   right: var(--space-3);
   bottom: var(--space-3);
   z-index: 890;
-  width: 240px;
+  width: 300px;
   max-height: 260px;
   display: flex;
   flex-direction: column;
-  background: var(--panel-raised, var(--panel));
+  background: color-mix(in srgb, var(--panel-raised, var(--panel)) 88%, transparent);
+  backdrop-filter: blur(6px);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);

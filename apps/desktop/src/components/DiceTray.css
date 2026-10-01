@@ -77,6 +77,12 @@
   padding-top: 9px;
 }
 
+/* A point-down pentagon's visual centroid sits above its bounding box's
+   center — the opposite correction from the triangle above. */
+.dice-tray__die-label--d10 {
+  padding-bottom: 6px;
+}
+
 .dice-tray__die:hover .dice-tray__die-fill {
   background: rgba(228, 179, 65, 0.1);
 }

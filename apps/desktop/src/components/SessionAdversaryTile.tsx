@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
-import { parseDamageNotation, rollDamage, damageNotationLabel, type DamageRollResult } from '../lib/dice';
+import { parseDamageNotation, rollDamage, damageNotationLabel, rollDie, type DamageRollResult } from '../lib/dice';
 import { difficultyModifierFromConditions } from '../lib/conditions';
 import { ContentCard, FeatureRowLines, MetaChip, ModifierMetaField } from './ContentCard';
 import StatStepper from './StatStepper';
@@ -26,6 +26,7 @@ interface SessionAdversaryTileProps {
 // only piece that has to know sessionAdversariesApi exists.
 export default function SessionAdversaryTile({ adversary, masterFeatures, duplicateSuffix, onChange, onRemove, onRoll }: SessionAdversaryTileProps) {
   const [roll, setRoll] = useState<{ notation: string; result: DamageRollResult } | null>(null);
+  const [attackRoll, setAttackRoll] = useState<{ notation: string; total: number } | null>(null);
   const [featuresOpen, setFeaturesOpen] = useState(true);
   const parsedDamage = parseDamageNotation(adversary.attackDescription);
   const featureRows = featureRowsFor(masterFeatures);
@@ -43,6 +44,18 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
     const result = rollDamage(parsedDamage);
     setRoll({ notation: damageNotationLabel(adversary.attackDescription, parsedDamage), result });
     onRoll(`${adversary.label} damage`, result.total);
+  }
+
+  // The adversary's own to-hit roll (d20 + its book attack modifier, rolled
+  // against the target's Evasion) — separate from Roll Damage above, which
+  // only ever fires once a hit's already been decided at the table.
+  function handleRollAttack() {
+    if (adversary.attackModifier == null) return;
+    const d20 = rollDie(20);
+    const total = d20 + adversary.attackModifier;
+    const modifierLabel = adversary.attackModifier > 0 ? `+${adversary.attackModifier}` : adversary.attackModifier < 0 ? `${adversary.attackModifier}` : '';
+    setAttackRoll({ notation: `d20${modifierLabel} (rolled ${d20})`, total });
+    onRoll(`${adversary.label} attack`, total);
   }
 
   function handleThresholdsModifierChange(field: 'major' | 'severe', value: number | null) {
@@ -69,7 +82,6 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
       deleteLabel="Push Out"
       meta={
         <>
-          {adversary.carried && <MetaChip label="Status" value="Carried over" />}
           <MetaChip label="Tier" value={adversary.tier} />
           <ModifierMetaField
             label="Difficulty"
@@ -124,14 +136,24 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
           />
         )}
       </div>
-      {adversary.attackDescription && (
+      {(adversary.attackDescription || adversary.attackModifier != null) && (
         <p className="session-tile__attack">
           {adversary.attackDescription}
+          {adversary.attackModifier != null && (
+            <button type="button" className="session-tile__roll-attack" onClick={handleRollAttack}>
+              Roll Attack
+            </button>
+          )}
           {parsedDamage && (
             <button type="button" className="session-tile__roll-damage" onClick={handleRollDamage}>
               Roll Damage
             </button>
           )}
+        </p>
+      )}
+      {attackRoll && (
+        <p className="session-tile__roll-result">
+          {attackRoll.notation} = <strong>{attackRoll.total}</strong>
         </p>
       )}
       {roll && (

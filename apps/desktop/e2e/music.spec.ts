@@ -366,7 +366,7 @@ test.describe('Music library and session playback', () => {
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
   });
 
-  test('the in-session preview player is independent of real Session playback', async () => {
+  test('previewing a track in the in-session editor pauses real Session playback — the two are never audible at once', async () => {
     await openQuietSession();
     await win.click('.session-music-panel button:has-text("Manage Music")');
     await pickFiles('Calm Road', 'War Drums');
@@ -376,10 +376,21 @@ test.describe('Music library and session playback', () => {
     const realAudio = win.locator('audio[loop]');
     await expect.poll(() => realAudio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
 
-    // Previewing a different track in the editor doesn't touch real playback.
+    // Previewing a different track pauses real Session playback instead of
+    // layering a second audible source on top of it — the selected default
+    // (and "now playing" label) don't change, only playback does.
     await win.locator('.track-list__item', { hasText: 'War Drums' }).getByRole('button', { name: /Preview/ }).click();
-    await expect(realAudio).toHaveJSProperty('paused', false);
+    await expect(realAudio).toHaveJSProperty('paused', true);
     await expect(win.locator('[data-testid="now-playing"]')).toHaveText('Calm Road');
+    await expect(win.locator('button[aria-label="Play music"]')).toBeVisible();
+
+    // And pressing Play again (resuming real playback) silences the preview
+    // the other way around.
+    await win.click('button[aria-label="Play music"]');
+    await expect.poll(() => realAudio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
+    await expect(
+      win.locator('.track-list__item', { hasText: 'War Drums' }).getByRole('button', { name: /Stop/ })
+    ).toHaveCount(0);
   });
 
   test('editing away the currently-playing default pauses playback, and a later new default does not silently auto-resume', async () => {

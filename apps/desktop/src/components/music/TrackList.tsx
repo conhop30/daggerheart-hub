@@ -183,7 +183,7 @@ export default function TrackList({
                 type="range"
                 min={0}
                 max={1}
-                step={0.05}
+                step={0.01}
                 value={track.volume}
                 aria-label={`${track.name} volume`}
                 onChange={(e) => onTrackVolumeChange(track, Number(e.target.value))}
@@ -203,7 +203,7 @@ export default function TrackList({
             type="range"
             min={0.05}
             max={1}
-            step={0.05}
+            step={0.01}
             value={volume}
             aria-label="Preview volume"
             onChange={(e) => onVolumeChange(Number(e.target.value))}

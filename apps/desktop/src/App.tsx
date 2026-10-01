@@ -4,6 +4,7 @@ import AppShell, { type View } from './components/AppShell';
 import FloatingMusicPlayer from './components/FloatingMusicPlayer';
 import { GameSetsProvider } from './context/GameSetsContext';
 import { MusicProvider } from './context/MusicContext';
+import { RollLogProvider } from './context/RollLogContext';
 
 // Lazy per page — App.tsx used to statically import all 8 pages, so
 // everything shipped in one bundle and loaded up front even for pages the
@@ -47,26 +48,28 @@ export default function App() {
   return (
     <GameSetsProvider>
       <MusicProvider>
-        <AppShell view={view} onNavigate={setView}>
-          {page('classes', <ClassesPage />)}
-          {page('adversaries-environments', <AdversariesEnvironmentsPage />)}
-          {page('domains', <DomainsPage />)}
-          {page('heritage', <HeritagePage />)}
-          {page('equipment', <EquipmentPage />)}
-          {page('optional-mechanics', <OptionalMechanicsPage />)}
-          {page(
-            'campaigns',
-            <CampaignsPage jumpToSession={jumpToSession} onJumpHandled={() => setJumpToSession(null)} />
-          )}
-          {page('settings', <SettingsPage />)}
-          {page('home', <HomePage onNavigate={setView} />)}
-        </AppShell>
-        <FloatingMusicPlayer
-          onOpenSession={(campaignId, sessionId) => {
-            setJumpToSession({ campaignId, sessionId });
-            setView('campaigns');
-          }}
-        />
+        <RollLogProvider>
+          <AppShell view={view} onNavigate={setView}>
+            {page('classes', <ClassesPage />)}
+            {page('adversaries-environments', <AdversariesEnvironmentsPage />)}
+            {page('domains', <DomainsPage />)}
+            {page('heritage', <HeritagePage />)}
+            {page('equipment', <EquipmentPage />)}
+            {page('optional-mechanics', <OptionalMechanicsPage />)}
+            {page(
+              'campaigns',
+              <CampaignsPage jumpToSession={jumpToSession} onJumpHandled={() => setJumpToSession(null)} />
+            )}
+            {page('settings', <SettingsPage />)}
+            {page('home', <HomePage onNavigate={setView} />)}
+          </AppShell>
+          <FloatingMusicPlayer
+            onOpenSession={(campaignId, sessionId) => {
+              setJumpToSession({ campaignId, sessionId });
+              setView('campaigns');
+            }}
+          />
+        </RollLogProvider>
       </MusicProvider>
     </GameSetsProvider>
   );

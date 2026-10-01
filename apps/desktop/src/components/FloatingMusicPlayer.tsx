@@ -34,7 +34,7 @@ export default function FloatingMusicPlayer({ onOpenSession }: FloatingMusicPlay
         className="floating-music-player__volume"
         min={0.05}
         max={1}
-        step={0.05}
+        step={0.01}
         value={volume}
         aria-label="Music volume"
         onChange={(e) => setVolume(Number(e.target.value))}

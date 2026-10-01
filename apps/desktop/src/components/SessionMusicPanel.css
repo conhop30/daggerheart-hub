@@ -31,6 +31,28 @@
   color: var(--muted);
 }
 
+.session-music-panel__region select {
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 0.4rem 0.55rem;
+  transition: border-color 160ms var(--ease);
+}
+
+.session-music-panel__region select:hover {
+  border-color: var(--muted);
+}
+
+.session-music-panel__region select:focus-visible {
+  border-color: var(--hope);
+}
+
 .session-music-panel__volume input {
   accent-color: var(--hope);
   width: 100%;

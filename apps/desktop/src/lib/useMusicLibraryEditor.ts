@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { EVERYWHERE_REGION_ID, musicApi, type MusicRegion, type MusicTrack } from '../api/music';
+import { useMusicContext } from '../context/MusicContext';
 import { defaultCandidates } from './music';
 import { loadVolume, saveVolume } from './musicVolume';
 
@@ -14,6 +15,7 @@ interface UseMusicLibraryEditorOptions {
 // collapsible editor (MusicLibraryEditor.tsx) can share one implementation
 // instead of forking it.
 export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEditorOptions = {}) {
+  const { pause: pauseSessionPlayback, registerPreviewStopper } = useMusicContext();
   const [regions, setRegions] = useState<MusicRegion[]>([]);
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [selectedId, setSelectedId] = useState(EVERYWHERE_REGION_ID);
@@ -62,6 +64,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     const audio = previewRef.current;
     if (!audio) return;
     if (previewTrack) {
+      pauseSessionPlayback();
       audio.play().catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return; // superseded by a newer preview
         setError(`Couldn't play "${previewTrack.name}" — the audio file may be missing.`);
@@ -88,9 +91,15 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     setPreviewId((prev) => (prev === trackId ? null : trackId));
   }
 
-  function stopPreview() {
-    setPreviewId(null);
-  }
+  const stopPreview = useCallback(() => setPreviewId(null), []);
+
+  // Register this editor's stopPreview so real session playback starting
+  // elsewhere (MusicContext.play/toggle) can silence a preview in progress
+  // here — see MusicContext's registerPreviewStopper.
+  useEffect(() => {
+    registerPreviewStopper(stopPreview);
+    return () => registerPreviewStopper(null);
+  }, [registerPreviewStopper, stopPreview]);
 
   function handlePreviewError() {
     if (previewTrack) setError(`Couldn't play "${previewTrack.name}" — the audio file may be missing.`);

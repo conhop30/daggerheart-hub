@@ -60,6 +60,8 @@
   justify-content: center;
   width: 32px;
   height: 32px;
+  background: none;
+  border: none;
   color: var(--muted);
   transition:
     color 200ms var(--ease),

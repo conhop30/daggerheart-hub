@@ -34,6 +34,8 @@ interface MusicContextValue {
   audioError: string | null;
   /** Re-fetches regions/tracks immediately — wired into the in-session "Manage Music" editor so an edit made mid-session (a new default, a renamed/volume-adjusted track) takes effect without leaving and re-entering the Session. */
   refreshLibrary: () => void;
+  /** Lets whichever music-library editor is mounted (the standalone Music tab, or the in-session "Manage Music" panel) register its own preview-stop function, so starting real playback here can silence an in-progress preview there — see useMusicLibraryEditor. Pass null to unregister on unmount. */
+  registerPreviewStopper: (stop: (() => void) | null) => void;
 }
 
 const MusicContext = createContext<MusicContextValue | null>(null);
@@ -53,6 +55,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(loadVolume);
   const [audioError, setAudioError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Whichever music-library editor is currently mounted registers its own
+  // stopPreview here — at most one is ever mounted at a time (the Music tab
+  // and a live Session are different views), so a single slot is enough.
+  const previewStopperRef = useRef<(() => void) | null>(null);
+  const registerPreviewStopper = useCallback((stop: (() => void) | null) => {
+    previewStopperRef.current = stop;
+  }, []);
 
   const refreshLibrary = useCallback(() => {
     return Promise.all([musicApi.listRegions(), musicApi.listTracks()])
@@ -127,9 +136,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (playing) setEverPlayed(true);
   }, [playing]);
 
-  const play = useCallback(() => setPlaying(true), []);
+  // Real session playback and a library editor's preview are two separate
+  // <audio> elements (see useMusicLibraryEditor) — nothing stops both from
+  // being audible at once unless one silences the other on the way on.
+  const play = useCallback(() => {
+    previewStopperRef.current?.();
+    setPlaying(true);
+  }, []);
   const pause = useCallback(() => setPlaying(false), []);
-  const toggle = useCallback(() => setPlaying((p) => !p), []);
+  const toggle = useCallback(() => {
+    setPlaying((p) => {
+      const next = !p;
+      if (next) previewStopperRef.current?.();
+      return next;
+    });
+  }, []);
 
   const value = useMemo<MusicContextValue>(
     () => ({
@@ -150,6 +171,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setVolume: setVolumeState,
       audioError,
       refreshLibrary,
+      registerPreviewStopper,
     }),
     [
       regions,
@@ -167,6 +189,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       toggle,
       audioError,
       refreshLibrary,
+      registerPreviewStopper,
     ]
   );
 

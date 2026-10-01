@@ -68,7 +68,8 @@
   margin-bottom: var(--space-1);
 }
 
-.session-tile__roll-damage {
+.session-tile__roll-damage,
+.session-tile__roll-attack {
   background: none;
   border: none;
   border-bottom: 1px solid var(--hope);
@@ -81,8 +82,22 @@
   transition: color 160ms var(--ease);
 }
 
-.session-tile__roll-damage:hover {
+.session-tile__roll-damage:hover,
+.session-tile__roll-attack:hover {
   color: var(--hope);
+}
+
+/* Attack (to-hit) vs. Damage gets its own accent — the same Hope/Fear
+   duality already used for Difficulty/Threshold chips elsewhere on this
+   tile — so the two buttons read as different rolls at a glance. */
+.session-tile__roll-attack {
+  border-bottom-color: var(--fear-dim);
+  color: var(--fear-on-dark);
+}
+
+.session-tile__roll-attack:hover {
+  color: var(--fear-on-dark);
+  border-bottom-color: var(--fear-on-dark);
 }
 
 /* Plain text, not the big red/white-stroke .roll-result treatment — reads

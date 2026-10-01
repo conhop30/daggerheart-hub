@@ -61,7 +61,11 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
             >
               <span className="dice-tray__die-border" style={{ clipPath: DIE_SHAPES[sides] }} />
               <span className="dice-tray__die-fill" style={{ clipPath: DIE_SHAPES[sides] }} />
-              <span className={`dice-tray__die-label${sides === 4 ? ' dice-tray__die-label--d4' : ''}`}>{dieLabel(sides)}</span>
+              <span
+                className={`dice-tray__die-label${sides === 4 ? ' dice-tray__die-label--d4' : ''}${sides === 10 ? ' dice-tray__die-label--d10' : ''}`}
+              >
+                {dieLabel(sides)}
+              </span>
               {count > 0 && <span className="dice-tray__badge">{count}</span>}
             </button>
           );

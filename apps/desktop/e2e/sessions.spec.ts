@@ -210,6 +210,41 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(tile.locator('.session-tile__roll-result')).toHaveText('1d10+2 phy = 8');
   });
 
+  test('a pulled-in Adversary with an Attack Modifier can roll its attack, separately from Roll Damage', async () => {
+    await win.click('.create-panel__toggle');
+    await win.click('.chip:text-is("Adversary")');
+    await win.fill('.create-form input[type="text"]', 'Marsh Stalker');
+    await win.fill('.text-field:has-text("HP") input', '6');
+    await win.fill('.text-field:has-text("Stress") input', '2');
+    await win.fill('.text-field:has-text("Attack Modifier") input', '3');
+    await win.fill('label:has-text("Attack Description") textarea', 'Bite: 1d8+1 phy damage');
+    await win.click('button:has-text("Create Adversary")');
+    await win.click('.app-shell__brand');
+
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.mode-toggle__option:has-text("Combat")');
+    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.item-picker__option:has-text("Marsh Stalker")');
+    const tile = win.locator('.combat-panel .content-card');
+
+    // Math.floor(0.5 * 20) + 1 === 11, so a +3 Attack Modifier always
+    // resolves to 11 + 3 = 14.
+    await win.evaluate(() => {
+      window.Math.random = () => 0.5;
+    });
+    await tile.locator('.session-tile__roll-attack').click();
+    await expect(tile.locator('.session-tile__roll-result')).toHaveText('d20+3 (rolled 11) = 14');
+
+    // Roll Damage is a separate roll with its own result line.
+    await tile.locator('.session-tile__roll-damage').click();
+    await expect(tile.locator('.session-tile__roll-result')).toHaveCount(2);
+
+    const rollLog = win.locator('.roll-log__entry');
+    await expect(rollLog).toHaveCount(2);
+    await expect(rollLog.first().locator('.roll-log__label')).toHaveText('Marsh Stalker attack');
+    await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Marsh Stalker damage');
+  });
+
   test('duplicate pulls get numbered, Conditions stack into an effective Difficulty, and rolls append to the Roll Log', async () => {
     await win.click('.create-panel__toggle');
     await win.click('.chip:text-is("Adversary")');
@@ -272,13 +307,42 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await tile.locator('.session-tile__roll-damage').click();
     const rollLog = win.locator('.roll-log__entry');
     await expect(rollLog).toHaveCount(1);
-    await expect(rollLog.first().locator('.roll-log__label')).toHaveText('Ogre damage');
-    await expect(rollLog.first().locator('.roll-log__total')).toHaveText('8');
+    await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Ogre damage');
+    await expect(rollLog.last().locator('.roll-log__total')).toHaveText('8');
 
-    // A general DiceTray roll appends its own entry above it, newest first.
+    // A general DiceTray roll appends its own entry below it, newest last.
     await win.click('.dice-tray__die:has-text("d6")');
     await win.click('.dice-tray__roll');
     await expect(rollLog).toHaveCount(2);
+    await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Dice roller [1d6]');
+  });
+
+  test('the Roll Log persists for the life of the session, surviving leaving and reopening the Session view', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.evaluate(() => {
+      window.Math.random = () => 0.5;
+    });
+    await win.click('.dice-tray__die:has-text("d6")');
+    await win.click('.dice-tray__roll');
+    const rollLog = win.locator('.roll-log__entry');
+    await expect(rollLog).toHaveCount(1);
+    await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Dice roller [1d6]');
+
+    // Leaving the Session view (unmounting SessionView) used to wipe the log
+    // — it was a plain useState local to that component. It now lives in
+    // RollLogContext, mounted at the app root, so it should still be here.
+    await win.click('.session-view__back');
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.session-view__title')).toHaveText('Session 1');
+    await expect(rollLog).toHaveCount(1);
+    await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Dice roller [1d6]');
+
+    // A new roll appends after the surviving one, newest at the bottom.
+    await win.click('.dice-tray__die:has-text("d20")');
+    await win.click('.dice-tray__roll');
+    await expect(rollLog).toHaveCount(2);
+    await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Dice roller [1d20]');
     await expect(rollLog.first().locator('.roll-log__label')).toHaveText('Dice roller [1d6]');
   });
 
