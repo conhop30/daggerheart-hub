@@ -22,18 +22,26 @@
   gap: 8px;
 }
 
-/* Each die is a plain square button (full click/hover target, regardless of
-   shape) with its actual wireframe outline — see lib/diceShapes — drawn as
-   a real SVG path: a d4 reads as a tetrahedron, a d12 as a dodecahedron,
-   and so on, with their own internal facet lines, not just an outer
-   silhouette. The label sits on top; .dice-tray__die itself carries the
-   color both the icon (via currentColor) and the label read off of, so a
-   hover/queued state only has to change one thing. */
+/* Each die is a button (full click/hover target, regardless of shape) with
+   its actual wireframe outline — see lib/diceShapes — drawn as a real SVG
+   path: a d4 reads as a tetrahedron, a d12 as a dodecahedron, and so on,
+   with their own internal facet lines, not just an outer silhouette. The
+   label sits BELOW the icon, not on top of it — overlaid text competed
+   with the wireframe's own internal lines for the same small space and
+   read as clutter, especially on the more faceted shapes (d12/d20).
+   .dice-tray__die itself carries the color both the icon (via currentColor)
+   and the label read off of, so a hover/queued state only has to change
+   one thing. */
 .dice-tray__die {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   width: 44px;
-  height: 44px;
-  padding: 2px;
+  height: 58px;
+  padding: 0;
   border: none;
   border-radius: 7px;
   background: transparent;
@@ -45,10 +53,9 @@
 }
 
 .dice-tray__die-icon {
-  position: absolute;
-  inset: 2px;
-  width: calc(100% - 4px);
-  height: calc(100% - 4px);
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
   fill: none;
   stroke: currentColor;
   stroke-width: 5;
@@ -58,23 +65,12 @@
 }
 
 .dice-tray__die-label {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
+  line-height: 1;
   color: currentColor;
   pointer-events: none;
-}
-
-/* A triangle's visual centroid sits below its bounding box's center. */
-.dice-tray__die-label--d4 {
-  padding-top: 9px;
 }
 
 .dice-tray__die:hover {

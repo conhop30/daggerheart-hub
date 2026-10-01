@@ -74,9 +74,7 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
               aria-label={`${dieLabel(sides)}${count > 0 ? `, ${count} queued — right-click to remove one` : ''}`}
             >
               <DieIcon sides={sides} />
-              <span className={`dice-tray__die-label${sides === 4 ? ' dice-tray__die-label--d4' : ''}`}>
-                {dieLabel(sides)}
-              </span>
+              <span className="dice-tray__die-label">{dieLabel(sides)}</span>
               {count > 0 && <span className="dice-tray__badge">{count}</span>}
             </button>
           );
