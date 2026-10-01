@@ -24,7 +24,7 @@ export default function SessionEnvironmentTile({ environment, masterFeatures, on
     <ContentCard
       title={environment.label}
       onDelete={onRemove}
-      deleteLabel="Push Out"
+      deleteLabel="Remove"
       meta={
         <>
           <MetaChip label="Tier" value={environment.tier} />

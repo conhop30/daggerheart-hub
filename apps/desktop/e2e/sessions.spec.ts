@@ -81,7 +81,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(win.locator('.combat-panel')).toBeVisible();
 
-    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
     // The Adversary's name now lives in an editable <input>, not plain text
     // (see SessionAdversaryTile), so it's no longer found by hasText — an
@@ -108,8 +108,28 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     const reloadedTile = win.locator('.combat-panel .content-card');
     await expect(reloadedTile.locator('.stat-stepper__value').first()).toHaveText('7 / 8');
 
-    await reloadedTile.getByRole('button', { name: 'Push Out' }).click();
+    await reloadedTile.getByRole('button', { name: 'Remove' }).click();
     await expect(reloadedTile).toHaveCount(0);
+  });
+
+  test('the Party is always grid-formatted and sits above the Adventuring/Combat tabs, in both modes', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.party-roster__add');
+    await win.fill('.create-form input[type="text"]', 'Mira');
+    await win.click('button:has-text("Add Party Member")');
+    await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toBeVisible();
+
+    // Party, then the mode tabs, then whichever panel is active — same
+    // order and same grid formatting regardless of mode.
+    const mainChildren = win.locator('.session-view__main > *');
+    await expect(mainChildren.nth(1)).toHaveClass(/party-roster/);
+    await expect(mainChildren.nth(2)).toHaveClass(/mode-toggle/);
+    await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
+
+    await win.click('.mode-toggle__option:has-text("Combat")');
+    await expect(mainChildren.nth(1)).toHaveClass(/party-roster/);
+    await expect(mainChildren.nth(2)).toHaveClass(/mode-toggle/);
+    await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
   });
 
   test('Adventuring notes save and persist, and a session can be renamed and deleted', async () => {
@@ -183,7 +203,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ashen Warden")');
 
     // Found by container, not name text — the name now lives in an
@@ -223,9 +243,13 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
 
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Marsh Stalker")');
     const tile = win.locator('.combat-panel .content-card');
+
+    // The Attack Modifier itself is visible on the tile, not just usable
+    // via the Roll Attack button.
+    await expect(tile.getByText('Atk: +3')).toBeVisible();
 
     // Math.floor(0.5 * 20) + 1 === 11, so a +3 Attack Modifier always
     // resolves to 11 + 3 = 14.
@@ -245,11 +269,66 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(rollLog.last().locator('.roll-log__label')).toHaveText('Marsh Stalker damage');
   });
 
+  test('clicking an Adversary in the sidebar spotlights its tile — closing every other tile\'s Features, opening its own, and fading the highlight on its own without locking anything', async () => {
+    await createAdversaryWithAttackAndFeature(
+      'Ashen Warden',
+      '8',
+      '3',
+      'Cinder Blade: 1d10+2 phy damage',
+      'Smoldering Grip',
+      'Once per rest, mark a Stress to make an attack ignore Armor.'
+    );
+    await createAdversaryWithAttackAndFeature(
+      'Marsh Stalker',
+      '6',
+      '2',
+      'Bite: 1d8+1 phy damage',
+      'Camouflage',
+      'While in marsh terrain, this creature is Hidden.'
+    );
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.mode-toggle__option:has-text("Combat")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Ashen Warden")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Marsh Stalker")');
+
+    // Found by pull-in order, not name text — the name now lives in an
+    // editable <input>, not visible textContent (see SessionAdversaryTile).
+    const tiles = win.locator('.combat-panel .content-card');
+    const wardenTile = tiles.nth(0);
+    const stalkerTile = tiles.nth(1);
+
+    // Both tiles start with Features open — the original per-tile default.
+    await expect(wardenTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'true');
+    await expect(stalkerTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    // Clicking the Marsh Stalker's sidebar row spotlights its tile: closes
+    // the Warden's Features, keeps the Stalker's open, and highlights it.
+    await win.locator('.session-combat-sidebar__name', { hasText: 'Marsh Stalker' }).click();
+    await expect(stalkerTile).toHaveClass(/session-tile--spotlight/);
+    await expect(stalkerTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'true');
+    await expect(wardenTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'false');
+
+    // The highlight fades on its own after a few seconds, but Features stay
+    // exactly where the spotlight left them — it's a one-time nudge, not a
+    // lock on either tile.
+    await expect(stalkerTile).not.toHaveClass(/session-tile--spotlight/, { timeout: 5000 });
+    await expect(stalkerTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    // And the Warden's Features can still be reopened freely afterward —
+    // the spotlight never disabled its own toggle.
+    await wardenTile.locator('.session-tile__features-toggle').click();
+    await expect(wardenTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'true');
+  });
+
   test('duplicate pulls get numbered, Conditions stack into an effective Difficulty, and rolls append to the Roll Log', async () => {
     await win.click('.create-panel__toggle');
     await win.click('.chip:text-is("Adversary")');
     await win.fill('.create-form input[type="text"]', 'Ogre');
     await win.fill('.text-field:has-text("Difficulty") input', '14');
+    await win.fill('label:has-text("Major Threshold") input', '7');
+    await win.fill('label:has-text("Severe Threshold") input', '14');
     await win.fill('.text-field:has-text("HP") input', '8');
     await win.fill('.text-field:has-text("Stress") input', '3');
     await win.fill('label:has-text("Attack Description") textarea', 'Slam: 1d10+2 phy damage');
@@ -260,9 +339,9 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.mode-toggle__option:has-text("Combat")');
 
     // Pulling the same Adversary in twice numbers the un-renamed copies.
-    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
-    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
     const tiles = win.locator('.combat-panel .content-card');
     await expect(tiles).toHaveCount(2);
@@ -279,9 +358,9 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
 
     const tile = tiles.nth(1);
 
-    // Difficulty/Thresholds start as an empty modifier, with the book's own
-    // value shown as a greyed placeholder — not directly editable.
-    const difficultyInput = tile.getByLabel('Difficulty modifier');
+    // Difficulty/Thresholds start untouched, with the book's own value
+    // shown as a greyed placeholder — not directly editable.
+    const difficultyInput = tile.getByLabel('Difficulty', { exact: true });
     await expect(difficultyInput).toHaveValue('');
     await expect(difficultyInput).toHaveAttribute('placeholder', '14');
 
@@ -293,10 +372,23 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(tile.locator('.conditions-editor__effect')).toHaveText('-2 Difficulty');
     await expect(difficultyInput).toHaveAttribute('placeholder', '12');
 
-    // Typing a manual modifier on top shows the resulting effective value
-    // below the field instead of in the placeholder.
-    await difficultyInput.fill('-1');
-    await expect(tile.locator('.content-card__chip-effective')).toHaveText('= 11');
+    // Typing a value sets the Difficulty directly (it's the new absolute
+    // total, not a delta added on top of the book's 14) — and the book's
+    // own number stays visible underneath as a record, not folded away.
+    await difficultyInput.fill('11');
+    await expect(difficultyInput).toHaveValue('11');
+    await expect(tile.locator('.content-card__chip-note')).toHaveText('Book: 14');
+
+    // Thresholds get the same treatment: typing sets the absolute Major/
+    // Severe values, with the book's own 7/14 kept visible as a reference.
+    const majorThresholdInput = tile.getByLabel('Major Threshold');
+    const severeThresholdInput = tile.getByLabel('Severe Threshold');
+    await expect(majorThresholdInput).toHaveAttribute('placeholder', '7');
+    await expect(severeThresholdInput).toHaveAttribute('placeholder', '14');
+    await majorThresholdInput.fill('9');
+    await expect(majorThresholdInput).toHaveValue('9');
+    await expect(severeThresholdInput).toHaveValue('');
+    await expect(tile.getByText('Book: 7 / 14')).toBeVisible();
 
     // Rolling this Adversary's damage appends a labeled entry to the Roll
     // Log, using its current display name (this tile is the un-renamed

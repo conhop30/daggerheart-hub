@@ -1,3 +1,23 @@
+/* A brief, self-clearing nudge toward the tile a SessionCombatSidebar row
+   just targeted (see CombatPanel's spotlight effect) — glows in, then
+   fades over the same ~2.5s window the effect keeps Features forced open
+   for, so it reads as "look here" rather than a permanent state. */
+@keyframes session-tile-spotlight-fade {
+  from {
+    background: rgba(228, 179, 65, 0.1);
+    box-shadow: 0 0 0 1px var(--hope), 0 0 20px rgba(228, 179, 65, 0.35);
+  }
+  to {
+    background: transparent;
+    box-shadow: 0 0 0 1px transparent, 0 0 0 rgba(228, 179, 65, 0);
+  }
+}
+
+.session-tile--spotlight {
+  border-radius: var(--radius-sm);
+  animation: session-tile-spotlight-fade 2.2s var(--ease) forwards;
+}
+
 .session-tile__title {
   display: flex;
   align-items: baseline;

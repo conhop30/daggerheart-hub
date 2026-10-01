@@ -6,7 +6,7 @@ import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
 import ModeToggle from './ModeToggle';
 import SessionMusicPanel from './SessionMusicPanel';
-import CombatPanel from './CombatPanel';
+import CombatPanel, { type CombatSpotlightSignal } from './CombatPanel';
 import SessionCombatSidebar from './SessionCombatSidebar';
 import AdventuringPanel from './AdventuringPanel';
 import PartyRoster from './PartyRoster';
@@ -47,6 +47,12 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   const [sessionAdversaries, setSessionAdversaries] = useState<SessionAdversary[]>([]);
   const [adversariesLoading, setAdversariesLoading] = useState(true);
   const [adversariesError, setAdversariesError] = useState<string | null>(null);
+
+  // A SessionCombatSidebar row click sets this; CombatPanel reacts by
+  // spotlighting the matching tile. `key` changes on every click (even a
+  // repeat click of the same Adversary) so that effect can tell "clicked
+  // again" apart from a re-render that changed nothing.
+  const [combatSpotlight, setCombatSpotlight] = useState<CombatSpotlightSignal | null>(null);
 
   // Table chatter, not campaign data (never persisted to disk, see
   // lib/rollLog) but kept alive for the life of the app run even while this
@@ -176,14 +182,10 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
       <div className="session-view__layout">
         <div className="session-view__main">
           <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
-          <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
 
-          <PartyRoster
-            campaignId={campaignId}
-            sessionId={session.id}
-            onChange={setMembers}
-            layout={session.mode === 'combat' ? 'grid' : 'list'}
-          />
+          <PartyRoster campaignId={campaignId} sessionId={session.id} onChange={setMembers} layout="grid" />
+
+          <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
 
           {session.mode === 'combat' ? (
             <CombatPanel
@@ -191,6 +193,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
               sessionAdversaries={sessionAdversaries}
               adversariesLoading={adversariesLoading}
               adversariesError={adversariesError}
+              spotlightSignal={combatSpotlight}
               onPullInAdversary={pullInAdversary}
               onAdversaryChange={handleAdversaryChange}
               onAdversaryRemove={handleAdversaryRemove}
@@ -203,7 +206,11 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
 
         <aside className="session-view__sidebar">
           <SessionMusicPanel regionId={session.regionId ?? null} onRegionChange={(regionId) => persist({ regionId })} />
-          <SessionCombatSidebar sessionAdversaries={sessionAdversaries} onChange={handleAdversaryChange} />
+          <SessionCombatSidebar
+            sessionAdversaries={sessionAdversaries}
+            onChange={handleAdversaryChange}
+            onSelect={(id) => setCombatSpotlight({ id, key: Date.now() })}
+          />
         </aside>
       </div>
 

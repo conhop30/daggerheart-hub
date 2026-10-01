@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { adversariesApi } from '../api/adversaries';
 import { environmentsApi } from '../api/environments';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
@@ -9,6 +9,12 @@ import SessionAdversaryTile from './SessionAdversaryTile';
 import SessionEnvironmentTile from './SessionEnvironmentTile';
 import './CombatPanel.css';
 
+/** A SessionCombatSidebar click (see SessionView, which owns this) — `key` changes on every click, even re-clicking the same Adversary, so CombatPanel's effect below can tell "clicked again" apart from "nothing changed." */
+export interface CombatSpotlightSignal {
+  id: string;
+  key: number;
+}
+
 interface CombatPanelProps {
   sessionId: string;
   // Adversaries are lifted up into SessionView (not owned here) because
@@ -18,6 +24,8 @@ interface CombatPanelProps {
   sessionAdversaries: SessionAdversary[];
   adversariesLoading: boolean;
   adversariesError: string | null;
+  /** Set by SessionView when a SessionCombatSidebar row is clicked — see the spotlight effect below. */
+  spotlightSignal: CombatSpotlightSignal | null;
   onPullInAdversary: (adversaryId: string) => void;
   onAdversaryChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   onAdversaryRemove: (adversary: SessionAdversary) => void;
@@ -59,6 +67,7 @@ export default function CombatPanel({
   sessionAdversaries,
   adversariesLoading,
   adversariesError,
+  spotlightSignal,
   onPullInAdversary,
   onAdversaryChange,
   onAdversaryRemove,
@@ -68,6 +77,45 @@ export default function CombatPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState<'adversary' | 'environment' | null>(null);
+
+  // Lifted out of each SessionAdversaryTile (which used to own this itself)
+  // so a spotlight click can close every tile but one — a missing entry
+  // defaults to open, matching that original per-tile default.
+  const [tileFeaturesOpen, setTileFeaturesOpen] = useState<Record<string, boolean>>({});
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  // Read inside the spotlight effect without needing sessionAdversaries in
+  // its dependency array — that array gets a new reference on every HP/
+  // Stress/Condition tick, and this effect must only run on an actual click.
+  const sessionAdversariesRef = useRef(sessionAdversaries);
+  sessionAdversariesRef.current = sessionAdversaries;
+
+  function toggleFeatures(id: string) {
+    setTileFeaturesOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
+  }
+
+  // Closes every other pulled-in Adversary's Features and opens just the
+  // targeted one, plus a brief fading highlight so it's obvious which tile
+  // just moved. A one-time nudge, not a lock: toggleFeatures above is
+  // untouched by this, so the user can freely reopen any other tile's
+  // Features again right afterward. Setting highlightedId to null first,
+  // then back on in the next animation frame, restarts the CSS fade even
+  // when the very same Adversary is spotlighted twice in a row.
+  useEffect(() => {
+    if (!spotlightSignal) return;
+    const { id } = spotlightSignal;
+    setTileFeaturesOpen(() => {
+      const next: Record<string, boolean> = {};
+      for (const a of sessionAdversariesRef.current) next[a.id] = a.id === id;
+      return next;
+    });
+    setHighlightedId(null);
+    const raf = requestAnimationFrame(() => setHighlightedId(id));
+    const timeout = setTimeout(() => setHighlightedId(null), 2500);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout);
+    };
+  }, [spotlightSignal]);
 
   const adversaries = useApiList(adversariesApi.list);
   const environments = useApiList(environmentsApi.list);
@@ -136,14 +184,14 @@ export default function CombatPanel({
           className="combat-panel__pull-button"
           onClick={() => setPickerOpen(pickerOpen === 'adversary' ? null : 'adversary')}
         >
-          + Pull In Adversary
+          + Add Adversary
         </button>
         <button
           type="button"
           className="combat-panel__pull-button"
           onClick={() => setPickerOpen(pickerOpen === 'environment' ? null : 'environment')}
         >
-          + Pull In Environment
+          + Add Environment
         </button>
       </div>
 
@@ -178,6 +226,9 @@ export default function CombatPanel({
             // just means the master was deleted since, and the section hides.
             masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
             duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
+            featuresOpen={tileFeaturesOpen[adversary.id] ?? true}
+            onToggleFeatures={() => toggleFeatures(adversary.id)}
+            spotlighted={highlightedId === adversary.id}
             onChange={(patch) => onAdversaryChange(adversary, patch)}
             onRemove={() => onAdversaryRemove(adversary)}
             onRoll={onRoll}

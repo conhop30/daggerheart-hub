@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react';
+import { forwardRef, type ReactNode } from 'react';
 import { groupFeatureRows, type FeatureRow } from '../lib/featureKinds';
 import './ContentCard.css';
 
 interface ContentCardProps {
   title: string;
+  /** Appended onto the root element's class — e.g. a temporary highlight state driven by a parent. */
+  className?: string;
   /** Replaces the plain `<h3>{title}</h3>` with custom content (e.g. an editable name field) — `title` is still required as the semantic fallback. */
   titleNode?: ReactNode;
   /** Optional color swatch — used by Domain. */
@@ -14,7 +16,7 @@ interface ContentCardProps {
   /** Overrides the onEdit button's label — e.g. "Open" for a card that drills into a detail page instead of inline-editing. Defaults to "Edit". */
   editLabel?: string;
   onDelete?: () => void;
-  /** Overrides the onDelete button's label — e.g. "Push Out" for a session tile where nothing is actually destroyed. Defaults to "Delete". */
+  /** Overrides the onDelete button's label — e.g. "Remove" for a session tile where nothing is actually destroyed. Defaults to "Delete". */
   deleteLabel?: string;
   children?: ReactNode;
 }
@@ -23,9 +25,12 @@ interface ContentCardProps {
 // uses — deliberately plain (no images, no filters) since the point of
 // this pass is closing the write-only gap, not building the fully designed
 // galleries the spec describes for later.
-export function ContentCard({ title, titleNode, accent, meta, onEdit, editLabel, onDelete, deleteLabel, children }: ContentCardProps) {
+export const ContentCard = forwardRef<HTMLDivElement, ContentCardProps>(function ContentCard(
+  { title, className, titleNode, accent, meta, onEdit, editLabel, onDelete, deleteLabel, children },
+  ref
+) {
   return (
-    <div className="content-card">
+    <div ref={ref} className={className ? `content-card ${className}` : 'content-card'}>
       {accent && <span className="content-card__swatch" style={{ background: accent }} aria-hidden="true" />}
       <div className="content-card__body">
         <div className="content-card__header">
@@ -50,7 +55,7 @@ export function ContentCard({ title, titleNode, accent, meta, onEdit, editLabel,
       </div>
     </div>
   );
-}
+});
 
 export function MetaChip({ label, value }: { label: string; value: ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
@@ -87,13 +92,18 @@ export function EditableMetaField({
   );
 }
 
-// A stat that's adjusted via a modifier rather than edited directly — the
-// book's own base value stays put, and what's typed here is layered onto
-// it. Empty input -> the effective value (base + any non-editable `extra`,
-// e.g. a Condition's penalty) shows as a greyed placeholder, so you can see
-// what it currently is without typing anything. Non-empty input -> the
-// typed modifier is what's in the box, so the resulting effective value
-// shows as a small greyed line underneath instead.
+// A stat that's adjusted once pulled into a Session, while the book's own
+// base value is kept as a visible record rather than folded invisibly into
+// the math. Empty input -> nothing's been typed yet, so the box shows the
+// current default (base + any non-editable `extra`, e.g. a Condition's
+// penalty) as a greyed placeholder. Non-empty input -> what's typed IS the
+// effective value (not a delta added on top of the book's number — typing
+// "16" sets Difficulty to 16, full stop), and the original book value shows
+// as a small greyed reference line underneath so it's never lost track of.
+// Internally this is still stored as a modifier (base + modifier + extra =
+// what's typed), since `extra` can keep shifting out from under a typed
+// value (a Condition added/removed later) and the GM's override should
+// shift right along with it rather than snapping back to the book number.
 export function ModifierMetaField({
   label,
   base,
@@ -108,20 +118,21 @@ export function ModifierMetaField({
   extra?: number;
   onChange: (value: number | null) => void;
 }) {
-  const effective = (base ?? 0) + (modifier ?? 0) + extra;
+  const defaultValue = (base ?? 0) + extra;
+  const effective = defaultValue + (modifier ?? 0);
   return (
     <span className="content-card__chip content-card__chip--editable content-card__chip--modifier">
       <span>
         {label}:{' '}
         <input
           type="number"
-          value={modifier ?? ''}
-          placeholder={String((base ?? 0) + extra)}
-          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-          aria-label={`${label} modifier`}
+          value={modifier != null ? effective : ''}
+          placeholder={String(defaultValue)}
+          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value) - defaultValue)}
+          aria-label={label}
         />
       </span>
-      {modifier != null && <span className="content-card__chip-effective">= {effective}</span>}
+      {modifier != null && base != null && <span className="content-card__chip-note">Book: {base}</span>}
     </span>
   );
 }

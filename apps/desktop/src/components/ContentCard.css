@@ -161,7 +161,7 @@
   gap: 1px;
 }
 
-.content-card__chip-effective {
+.content-card__chip-note {
   font-family: var(--font-mono);
   font-size: 0.66rem;
   font-weight: 500;

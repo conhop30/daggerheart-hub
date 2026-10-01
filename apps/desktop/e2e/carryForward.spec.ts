@@ -82,7 +82,7 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
 
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await win.click('.combat-panel__pull-button:has-text("+ Pull In Adversary")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
     await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Decrease HP' }).click();
     await expect(ogreHp()).toHaveText('7 / 8');
@@ -120,7 +120,7 @@ test.describe('Carrying a Campaign forward across sessions', () => {
 
     // ---- Pushing the Ogre out in Session 2 removes it from 2 onward only ----
     await openSession('Session 2');
-    await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Push Out' }).click();
+    await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Remove' }).click();
     await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
     await win.click('.session-view__back');
 

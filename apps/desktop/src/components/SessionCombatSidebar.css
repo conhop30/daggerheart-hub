@@ -17,12 +17,22 @@
 }
 
 .session-combat-sidebar__combatant {
-  padding: 6px 0;
+  padding: 6px 4px;
+  margin: 0 -4px;
   border-bottom: 1px solid var(--hairline);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 160ms var(--ease);
 }
 
 .session-combat-sidebar__combatant:last-child {
   border-bottom: none;
+}
+
+.session-combat-sidebar__combatant:hover,
+.session-combat-sidebar__combatant:focus-visible {
+  background: rgba(228, 179, 65, 0.08);
+  outline: none;
 }
 
 .session-combat-sidebar__name {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
@@ -15,6 +15,11 @@ interface SessionAdversaryTileProps {
   masterFeatures: FeatureSections | undefined;
   /** This tile's "#N" among other un-renamed pulls of the same Adversary in this session — null when it's the only one, or once it's been given a custom name. See CombatPanel. */
   duplicateSuffix: number | null;
+  /** Lifted up to CombatPanel so clicking this Adversary in SessionCombatSidebar can close every other tile's Features and open just this one — see CombatPanel's spotlight comment. */
+  featuresOpen: boolean;
+  onToggleFeatures: () => void;
+  /** Briefly true right after a sidebar click targets this tile — drives a fading highlight and scrolls the tile into view. Never blocks onToggleFeatures from working normally once it's passed. */
+  spotlighted: boolean;
   onChange: (patch: UpdateSessionAdversaryRequest) => void;
   onRemove: () => void;
   onRoll: (label: string, total: number) => void;
@@ -24,10 +29,20 @@ interface SessionAdversaryTileProps {
 // entirely off the props it's given and reports changes upward, so
 // CombatPanel (the only thing that knows how to persist a change) is the
 // only piece that has to know sessionAdversariesApi exists.
-export default function SessionAdversaryTile({ adversary, masterFeatures, duplicateSuffix, onChange, onRemove, onRoll }: SessionAdversaryTileProps) {
+export default function SessionAdversaryTile({
+  adversary,
+  masterFeatures,
+  duplicateSuffix,
+  featuresOpen,
+  onToggleFeatures,
+  spotlighted,
+  onChange,
+  onRemove,
+  onRoll,
+}: SessionAdversaryTileProps) {
   const [roll, setRoll] = useState<{ notation: string; result: DamageRollResult } | null>(null);
   const [attackRoll, setAttackRoll] = useState<{ notation: string; total: number } | null>(null);
-  const [featuresOpen, setFeaturesOpen] = useState(true);
+  const rootRef = useRef<HTMLDivElement>(null);
   const parsedDamage = parseDamageNotation(adversary.attackDescription);
   const featureRows = featureRowsFor(masterFeatures);
   const isCustomLabel = adversary.label.trim() !== adversary.name.trim();
@@ -58,12 +73,31 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
     onRoll(`${adversary.label} attack`, total);
   }
 
+  // Absolute value in, absolute value stored as a modifier (consistent with
+  // ModifierMetaField's Difficulty field just above it — see its comment).
+  function handleThresholdChange(field: 'major' | 'severe', bookValue: number | null, typed: string) {
+    if (typed === '') {
+      handleThresholdsModifierChange(field, null);
+      return;
+    }
+    handleThresholdsModifierChange(field, Number(typed) - (bookValue ?? 0));
+  }
+
   function handleThresholdsModifierChange(field: 'major' | 'severe', value: number | null) {
     onChange({ thresholdsModifier: { ...thresholdsModifier, [field]: value } });
   }
 
+  // A sidebar click targeting this tile should bring it into view even if
+  // the Combat grid has scrolled it off-screen — the highlight alone does
+  // nothing for a tile you can't see.
+  useEffect(() => {
+    if (spotlighted) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [spotlighted]);
+
   return (
     <ContentCard
+      ref={rootRef}
+      className={spotlighted ? 'session-tile--spotlight' : undefined}
       title={adversary.label}
       titleNode={
         <h3 className="content-card__title session-tile__title">
@@ -79,10 +113,14 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
         </h3>
       }
       onDelete={onRemove}
-      deleteLabel="Push Out"
+      deleteLabel="Remove"
       meta={
         <>
           <MetaChip label="Tier" value={adversary.tier} />
+          <MetaChip
+            label="Atk"
+            value={adversary.attackModifier != null ? (adversary.attackModifier >= 0 ? `+${adversary.attackModifier}` : adversary.attackModifier) : null}
+          />
           <ModifierMetaField
             label="Difficulty"
             base={adversary.difficulty}
@@ -95,23 +133,23 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
               Thresholds:{' '}
               <input
                 type="number"
-                value={thresholdsModifier.major ?? ''}
+                value={thresholdsModifier.major != null ? (adversary.thresholds.major ?? 0) + thresholdsModifier.major : ''}
                 placeholder={String(adversary.thresholds.major ?? '')}
-                onChange={(e) => handleThresholdsModifierChange('major', e.target.value === '' ? null : Number(e.target.value))}
-                aria-label="Major Threshold modifier"
+                onChange={(e) => handleThresholdChange('major', adversary.thresholds.major, e.target.value)}
+                aria-label="Major Threshold"
               />{' '}
               /{' '}
               <input
                 type="number"
-                value={thresholdsModifier.severe ?? ''}
+                value={thresholdsModifier.severe != null ? (adversary.thresholds.severe ?? 0) + thresholdsModifier.severe : ''}
                 placeholder={String(adversary.thresholds.severe ?? '')}
-                onChange={(e) => handleThresholdsModifierChange('severe', e.target.value === '' ? null : Number(e.target.value))}
-                aria-label="Severe Threshold modifier"
+                onChange={(e) => handleThresholdChange('severe', adversary.thresholds.severe, e.target.value)}
+                aria-label="Severe Threshold"
               />
             </span>
             {hasThresholdsModifier && (
-              <span className="content-card__chip-effective">
-                = {(adversary.thresholds.major ?? 0) + (thresholdsModifier.major ?? 0)} / {(adversary.thresholds.severe ?? 0) + (thresholdsModifier.severe ?? 0)}
+              <span className="content-card__chip-note">
+                Book: {adversary.thresholds.major ?? 0} / {adversary.thresholds.severe ?? 0}
               </span>
             )}
           </span>
@@ -178,7 +216,7 @@ export default function SessionAdversaryTile({ adversary, masterFeatures, duplic
           <button
             type="button"
             className="session-tile__features-toggle"
-            onClick={() => setFeaturesOpen((open) => !open)}
+            onClick={onToggleFeatures}
             aria-expanded={featuresOpen}
           >
             {featuresOpen ? '▾' : '▸'} Features
