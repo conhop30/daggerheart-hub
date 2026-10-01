@@ -210,6 +210,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
             sessionAdversaries={sessionAdversaries}
             onChange={handleAdversaryChange}
             onSelect={(id) => setCombatSpotlight({ id, key: Date.now() })}
+            onRemove={handleAdversaryRemove}
           />
         </aside>
       </div>

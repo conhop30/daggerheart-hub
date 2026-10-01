@@ -7,3 +7,6 @@ scratch list for planning the next pass of work.
 - [ ] Add a set of selectable themes beyond the current Light/Dark/System
       choice — each theme should be able to change things like the Fear
       tracker's token colors and backgrounds, not just light-vs-dark.
+- [ ] Redesign the Campaign launch process (creating/opening a Campaign for
+      the first time) — current flow isn't good enough; needs a proper
+      pass, not just a tweak.

@@ -5,10 +5,20 @@
    instance, since column counts/widths differ per section), and each row
    is `display: contents` so its cells become direct grid items — that's
    what lets a plain <div role="row"> wrapper exist for semantics without
-   breaking the column alignment grid columns need. */
+   breaking the column alignment grid columns need.
+
+   Column separation comes entirely from each cell's own horizontal
+   padding, not from a grid `column-gap` — a `display: contents` row can't
+   carry a background itself (it generates no box), so the zebra tint below
+   is painted on each cell instead. With a real column-gap, that left every
+   cell as its own isolated, background-colored rectangle floating in a sea
+   of page background — a grid of boxes, exactly what this direction was
+   trying to avoid. Zero gap plus padding is what lets same-row cells'
+   backgrounds actually touch and read as one continuous band. */
 .equipment-table {
   display: grid;
-  column-gap: var(--space-3);
+  column-gap: 0;
+  row-gap: 0;
   margin-bottom: var(--space-3);
 }
 
@@ -19,7 +29,7 @@
 .equipment-table__cell {
   display: flex;
   align-items: center;
-  padding: 0.8rem 0.2rem;
+  padding: 0.8rem var(--space-2);
   font-size: 0.85rem;
   color: var(--ink-dim);
   min-width: 0;

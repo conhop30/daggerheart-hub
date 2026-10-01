@@ -119,6 +119,16 @@ test.describe('Campaign banner and carrying a session forward', () => {
     await win.locator('.content-card', { hasText: 'Session 3' }).getByRole('button', { name: 'Open' }).click();
     await expect(win.locator('.fear-track__value')).toHaveText('9 / 12');
     await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue('');
+
+    // Back at the list, the most recently created Session (3) is on top —
+    // the list itself still stores creation order (Session 2 is still the
+    // one Clone Most Recent targets), only the display is reversed.
+    await win.click('.session-view__back');
+    const rows = win.locator('.session-list .content-card');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0)).toContainText('Session 3');
+    await expect(rows.nth(1)).toContainText('Session 2');
+    await expect(rows.nth(2)).toContainText('Session 1');
   });
 
   test('two Campaigns can each have a "Session 1"', async () => {

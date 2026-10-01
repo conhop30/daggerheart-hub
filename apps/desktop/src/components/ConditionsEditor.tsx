@@ -32,7 +32,27 @@ export default function ConditionsEditor({ values, onChange }: ConditionsEditorP
 
   return (
     <div className="feature-editor">
-      <div className="feature-editor__label">Conditions</div>
+      <div className="feature-editor__label conditions-editor__label-row">
+        Conditions
+        <span className="conditions-editor__help" tabIndex={0} aria-label="Condition reference: Hidden, Restrained, Vulnerable">
+          <span aria-hidden="true">?</span>
+          <span className="conditions-editor__tooltip" role="tooltip">
+            <dl>
+              <dt>Hidden</dt>
+              <dd>
+                While you're out of sight from all enemies and they don't otherwise know your location, you gain the
+                Hidden condition. Any rolls against a Hidden creature have disadvantage. After an adversary moves to
+                where they would see you, you move into their line of sight, or you make an attack, you are no
+                longer Hidden.
+              </dd>
+              <dt>Restrained</dt>
+              <dd>Restrained characters can't move, but you can still take actions from their current position.</dd>
+              <dt>Vulnerable</dt>
+              <dd>When a creature is Vulnerable, all rolls targeting them have advantage.</dd>
+            </dl>
+          </span>
+        </span>
+      </div>
       {values.map((condition, index) => {
         const effect = conditionEffect(condition.name);
         const effectDifficulty = effect ? effect.difficultyPerStack * condition.count : 0;

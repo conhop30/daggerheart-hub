@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import { DIE_SIZES, rollDiceQueue, formatDiceQueueLabel, type DiceTrayRollResult } from '../lib/dice';
-import { DIE_SHAPES } from '../lib/diceShapes';
+import { DIE_PATHS } from '../lib/diceShapes';
 import './DiceTray.css';
+
+// A d100 has no solid of its own, so it's a plain stroked circle; every
+// other size gets its wireframe outline from DIE_PATHS.
+function DieIcon({ sides }: { sides: number }) {
+  return (
+    <svg className="dice-tray__die-icon" viewBox="0 0 100 100" aria-hidden="true">
+      {sides === 100 ? (
+        <circle cx="50" cy="50" r="42" />
+      ) : (
+        <path d={DIE_PATHS[sides]} />
+      )}
+    </svg>
+  );
+}
 
 interface DiceTrayProps {
   onRoll: (label: string, total: number) => void;
@@ -59,11 +73,8 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
               onContextMenu={(e) => remove(sides, e)}
               aria-label={`${dieLabel(sides)}${count > 0 ? `, ${count} queued — right-click to remove one` : ''}`}
             >
-              <span className="dice-tray__die-border" style={{ clipPath: DIE_SHAPES[sides] }} />
-              <span className="dice-tray__die-fill" style={{ clipPath: DIE_SHAPES[sides] }} />
-              <span
-                className={`dice-tray__die-label${sides === 4 ? ' dice-tray__die-label--d4' : ''}${sides === 10 ? ' dice-tray__die-label--d10' : ''}`}
-              >
+              <DieIcon sides={sides} />
+              <span className={`dice-tray__die-label${sides === 4 ? ' dice-tray__die-label--d4' : ''}`}>
                 {dieLabel(sides)}
               </span>
               {count > 0 && <span className="dice-tray__badge">{count}</span>}

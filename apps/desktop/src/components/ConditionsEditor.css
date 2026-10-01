@@ -2,6 +2,98 @@
   grid-template-columns: auto 1fr auto auto auto;
 }
 
+.conditions-editor__label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A quick rules reference for the table's own standard Conditions — shown
+   on hover/focus only, so it costs a 15px circle at rest instead of a
+   permanent block of rules text taking up real screen space. */
+.conditions-editor__help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: help;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.conditions-editor__help:hover,
+.conditions-editor__help:focus-visible {
+  border-color: var(--hope);
+  color: var(--hope);
+  outline: none;
+}
+
+.conditions-editor__tooltip {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  width: 260px;
+  padding: 10px 12px;
+  background: var(--panel-raised, var(--panel));
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-2px);
+  transition:
+    opacity 140ms var(--ease),
+    transform 140ms var(--ease),
+    visibility 140ms;
+  pointer-events: none;
+}
+
+.conditions-editor__help:hover .conditions-editor__tooltip,
+.conditions-editor__help:focus-visible .conditions-editor__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.conditions-editor__tooltip dl {
+  margin: 0;
+}
+
+.conditions-editor__tooltip dt {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+.conditions-editor__tooltip dt:first-child {
+  margin-top: 0;
+}
+
+.conditions-editor__tooltip dd {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--ink-dim);
+  line-height: 1.4;
+  white-space: normal;
+}
+
 .conditions-editor__count {
   display: flex;
   align-items: center;

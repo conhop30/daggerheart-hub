@@ -322,6 +322,31 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(wardenTile.locator('.session-tile__features-toggle')).toHaveAttribute('aria-expanded', 'true');
   });
 
+  test('the condensed sidebar\'s "x" button removes an Adversary without needing its full tile', async () => {
+    await createAdversary('Ashen Warden', '8', '3');
+    await createAdversary('Marsh Stalker', '6', '2');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.mode-toggle__option:has-text("Combat")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Ashen Warden")');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Marsh Stalker")');
+
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(2);
+    await expect(win.locator('.session-combat-sidebar__combatant')).toHaveCount(2);
+
+    await win.locator('.session-combat-sidebar__combatant', { hasText: 'Marsh Stalker' })
+      .locator('.session-combat-sidebar__remove')
+      .click();
+
+    // Removed from both the sidebar and the full tile grid below it, and
+    // the Warden — untouched — is still there in each.
+    await expect(win.locator('.session-combat-sidebar__combatant')).toHaveCount(1);
+    await expect(win.locator('.session-combat-sidebar__combatant')).toContainText('Ashen Warden');
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(1);
+    await expect(win.locator('.combat-panel .content-card').getByLabel('Name')).toHaveValue('Ashen Warden');
+  });
+
   test('duplicate pulls get numbered, Conditions stack into an effective Difficulty, and rolls append to the Roll Log', async () => {
     await win.click('.create-panel__toggle');
     await win.click('.chip:text-is("Adversary")');

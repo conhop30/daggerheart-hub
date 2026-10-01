@@ -7,6 +7,8 @@ interface SessionCombatSidebarProps {
   onChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   /** Clicking a row here targets that Adversary's full tile in CombatPanel below — see SessionView, which owns the resulting spotlight signal. */
   onSelect: (adversaryId: string) => void;
+  /** Removes the Adversary from this Session entirely, without having to scroll down to its full CombatPanel tile first. */
+  onRemove: (adversary: SessionAdversary) => void;
 }
 
 // A very condensed, glanceable readout of the Adversaries currently pulled
@@ -15,7 +17,7 @@ interface SessionCombatSidebarProps {
 // recall "wait, what's still Restrained?" Reads the same live list
 // CombatPanel does (lifted to SessionView, see its own comment) so the two
 // views of the same Session never disagree.
-export default function SessionCombatSidebar({ sessionAdversaries, onChange, onSelect }: SessionCombatSidebarProps) {
+export default function SessionCombatSidebar({ sessionAdversaries, onChange, onSelect, onRemove }: SessionCombatSidebarProps) {
   if (sessionAdversaries.length === 0) return null;
 
   return (
@@ -43,6 +45,17 @@ export default function SessionCombatSidebar({ sessionAdversaries, onChange, onS
           }}
         >
           <span className="session-combat-sidebar__name">{adversary.label}</span>
+          <button
+            type="button"
+            className="session-combat-sidebar__remove"
+            aria-label={`Remove ${adversary.label}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(adversary);
+            }}
+          >
+            &times;
+          </button>
           {adversary.hpMax != null && (
             <StatStepper
               label="HP"

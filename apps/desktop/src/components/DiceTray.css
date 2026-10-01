@@ -23,37 +23,38 @@
 }
 
 /* Each die is a plain square button (full click/hover target, regardless of
-   shape) with the actual die silhouette drawn as two stacked clip-path
-   layers inside it — border color behind, fill color inset 1.5px on top —
-   the same technique DomainRibbon.css uses for its pennant outline. A d6
-   has no clip-path (plain square, border-radius instead); the rest get a
-   shape from lib/diceShapes so a d4 reads as a triangle, a d20 as a
-   hexagon, and so on, instead of every size looking identical. */
+   shape) with its actual wireframe outline — see lib/diceShapes — drawn as
+   a real SVG path: a d4 reads as a tetrahedron, a d12 as a dodecahedron,
+   and so on, with their own internal facet lines, not just an outer
+   silhouette. The label sits on top; .dice-tray__die itself carries the
+   color both the icon (via currentColor) and the label read off of, so a
+   hover/queued state only has to change one thing. */
 .dice-tray__die {
   position: relative;
   width: 44px;
   height: 44px;
-  padding: 0;
+  padding: 2px;
   border: none;
+  border-radius: 7px;
   background: transparent;
+  color: var(--ink-dim);
   flex-shrink: 0;
+  transition:
+    background 160ms var(--ease),
+    color 160ms var(--ease);
 }
 
-.dice-tray__die-border,
-.dice-tray__die-fill {
+.dice-tray__die-icon {
   position: absolute;
-  border-radius: 6px;
-  transition: background 160ms var(--ease);
-}
-
-.dice-tray__die-border {
-  inset: 0;
-  background: var(--hairline);
-}
-
-.dice-tray__die-fill {
-  inset: 1.5px;
-  background: var(--panel);
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: stroke 160ms var(--ease);
 }
 
 .dice-tray__die-label {
@@ -67,8 +68,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  color: var(--ink-dim);
-  transition: color 160ms var(--ease);
+  color: currentColor;
   pointer-events: none;
 }
 
@@ -77,36 +77,13 @@
   padding-top: 9px;
 }
 
-/* A point-down pentagon's visual centroid sits above its bounding box's
-   center — the opposite correction from the triangle above. */
-.dice-tray__die-label--d10 {
-  padding-bottom: 6px;
-}
-
-.dice-tray__die:hover .dice-tray__die-fill {
+.dice-tray__die:hover {
   background: rgba(228, 179, 65, 0.1);
-}
-
-.dice-tray__die:hover .dice-tray__die-label {
   color: var(--ink);
 }
 
-/* The fill layer has to stay OPAQUE here, same as it is at rest — it's
-   what hides the border layer in the tile's interior, leaving only a thin
-   ring of border color showing around the edge (the same peek-through
-   trick DomainRibbon.css uses for its pennant outline). A translucent gold
-   fill on top of an opaque gold border doesn't hide anything — the two
-   just blend into one solid gold block with the label unreadable on top
-   of it, which is exactly what shipped here the first time. */
-.dice-tray__die.queued .dice-tray__die-border {
-  background: var(--hope);
-}
-
-.dice-tray__die.queued .dice-tray__die-fill {
-  background: #2c2415;
-}
-
-.dice-tray__die.queued .dice-tray__die-label {
+.dice-tray__die.queued {
+  background: rgba(228, 179, 65, 0.14);
   color: var(--hope);
 }
 

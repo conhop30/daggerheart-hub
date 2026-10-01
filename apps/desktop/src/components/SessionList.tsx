@@ -48,6 +48,9 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
 
   // Sessions come back in creation order, so the last one is the most recent.
   const mostRecent = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+  // Displayed newest-first — a reversed copy, not a re-sort, so the
+  // creation-order array above (and `mostRecent`) stays untouched.
+  const orderedSessions = [...sessions].reverse();
 
   // A fresh Session starts blank; "Session N" is just a starting suggestion for the name.
   const suggestedName = `Session ${sessions.length + 1}`;
@@ -123,7 +126,7 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
 
       {!loading && !error && (
         <ContentCardList
-          items={sessions}
+          items={orderedSessions}
           emptyMessage="No sessions yet."
           getKey={(s) => s.id}
           renderItem={(session) => (
