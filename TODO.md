@@ -159,8 +159,15 @@ scratch list for planning the next pass of work.
       card text fits rather than just a CSS size tweak, if long rules text
       doesn't fit without it today). Dread domain's official card art is
       in the Hope and Fear pdf (ask again if that's needed).
-- [ ] Adversary picker: "Recently Viewed" should stay alphabetically
-      sorted (not most-recent-first). Add filters by Tier and by Type.
+- [x] Adversary picker (StatGallery.tsx — shared with Environment, which
+      has no `type` field so its filter row stays Tier-only): "Recently
+      Viewed" is stored newest-first still (that's what decides which 8
+      survive once the cap hits — eviction has to track real recency) but
+      now *displayed* alphabetically, so the list reads as a stable lookup
+      instead of reshuffling on every click. New `getType` prop (optional,
+      same `items.length > 0` guard pattern as Tier's own filter) adds a
+      second "All Types" dropdown next to Tier's, wired up for Adversary
+      only.
 - [ ] (For further pondering — discuss with mockups before building.) A
       draggable "Journal" bubble, dockable to a screen edge. Clicking it
       opens a notes window with no default text fields; instead, a

@@ -231,6 +231,7 @@ export default function AdversariesEnvironmentsPage() {
             getName={(a) => a.name}
             getTier={(a) => a.tier}
             getSubtitle={(a) => (a.type ? titleCaseEnum(a.type) : null)}
+            getType={(a) => (a.type ? titleCaseEnum(a.type) : null)}
             searchMatch={(a, q) => a.name.toLowerCase().includes(q) || (a.description ?? '').toLowerCase().includes(q)}
             emptyMessage="No Adversaries yet — click + New Adversary above to create one."
             itemLabel="Adversary"

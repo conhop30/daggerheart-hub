@@ -19,6 +19,8 @@ interface StatGalleryProps<T> {
   getTier: (item: T) => number | null;
   /** Optional short tag shown next to history entries — e.g. an Adversary's type or an Environment's category. */
   getSubtitle?: (item: T) => string | null;
+  /** Optional — adds a second filter dropdown alongside Tier's, e.g. Adversary's type (Standard/Minion/Solo/...). Omit for item types with no such field (Environment has none today), same as Tier's own `tiers.length > 0` guard. */
+  getType?: (item: T) => string | null;
   searchMatch: (item: T, query: string) => boolean;
   /** Compact content shown inside a grid tile in Standard mode — name + a small StatRail, typically. */
   renderTile: (item: T) => ReactNode;
@@ -49,6 +51,7 @@ export function StatGallery<T>({
   getName,
   getTier,
   getSubtitle,
+  getType,
   searchMatch,
   renderTile,
   renderTileCondensed,
@@ -58,6 +61,7 @@ export function StatGallery<T>({
 }: StatGalleryProps<T>) {
   const [query, setQuery] = useState('');
   const [tierFilter, setTierFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [mode, setMode] = useState<ViewMode>('standard');
@@ -65,15 +69,23 @@ export function StatGallery<T>({
   const tiers = Array.from(new Set(items.map((i) => getTier(i)).filter((t): t is number => t != null))).sort(
     (a, b) => a - b,
   );
+  const types = getType
+    ? Array.from(new Set(items.map((i) => getType(i)).filter((t): t is string => t != null))).sort((a, b) =>
+        a.localeCompare(b),
+      )
+    : [];
 
   const filtered = items.filter((item) => {
     if (query.trim() && !searchMatch(item, query.trim().toLowerCase())) return false;
     if (tierFilter !== 'all' && String(getTier(item)) !== tierFilter) return false;
+    if (typeFilter !== 'all' && getType?.(item) !== typeFilter) return false;
     return true;
   });
 
   const selected = selectedId != null ? (items.find((i) => getKey(i) === selectedId) ?? null) : null;
-  const visibleHistory = history.filter((h) => items.some((i) => getKey(i) === h.id));
+  const visibleHistory = history
+    .filter((h) => items.some((i) => getKey(i) === h.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   function selectItem(item: T) {
     const key = getKey(item);
@@ -87,6 +99,12 @@ export function StatGallery<T>({
           tier: getTier(selected),
           subtitle: getSubtitle ? getSubtitle(selected) : null,
         };
+        // Stored newest-first still — that's what decides which 8 survive
+        // once the cap is hit ("recently viewed" has to mean recency for
+        // *eviction* purposes). Display order is a separate concern, see
+        // visibleHistory below, which re-sorts alphabetically for the list
+        // a GM actually scans, so it reads as a stable A-Z lookup instead
+        // of reshuffling on every click.
         next = [entry, ...prev.filter((h) => h.id !== entry.id)];
       }
       return next.filter((h) => h.id !== key).slice(0, HISTORY_LIMIT);
@@ -127,6 +145,21 @@ export function StatGallery<T>({
             {tiers.map((t) => (
               <option key={t} value={String(t)}>
                 Tier {t}
+              </option>
+            ))}
+          </select>
+        )}
+        {types.length > 0 && (
+          <select
+            className="stat-gallery__type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="Filter by Type"
+          >
+            <option value="all">All Types</option>
+            {types.map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
             ))}
           </select>

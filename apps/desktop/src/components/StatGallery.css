@@ -12,7 +12,8 @@
 }
 
 .stat-gallery__search,
-.stat-gallery__tier-filter {
+.stat-gallery__tier-filter,
+.stat-gallery__type-filter {
   background: var(--void);
   border: 1px solid var(--hairline);
   color: var(--ink);
@@ -28,12 +29,14 @@
   min-width: 160px;
 }
 
-.stat-gallery__tier-filter {
+.stat-gallery__tier-filter,
+.stat-gallery__type-filter {
   flex-shrink: 0;
 }
 
 .stat-gallery__search:focus-visible,
-.stat-gallery__tier-filter:focus-visible {
+.stat-gallery__tier-filter:focus-visible,
+.stat-gallery__type-filter:focus-visible {
   border-color: var(--hope);
 }
 
