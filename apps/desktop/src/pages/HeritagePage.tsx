@@ -68,6 +68,7 @@ export default function HeritagePage() {
             items={communities.items}
             emptyMessage="No Communities yet — click + New Community above to create one."
             getKey={(c) => c.id}
+            layout="grid"
             renderItem={(c) =>
               editingCommunityId === c.id ? (
                 <NamedFeatureForm
@@ -123,6 +124,7 @@ export default function HeritagePage() {
             items={ancestries.items}
             emptyMessage="No Ancestries yet — click + New Ancestry above to create one."
             getKey={(a) => a.id}
+            layout="grid"
             renderItem={(a) =>
               editingAncestryId === a.id ? (
                 <NamedFeatureForm

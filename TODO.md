@@ -133,10 +133,18 @@ scratch list for planning the next pass of work.
       animation where color "grows" out along the top and bottom edges
       (a responsive border extending in on focus, retracting back to just
       the corner curve on blur).
-- [ ] Heritage tab: the Feature should stay visible when a tile is
-      collapsed. Also add a layout option that packs multiple Heritage
-      tiles per row (more on screen at once), like Equipment/Adversary
-      grids already allow.
+- [x] Heritage tab (EntryCard.tsx — also used by Optional Mechanics'
+      Transformation, which gets both fixes for free): Features now render
+      unconditionally, right after the tagline — only the long-form
+      elaboration paragraph past the tagline stays behind "Read entry".
+      The toggle itself now only appears when there's actually prose to
+      reveal (`hasMore` no longer counts Features). Communities/Ancestries
+      also now pass `layout="grid"` to their `ContentCardList`s — same
+      `repeat(auto-fill, minmax(300px, 1fr))` mechanism PartyRoster/
+      RegionOverview already use, not StatGallery's own (much heavier,
+      stat-block-specific) grid the TODO's wording pointed at; visually
+      verified this reads cleanly at 3-per-row with real content (tagline
+      + Feature + Read entry toggle all fit without cramping).
 - [x] Domain ribbon icon (DomainRibbon.tsx/.css — this is the Domain's own
       symbol on its gallery row/hero, not an individual Domain Card): gold
       divider bar under the icon dropped, icon enlarged (38px -> 54px) and

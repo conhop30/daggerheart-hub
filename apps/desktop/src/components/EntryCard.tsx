@@ -36,7 +36,12 @@ function splitTagline(description: string): { tagline: string; rest: string } {
 export default function EntryCard({ item, onEdit, onDelete }: EntryCardProps) {
   const [expanded, setExpanded] = useState(false);
   const { tagline, rest } = item.description ? splitTagline(item.description) : { tagline: '', rest: '' };
-  const hasMore = rest.length > 0 || item.features.length > 0;
+  // Features are crunchy, at-a-glance gameplay info (a Community's
+  // signature trait, an Ancestry's two features) — always shown, not
+  // gated behind the same toggle as the long-form flavor text. Only
+  // `rest` (the elaboration paragraph past the tagline) stays collapsible,
+  // so the toggle itself only needs to exist when there's prose to reveal.
+  const hasMore = rest.length > 0;
 
   return (
     <div className="entry-card">
@@ -64,24 +69,20 @@ export default function EntryCard({ item, onEdit, onDelete }: EntryCardProps) {
           </div>
         </div>
         {tagline && <p className="entry-card__tagline">{tagline}</p>}
-        {expanded && (
-          <>
-            {rest && <p className="entry-card__description">{rest}</p>}
-            {item.features.length > 0 && (
-              <div className="entry-card__features">
-                {item.features.map((f, i) => (
-                  <div className="entry-card__feature-row" key={i}>
-                    <span className="entry-card__feature-label">Feature</span>
-                    <span className="entry-card__feature-value">
-                      <strong>{f.name}</strong>
-                      {f.description ? ` — ${f.description}` : ''}
-                    </span>
-                  </div>
-                ))}
+        {item.features.length > 0 && (
+          <div className="entry-card__features">
+            {item.features.map((f, i) => (
+              <div className="entry-card__feature-row" key={i}>
+                <span className="entry-card__feature-label">Feature</span>
+                <span className="entry-card__feature-value">
+                  <strong>{f.name}</strong>
+                  {f.description ? ` — ${f.description}` : ''}
+                </span>
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
+        {expanded && rest && <p className="entry-card__description">{rest}</p>}
       </div>
     </div>
   );
