@@ -1,0 +1,44 @@
+.member-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.member-backdrop__image {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+}
+
+.member-backdrop--landscape .member-backdrop__image {
+  inset: 0;
+}
+
+.member-backdrop--portrait .member-backdrop__image {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 44%;
+  min-width: 160px;
+  transform: translateX(-50%);
+}
+
+.member-backdrop__scrim {
+  position: absolute;
+  inset: 0;
+}
+
+.member-backdrop--landscape .member-backdrop__scrim {
+  background: rgba(20, 18, 27, 0.45);
+}
+
+/* The transparent middle lets the portrait show through; var(--void) on
+   both sides fades it back into the page rather than ending in a hard
+   edge. background-color (not a 3rd gradient stop) is what tints that
+   transparent middle, since a plain color can't be one layer in a
+   multi-stop background-image list. */
+.member-backdrop--portrait .member-backdrop__scrim {
+  background-image: linear-gradient(to right, var(--void) 0%, rgba(20, 18, 27, 0) 32%, rgba(20, 18, 27, 0) 68%, var(--void) 100%);
+  background-color: rgba(20, 18, 27, 0.45);
+}

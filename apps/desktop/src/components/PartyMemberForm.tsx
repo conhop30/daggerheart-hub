@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { partyMembersApi, type PartyMember, type Trackable } from '../api/partyMembers';
+import ImageUploadField from './ImageUploadField';
 import TextField from './TextField';
 import TrackableEditor from './TrackableEditor';
 import './forms.css';
@@ -21,6 +22,7 @@ export default function PartyMemberForm({ campaignId, sessionId, initial, onSave
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [trackables, setTrackables] = useState<Trackable[]>(initial?.trackables ?? []);
+  const [portraitImage, setPortraitImage] = useState<string | null>(initial?.portraitImage ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,8 +32,8 @@ export default function PartyMemberForm({ campaignId, sessionId, initial, onSave
     setError(null);
     try {
       const member = isEditing
-        ? await partyMembersApi.update(initial!.id, { name, notes, trackables }, { sessionId })
-        : await partyMembersApi.create({ campaignId, sessionId, name, notes, trackables });
+        ? await partyMembersApi.update(initial!.id, { name, notes, trackables, portraitImage }, { sessionId })
+        : await partyMembersApi.create({ campaignId, sessionId, name, notes, trackables, portraitImage });
       onSaved(member);
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not ${isEditing ? 'save' : 'create'} the party member.`);
@@ -49,6 +51,12 @@ export default function PartyMemberForm({ campaignId, sessionId, initial, onSave
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
       </label>
       <TrackableEditor trackables={trackables} onChange={setTrackables} />
+      <ImageUploadField
+        label="Portrait"
+        hint="Optional — a tall image centers and fades on both sides; a wide one fills the tile."
+        value={portraitImage}
+        onChange={setPortraitImage}
+      />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

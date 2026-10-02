@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { partyMembersApi, type PartyMember } from '../api/partyMembers';
 import { ContentCard, ContentCardList } from './ContentCard';
+import MemberBackdrop from './MemberBackdrop';
 import PartyMemberForm from './PartyMemberForm';
 import StatStepper from './StatStepper';
 import { upsertById } from '../lib/upsert';
@@ -32,6 +33,7 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [open, setOpen] = useState(true);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -92,7 +94,17 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
   return (
     <div className="party-roster">
       <div className="party-roster__header">
-        <h2 className="party-roster__title">Party</h2>
+        <button
+          type="button"
+          className={`party-roster__toggle${open ? ' party-roster__toggle--open' : ''}`}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          <span className="party-roster__chevron" aria-hidden="true">
+            &#9656;
+          </span>
+          <h2 className="party-roster__title">Party</h2>
+        </button>
         {!creating && (
           <button type="button" className="party-roster__add" onClick={() => setCreating(true)}>
             + Add Party Member
@@ -100,63 +112,72 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
         )}
       </div>
 
-      {creating && (
-        <div className="party-roster__form">
-          <PartyMemberForm
-            campaignId={campaignId}
-            sessionId={sessionId}
-            onSaved={handleSaved}
-            onCancel={() => setCreating(false)}
-          />
-        </div>
-      )}
+      {open && (
+        <>
+          {creating && (
+            <div className="party-roster__form">
+              <PartyMemberForm
+                campaignId={campaignId}
+                sessionId={sessionId}
+                onSaved={handleSaved}
+                onCancel={() => setCreating(false)}
+              />
+            </div>
+          )}
 
-      <p className="party-roster__hint">
-        {sessionId
-          ? 'Changes here apply from this session onward; earlier sessions keep what they had.'
-          : 'Shown as of your most recent session. Changes apply from that session onward.'}
-      </p>
+          <p className="party-roster__hint">
+            {sessionId
+              ? 'Changes here apply from this session onward; earlier sessions keep what they had.'
+              : 'Shown as of your most recent session. Changes apply from that session onward.'}
+          </p>
 
-      {loading && <p className="party-roster__status">Loading the Party&hellip;</p>}
-      {error && <p className="party-roster__status party-roster__status--error">{error}</p>}
+          {loading && <p className="party-roster__status">Loading the Party&hellip;</p>}
+          {error && <p className="party-roster__status party-roster__status--error">{error}</p>}
 
-      {!loading && !error && (
-        <ContentCardList
-          items={members}
-          emptyMessage="No party members yet."
-          getKey={(m) => m.id}
-          layout={layout}
-          renderItem={(member) =>
-            editingId === member.id ? (
-              <div className="party-roster__form">
-                <PartyMemberForm
-                  campaignId={campaignId}
-                  sessionId={sessionId}
-                  initial={member}
-                  onSaved={handleSaved}
-                  onCancel={() => setEditingId(null)}
-                />
-              </div>
-            ) : (
-              <ContentCard title={member.name} onEdit={() => setEditingId(member.id)} onDelete={() => handleDelete(member)}>
-                {member.notes && <p className="party-roster__notes">{member.notes}</p>}
-                {member.trackables.length > 0 && (
-                  <div className="party-roster__trackables">
-                    {member.trackables.map((t, index) => (
-                      <StatStepper
-                        key={index}
-                        label={t.label}
-                        current={t.current}
-                        max={t.max}
-                        onChange={(current) => handleTrackableChange(member, index, current)}
-                      />
-                    ))}
+          {!loading && !error && (
+            <ContentCardList
+              items={members}
+              emptyMessage="No party members yet."
+              getKey={(m) => m.id}
+              layout={layout}
+              renderItem={(member) =>
+                editingId === member.id ? (
+                  <div className="party-roster__form">
+                    <PartyMemberForm
+                      campaignId={campaignId}
+                      sessionId={sessionId}
+                      initial={member}
+                      onSaved={handleSaved}
+                      onCancel={() => setEditingId(null)}
+                    />
                   </div>
-                )}
-              </ContentCard>
-            )
-          }
-        />
+                ) : (
+                  <div
+                    className={`party-roster__member${member.portraitImage ? ' party-roster__member--photo' : ''}`}
+                  >
+                    {member.portraitImage && <MemberBackdrop image={member.portraitImage} />}
+                    <ContentCard title={member.name} onEdit={() => setEditingId(member.id)} onDelete={() => handleDelete(member)}>
+                      {member.notes && <p className="party-roster__notes">{member.notes}</p>}
+                      {member.trackables.length > 0 && (
+                        <div className="party-roster__trackables">
+                          {member.trackables.map((t, index) => (
+                            <StatStepper
+                              key={index}
+                              label={t.label}
+                              current={t.current}
+                              max={t.max}
+                              onChange={(current) => handleTrackableChange(member, index, current)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </ContentCard>
+                  </div>
+                )
+              }
+            />
+          )}
+        </>
       )}
     </div>
   );

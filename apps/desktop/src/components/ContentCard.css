@@ -51,44 +51,69 @@
 .content-card__header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: stretch;
   gap: var(--space-2);
   margin-bottom: 4px;
+  min-height: 30px;
 }
 
 .content-card__title {
+  display: flex;
+  align-items: center;
   font-size: 1.1rem;
 }
 
 .content-card__actions {
   display: flex;
-  gap: var(--space-1);
   flex-shrink: 0;
 }
 
+/* Ethereal pair: no border on the button itself, just a hairline between
+   the two — the hover fill fills the full height of the row it's attached
+   to (edge to edge, not a floating pill) since .content-card__header
+   stretches its children instead of centering them on the baseline. The
+   label lives in its own <span> so the "grows slightly" hover effect is a
+   transform on that span, never a font-size change that would reflow
+   anything around it. */
 .content-card__action {
   background: none;
-  border: 1px solid var(--hairline);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.7rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 0 14px;
   white-space: nowrap;
   transition:
-    border-color 200ms var(--ease),
-    color 200ms var(--ease);
+    background 280ms var(--ease),
+    color 280ms var(--ease);
+}
+
+.content-card__action + .content-card__action {
+  border-left: 1px solid var(--hairline);
+}
+
+.content-card__action span {
+  display: inline-block;
+  transition: transform 280ms var(--ease);
 }
 
 .content-card__action:hover {
-  border-color: var(--hope);
+  background: linear-gradient(135deg, rgba(228, 179, 65, 0.18), rgba(228, 179, 65, 0.02));
   color: var(--ink);
 }
 
+.content-card__action:hover span {
+  transform: scale(1.1);
+}
+
 .content-card__action--danger:hover {
-  border-color: var(--fear-on-dark);
+  background: linear-gradient(135deg, rgba(165, 140, 232, 0.2), rgba(165, 140, 232, 0.02));
   color: var(--fear-on-dark);
 }
 

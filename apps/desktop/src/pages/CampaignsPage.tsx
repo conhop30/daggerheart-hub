@@ -29,7 +29,6 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [tab, setTab] = useState<'campaigns' | 'music'>('campaigns');
 
   // Jumping straight to a Session from the floating music player (which can
@@ -94,36 +93,13 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
   function handleSaved(saved: Campaign) {
     upsert(saved);
     setCreating(false);
-    setEditingId(null);
   }
 
   // Stabilized so CampaignBanner (memoized) can skip re-rendering siblings
-  // when only one banner's edit/delete happens — same reasoning as
-  // DomainBanner/EquipmentPage.
+  // when only one row is opened — same reasoning as DomainBanner/
+  // EquipmentPage. Editing/deleting now live inside CampaignDetail, once
+  // you've opened a Campaign — this gallery's rows only open one.
   const handleOpenCampaign = useCallback((id: string) => setSelectedCampaignId(id), []);
-  const handleEditCampaign = useCallback((id: string) => setEditingId(id), []);
-  const handleDelete = useCallback(
-    async (id: string) => {
-      const campaign = campaigns.find((c) => c.id === id);
-      if (
-        !campaign ||
-        !window.confirm(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`)
-      )
-        return;
-      try {
-        await campaignsApi.remove(campaign.id);
-        remove(campaign.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Campaign.');
-      }
-    },
-    // `remove` (from useApiList) is a fresh function each render but always
-    // functionally equivalent — a stale reference to it is safe to call, so
-    // it's deliberately left out of the deps to keep this stable across
-    // renders that don't actually change the campaigns list.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [campaigns]
-  );
 
   if (selectedCampaign && selectedSession) {
     return (
@@ -165,8 +141,6 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
     );
   }
 
-  const editingCampaign = editingId ? campaigns.find((c) => c.id === editingId) ?? null : null;
-
   return (
     <div className="campaigns-page">
       <div className="campaigns-page__header">
@@ -200,20 +174,13 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
 
       {tab === 'campaigns' && !loading && !error && (
         <>
-          {(creating || editingCampaign) && (
+          {creating && (
             <div className="campaigns-page__edit-panel">
-              <CampaignForm
-                initial={editingCampaign}
-                onSaved={handleSaved}
-                onCancel={() => {
-                  setCreating(false);
-                  setEditingId(null);
-                }}
-              />
+              <CampaignForm initial={null} onSaved={handleSaved} onCancel={() => setCreating(false)} />
             </div>
           )}
 
-          <div className="campaign-grid">
+          <div className="campaign-list">
             {campaigns.map((campaign) => (
               <CampaignBanner
                 key={campaign.id}
@@ -221,8 +188,6 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
                 partyNames={partyNamesByCampaign.get(campaign.id) ?? []}
                 sessionCount={sessionCountByCampaign.get(campaign.id) ?? 0}
                 onOpen={handleOpenCampaign}
-                onEdit={handleEditCampaign}
-                onDelete={handleDelete}
               />
             ))}
             <CampaignBannerCreate onClick={() => setCreating(true)} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
+import ImageUploadField from './ImageUploadField';
 import TextField from './TextField';
 import './forms.css';
 
@@ -18,6 +19,7 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [colorHex, setColorHex] = useState(initial?.colorHex ?? '#A97815');
   const [level, setLevel] = useState(String(initial?.level ?? 1));
+  const [coverImage, setCoverImage] = useState<string | null>(initial?.coverImage ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +27,7 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const body = { name, notes, colorHex, level: Number(level) || 1 };
+    const body = { name, notes, colorHex, level: Number(level) || 1, coverImage };
     try {
       const campaign = isEditing ? await campaignsApi.update(initial!.id, body) : await campaignsApi.create(body);
       onSaved(campaign);
@@ -49,6 +51,12 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
         Color
         <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)} />
       </label>
+      <ImageUploadField
+        label="Cover image"
+        hint="Optional — shows right-aligned on the Campaign row. Falls back to the color above when unset."
+        value={coverImage}
+        onChange={setCoverImage}
+      />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

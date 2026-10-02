@@ -12,6 +12,8 @@ export interface PartyMember {
   name: string;
   notes: string | null;
   trackables: Trackable[];
+  /** Optional portrait for the member's tile, as a data: URL. A tall image centers and fades on both sides; a wide one fills the tile. Unset leaves the tile exactly as it was before this existed. */
+  portraitImage: string | null;
   /** True when this member was last changed in an earlier session than the one being viewed. */
   carried?: boolean;
 }
@@ -23,6 +25,7 @@ export interface CreatePartyMemberRequest {
   name: string;
   notes?: string;
   trackables?: Trackable[];
+  portraitImage?: string | null;
 }
 
 export interface UpdatePartyMemberRequest {
@@ -30,6 +33,7 @@ export interface UpdatePartyMemberRequest {
   name?: string;
   notes?: string;
   trackables?: Trackable[];
+  portraitImage?: string | null;
 }
 
 export const partyMembersApi = {

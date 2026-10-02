@@ -7,6 +7,8 @@ export interface Campaign {
   colorHex: string | null;
   /** The party's level (1-10), shown on the Campaign banner. */
   level: number;
+  /** Optional cover art for the Campaign row, as a data: URL. Falls back to the colorHex gradient when unset. */
+  coverImage: string | null;
 }
 
 export interface CreateCampaignRequest {
@@ -14,6 +16,7 @@ export interface CreateCampaignRequest {
   notes?: string;
   colorHex?: string;
   level?: number;
+  coverImage?: string | null;
 }
 
 export interface UpdateCampaignRequest {
@@ -21,6 +24,7 @@ export interface UpdateCampaignRequest {
   notes?: string;
   colorHex?: string;
   level?: number;
+  coverImage?: string | null;
 }
 
 export const campaignsApi = {

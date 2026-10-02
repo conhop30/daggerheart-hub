@@ -40,9 +40,11 @@
   margin-bottom: var(--space-3);
 }
 
-.campaign-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+/* One full-width row per Campaign now, not a grid of tiles — see
+   CampaignBanner.css for the row itself. */
+.campaign-list {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
 }
 

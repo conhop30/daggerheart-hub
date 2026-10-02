@@ -39,12 +39,12 @@ export const ContentCard = forwardRef<HTMLDivElement, ContentCardProps>(function
             <div className="content-card__actions">
               {onEdit && (
                 <button type="button" className="content-card__action" onClick={onEdit}>
-                  {editLabel ?? 'Edit'}
+                  <span>{editLabel ?? 'Edit'}</span>
                 </button>
               )}
               {onDelete && (
                 <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
-                  {deleteLabel ?? 'Delete'}
+                  <span>{deleteLabel ?? 'Delete'}</span>
                 </button>
               )}
             </div>

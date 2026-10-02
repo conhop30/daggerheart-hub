@@ -1022,7 +1022,12 @@ const campaigns = makeCollection('campaigns', {
     notes: data.notes ?? null,
     colorHex: data.colorHex ?? null,
     level: data.level ?? 1,
+    coverImage: data.coverImage ?? null,
   }),
+  // A Campaign created before coverImage existed has no such key at all —
+  // default it at read time (never rewriting the stored record), same
+  // fix as the Music track volume read-time default above.
+  present: (_store, record) => ({ ...record, coverImage: record.coverImage ?? null }),
 });
 
 function removeCampaign(id) {
@@ -1066,7 +1071,11 @@ const partyMembers = makeVersionedCollection('partyMembers', {
     name: data.name,
     notes: data.notes ?? null,
     trackables: data.trackables ?? [],
+    portraitImage: data.portraitImage ?? null,
   }),
+  // Same read-time default as Campaign's coverImage, for members created
+  // before portraitImage existed.
+  present: (record) => ({ ...record, portraitImage: record.portraitImage ?? null }),
 });
 
 const listPartyMembersByCampaign = partyMembers.listByCampaign;

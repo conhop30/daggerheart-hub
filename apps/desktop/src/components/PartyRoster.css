@@ -1,9 +1,30 @@
 .party-roster__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   margin-bottom: var(--space-2);
+}
+
+.party-roster__toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.party-roster__chevron {
+  display: inline-block;
+  font-size: 0.78rem;
+  color: var(--muted);
+  transition: transform 280ms var(--ease);
+}
+
+.party-roster__toggle--open .party-roster__chevron {
+  transform: rotate(90deg);
 }
 
 .party-roster__title {
@@ -59,4 +80,56 @@
   font-size: 0.72rem;
   color: var(--muted);
   margin: 0 0 var(--space-2);
+}
+
+/* The tile's own shape is untouched (ContentCard, unmodified) — a photo
+   just adds MemberBackdrop as a layer behind it. These overrides live here
+   (not in ContentCard.css) since they only apply with a portrait/landscape
+   image behind otherwise-unchanged content-card markup, a Party-specific
+   case ContentCard itself shouldn't need to know about. */
+.party-roster__member {
+  position: relative;
+}
+
+.party-roster__member--photo {
+  overflow: hidden;
+}
+
+.party-roster__member--photo .content-card {
+  position: relative;
+  z-index: 1;
+}
+
+.party-roster__member--photo .content-card__title,
+.party-roster__member--photo .party-roster__notes,
+.party-roster__member--photo .stat-stepper__label,
+.party-roster__member--photo .stat-stepper__value {
+  color: #ffffff;
+}
+
+.party-roster__member--photo .stat-stepper__button {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.party-roster__member--photo .party-roster__trackables {
+  border-top-color: rgba(255, 255, 255, 0.25);
+}
+
+/* A light frosted chip behind Edit/Delete so they stay legible over
+   whatever's in the photo, without putting a border back on the buttons
+   themselves. */
+.party-roster__member--photo .content-card__actions {
+  background: rgba(20, 18, 27, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px;
+}
+
+.party-roster__member--photo .content-card__action {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.party-roster__member--photo .content-card__action:hover {
+  color: #ffffff;
 }
