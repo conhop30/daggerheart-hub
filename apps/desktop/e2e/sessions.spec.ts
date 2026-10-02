@@ -466,7 +466,9 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
   test('the dice tray queues dice by left click, un-queues by right click, and rolls everything queued into one total', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
-    await expect(win.locator('.dice-tray__roll')).toHaveCount(0);
+    // Always mounted (just disabled) now, not unmounted — so queuing the
+    // first die never shifts the other die buttons around.
+    await expect(win.locator('.dice-tray__roll')).toBeDisabled();
 
     await win.click('.dice-tray__die:has-text("d6")');
     await win.click('.dice-tray__die:has-text("d6")');
@@ -487,12 +489,14 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(win.locator('.dice-tray__result-total')).toHaveText('15');
 
     // The queue resets after a roll — no die still shows a badge, and the
-    // Roll button disappears until something is queued again.
+    // Roll button goes back to disabled until something is queued again.
     await expect(win.locator('.dice-tray__die.queued')).toHaveCount(0);
-    await expect(win.locator('.dice-tray__roll')).toHaveCount(0);
+    await expect(win.locator('.dice-tray__roll')).toBeDisabled();
 
+    // Dismissing clears the result's content, but its row stays mounted
+    // (reserving its space) since a roll has now happened at least once.
     await win.click('.dice-tray__dismiss');
-    await expect(win.locator('.dice-tray__result')).toHaveCount(0);
+    await expect(win.locator('.dice-tray__result-notation')).toHaveCount(0);
   });
 
   test('deleting a Campaign cascades to remove its Sessions', async () => {

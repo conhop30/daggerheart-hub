@@ -112,20 +112,38 @@
   font-size: 0.85rem;
   padding: 9px 16px;
   white-space: nowrap;
+  flex-shrink: 0;
   transition:
     background 160ms var(--ease),
-    color 160ms var(--ease);
+    color 160ms var(--ease),
+    opacity 160ms var(--ease),
+    border-color 160ms var(--ease);
 }
 
-.dice-tray__roll:hover {
+.dice-tray__roll:not(:disabled):hover {
   background: rgba(228, 179, 65, 0.12);
   color: var(--hope);
 }
 
+/* Kept in the DOM (not unmounted) so queuing the first die never changes
+   the row's width — only its own look changes. */
+.dice-tray__roll:disabled {
+  opacity: 0.35;
+  border-color: var(--hairline);
+  color: var(--muted);
+  cursor: default;
+}
+
+/* Stays mounted once a roll has ever happened (see DiceTray.tsx's
+   `everRolled`) — fixed min-height whether it's holding a result or sitting
+   empty between rolls, so dismissing/re-rolling never resizes the panel.
+   Only its very first appearance (the first roll of the tray's lifetime)
+   grows the panel. */
 .dice-tray__result {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-height: 20px;
   padding-top: 10px;
   border-top: 1px solid var(--hairline);
   font-family: var(--font-mono);

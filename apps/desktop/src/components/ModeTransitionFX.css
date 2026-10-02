@@ -1,0 +1,122 @@
+/* Floats above ModeToggle without taking layout space — same reasoning as
+   the Dice Tray fix: a transient effect should never shift anything else
+   around, so it's absolutely positioned and the toggle never changes
+   size while it plays. */
+.mode-fx {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 6px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.mode-fx__art {
+  display: block;
+  width: 70px;
+  overflow: visible;
+}
+
+.mode-fx__swords {
+  height: 42px;
+}
+
+.mode-fx__steps {
+  height: 28px;
+}
+
+.mode-fx__sword {
+  fill: none;
+  stroke: var(--hope-on-dark);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  animation-duration: 250ms;
+  animation-timing-function: var(--ease);
+  animation-fill-mode: forwards;
+}
+
+.mode-fx__sword--a {
+  animation-name: mode-fx-sword-a;
+}
+
+.mode-fx__sword--b {
+  animation-name: mode-fx-sword-b;
+}
+
+@keyframes mode-fx-sword-a {
+  0% {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+
+@keyframes mode-fx-sword-b {
+  0% {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+
+.mode-fx__step {
+  fill: var(--hope-on-dark);
+  opacity: 0;
+  animation-name: mode-fx-step;
+  animation-duration: 150ms;
+  animation-timing-function: var(--ease);
+  animation-fill-mode: forwards;
+}
+
+.mode-fx__step--1 {
+  animation-delay: 0ms;
+}
+
+.mode-fx__step--2 {
+  animation-delay: 50ms;
+}
+
+.mode-fx__step--3 {
+  animation-delay: 100ms;
+}
+
+@keyframes mode-fx-step {
+  0% {
+    transform: translateY(4px) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-2px) scale(0.9);
+    opacity: 0;
+  }
+}
