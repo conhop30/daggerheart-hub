@@ -1,6 +1,6 @@
 import type { FoundationFeature, SpellcastTrait } from '../api/subclasses';
 import AutoGrowTextarea from './AutoGrowTextarea';
-import { useDragReorder } from '../lib/useDragReorder';
+import { useListEditor } from '../lib/useListEditor';
 import './FeatureListEditor.css';
 import './FoundationFeatureListEditor.css';
 
@@ -25,25 +25,11 @@ const TRAIT_OPTIONS: SpellcastTrait[] = [
 // shape as FeatureListEditor, so this reuses its CSS and just adds a third
 // column for the override select.
 export default function FoundationFeatureListEditor({ features, onChange }: FoundationFeatureListEditorProps) {
-  const { getHandleProps, getRowClassName } = useDragReorder(features, onChange);
-
-  function update(index: number, field: keyof FoundationFeature, value: string) {
-    const next = features.slice();
-    if (field === 'spellcastTrait') {
-      next[index] = { ...next[index], spellcastTrait: value === '' ? null : (value as SpellcastTrait) };
-    } else {
-      next[index] = { ...next[index], [field]: value };
-    }
-    onChange(next);
-  }
-
-  function remove(index: number) {
-    onChange(features.filter((_, i) => i !== index));
-  }
-
-  function add() {
-    onChange([...features, { name: '', description: '', spellcastTrait: null }]);
-  }
+  const { getHandleProps, getRowClassName, update, remove, add } = useListEditor(features, onChange, () => ({
+    name: '',
+    description: '',
+    spellcastTrait: null,
+  }));
 
   return (
     <div className="feature-editor">
@@ -55,16 +41,19 @@ export default function FoundationFeatureListEditor({ features, onChange }: Foun
             type="text"
             placeholder="Name"
             value={feature.name}
-            onChange={(e) => update(index, 'name', e.target.value)}
+            onChange={(e) => update(index, (f) => ({ ...f, name: e.target.value }))}
           />
           <AutoGrowTextarea
             placeholder="Description"
             value={feature.description ?? ''}
-            onChange={(e) => update(index, 'description', e.target.value)}
+            onChange={(e) => update(index, (f) => ({ ...f, description: e.target.value }))}
           />
           <select
             value={feature.spellcastTrait ?? ''}
-            onChange={(e) => update(index, 'spellcastTrait', e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              update(index, (f) => ({ ...f, spellcastTrait: value === '' ? null : (value as SpellcastTrait) }));
+            }}
             title="Optional per-feature Spellcast Trait override"
           >
             <option value="">No override</option>

@@ -4,7 +4,7 @@ Working backlog of feedback and small fixes not yet acted on. Not
 interviewer-facing (see README's Feature Roadmap for that) — this is a
 scratch list for planning the next pass of work.
 
-- [ ] Data-driven/modularity pass (interrupted mid-work 2026-10-02) — four
+- [x] Data-driven/modularity pass — four
       findings from a codebase review against the metrics in Connor's AI
       Project Initiation Regulations (see `AI_MEMORY.md`'s "Standing
       development rules" section for the vocabulary: Redundancy,
@@ -62,19 +62,28 @@ scratch list for planning the next pass of work.
          paths that touch this page) all green — not the full suite, since
          the TODO's own note below says to hold that for once all four
          findings land.
-      4. **Unify the four list-editor components** — `FeatureListEditor`,
-         `StringListEditor`, `FoundationFeatureListEditor`, and
-         `ExperienceListEditor` each independently reimplement identical
-         `add`/`remove`/`update` logic around the existing
-         `useDragReorder` hook, differing only in row shape/JSX. Extract a
-         generic `useListEditor<T>(items, onChange, makeEmpty)` hook that
-         all four call.
+      4. [x] **Unify the four list-editor components** —
+         `lib/useListEditor.ts` added: wraps `useDragReorder` and returns
+         `{ getHandleProps, getRowClassName, update, remove, add }`.
+         `update(index, updater: (item: T) => T)` takes a whole-item
+         transform rather than a field/value pair, which is what lets it
+         stay correct for `StringListEditor`'s `T = string` (no field to
+         key into) while the three object-shaped editors
+         (`FeatureListEditor`, `FoundationFeatureListEditor`,
+         `ExperienceListEditor`) just wrap their own field assignment in
+         the transform — `FoundationFeatureListEditor`'s spellcast-trait
+         null-conversion and `ExperienceListEditor`'s `Number(raw) || 0`
+         conversion both still live in their own file, only the
+         boilerplate moved. All four adopted.
 
-      Full e2e suite should run once all four land (shared-component rule
-      — see `AI_MEMORY.md`), not after each one individually, given how
-      interconnected these are. Per the current push policy (see
-      `AI_MEMORY.md`), commit on completion but don't push — that's
-      Connor's own action.
+      All four findings now landed. `npx tsc --noEmit -p .` and
+      `npm test` (227 tests) clean throughout; e2e run so far has been
+      scoped per finding (equipmentTables/app/sessions for #2-3,
+      featureSections/app/sessions for #4) rather than the full suite —
+      run the full suite once, now that all four are in, per the
+      shared-component rule in `AI_MEMORY.md`. Per the current push
+      policy (see `AI_MEMORY.md`), commit on completion but don't push —
+      that's Connor's own action.
 
 - [x] Add a set of selectable themes beyond the current Light/Dark/System
       choice — landed as Settings > Color Theme (PaletteContext,

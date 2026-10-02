@@ -1,4 +1,5 @@
-import { useDragReorder } from '../lib/useDragReorder';
+import { useListEditor } from '../lib/useListEditor';
+import NumberInput from './NumberInput';
 import './FeatureListEditor.css';
 
 export interface Experience {
@@ -14,24 +15,10 @@ interface ExperienceListEditorProps {
 // Adversary.Experiences: Dict(Name -> Modifier: Int) — the one feature-list
 // shape that pairs a name with a number instead of a description.
 export default function ExperienceListEditor({ experiences, onChange }: ExperienceListEditorProps) {
-  const { getHandleProps, getRowClassName } = useDragReorder(experiences, onChange);
-
-  function update(index: number, field: keyof Experience, value: string) {
-    const next = experiences.slice();
-    next[index] = {
-      ...next[index],
-      [field]: field === 'modifier' ? Number(value) || 0 : value,
-    };
-    onChange(next);
-  }
-
-  function remove(index: number) {
-    onChange(experiences.filter((_, i) => i !== index));
-  }
-
-  function add() {
-    onChange([...experiences, { name: '', modifier: 0 }]);
-  }
+  const { getHandleProps, getRowClassName, update, remove, add } = useListEditor(experiences, onChange, () => ({
+    name: '',
+    modifier: 0,
+  }));
 
   return (
     <div className="feature-editor">
@@ -43,13 +30,12 @@ export default function ExperienceListEditor({ experiences, onChange }: Experien
             type="text"
             placeholder="Name"
             value={experience.name}
-            onChange={(e) => update(index, 'name', e.target.value)}
+            onChange={(e) => update(index, (exp) => ({ ...exp, name: e.target.value }))}
           />
-          <input
-            type="number"
+          <NumberInput
             placeholder="Modifier"
             value={experience.modifier}
-            onChange={(e) => update(index, 'modifier', e.target.value)}
+            onChange={(raw) => update(index, (exp) => ({ ...exp, modifier: Number(raw) || 0 }))}
           />
           <button
             type="button"

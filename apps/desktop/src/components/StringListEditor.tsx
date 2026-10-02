@@ -1,4 +1,4 @@
-import { useDragReorder } from '../lib/useDragReorder';
+import { useListEditor } from '../lib/useListEditor';
 import './FeatureListEditor.css';
 
 interface StringListEditorProps {
@@ -13,21 +13,7 @@ interface StringListEditorProps {
 // Environment.PotentialAdversaries (all free text, none linked to real
 // records).
 export default function StringListEditor({ label, placeholder, values, onChange }: StringListEditorProps) {
-  const { getHandleProps, getRowClassName } = useDragReorder(values, onChange);
-
-  function update(index: number, value: string) {
-    const next = values.slice();
-    next[index] = value;
-    onChange(next);
-  }
-
-  function remove(index: number) {
-    onChange(values.filter((_, i) => i !== index));
-  }
-
-  function add() {
-    onChange([...values, '']);
-  }
+  const { getHandleProps, getRowClassName, update, remove, add } = useListEditor(values, onChange, () => '');
 
   return (
     <div className="feature-editor">
@@ -39,7 +25,7 @@ export default function StringListEditor({ label, placeholder, values, onChange 
             type="text"
             placeholder={placeholder}
             value={value}
-            onChange={(e) => update(index, e.target.value)}
+            onChange={(e) => update(index, () => e.target.value)}
           />
           <button type="button" className="feature-editor__remove" onClick={() => remove(index)} aria-label={`Remove ${label} row`}>
             &times;

@@ -1,6 +1,6 @@
 import type { Feature } from '../api/heroClasses';
 import AutoGrowTextarea from './AutoGrowTextarea';
-import { useDragReorder } from '../lib/useDragReorder';
+import { useListEditor } from '../lib/useListEditor';
 import './FeatureListEditor.css';
 
 interface FeatureListEditorProps {
@@ -14,21 +14,10 @@ interface FeatureListEditorProps {
 // have an extra per-feature spellcast-trait override and use their own
 // editor rather than this one.
 export default function FeatureListEditor({ label, features, onChange }: FeatureListEditorProps) {
-  const { getHandleProps, getRowClassName } = useDragReorder(features, onChange);
-
-  function update(index: number, field: keyof Feature, value: string) {
-    const next = features.slice();
-    next[index] = { ...next[index], [field]: value };
-    onChange(next);
-  }
-
-  function remove(index: number) {
-    onChange(features.filter((_, i) => i !== index));
-  }
-
-  function add() {
-    onChange([...features, { name: '', description: '' }]);
-  }
+  const { getHandleProps, getRowClassName, update, remove, add } = useListEditor(features, onChange, () => ({
+    name: '',
+    description: '',
+  }));
 
   return (
     <div className="feature-editor">
@@ -40,12 +29,12 @@ export default function FeatureListEditor({ label, features, onChange }: Feature
             type="text"
             placeholder="Name"
             value={feature.name}
-            onChange={(e) => update(index, 'name', e.target.value)}
+            onChange={(e) => update(index, (f) => ({ ...f, name: e.target.value }))}
           />
           <AutoGrowTextarea
             placeholder="Description"
             value={feature.description ?? ''}
-            onChange={(e) => update(index, 'description', e.target.value)}
+            onChange={(e) => update(index, (f) => ({ ...f, description: e.target.value }))}
           />
           <button type="button" className="feature-editor__remove" onClick={() => remove(index)} aria-label={`Remove ${label} row`}>
             &times;
