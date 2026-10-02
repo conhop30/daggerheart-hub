@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 import type { RarityEntries } from '../lib/lootRarity';
 
 export interface ConsumableTableEntry {
@@ -28,10 +28,8 @@ export interface UpdateConsumableTableRequest {
   entries?: RarityEntries<ConsumableTableEntry>;
 }
 
-export const consumableTablesApi = {
-  list: () => apiClient.list<ConsumableTable>('consumableTables'),
-  create: (body: CreateConsumableTableRequest) => apiClient.create<ConsumableTable>('consumableTables', body),
-  update: (id: string, body: UpdateConsumableTableRequest) =>
-    apiClient.update<ConsumableTable>('consumableTables', id, body),
-  remove: (id: string) => apiClient.remove('consumableTables', id),
-};
+export const consumableTablesApi = createCrudApi<
+  ConsumableTable,
+  CreateConsumableTableRequest,
+  UpdateConsumableTableRequest
+>('consumableTables');

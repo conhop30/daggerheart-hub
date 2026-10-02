@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 
 export interface Campaign {
   id: string;
@@ -27,9 +27,4 @@ export interface UpdateCampaignRequest {
   coverImage?: string | null;
 }
 
-export const campaignsApi = {
-  list: () => apiClient.list<Campaign>('campaigns'),
-  create: (body: CreateCampaignRequest) => apiClient.create<Campaign>('campaigns', body),
-  update: (id: string, body: UpdateCampaignRequest) => apiClient.update<Campaign>('campaigns', id, body),
-  remove: (id: string) => apiClient.remove('campaigns', id),
-};
+export const campaignsApi = createCrudApi<Campaign, CreateCampaignRequest, UpdateCampaignRequest>('campaigns');

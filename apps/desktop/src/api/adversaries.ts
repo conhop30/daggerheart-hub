@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 import type { FeatureSections } from '../lib/featureKinds';
 import type { Thresholds } from '../components/ThresholdsInput';
 import type { Experience } from '../components/ExperienceListEditor';
@@ -61,9 +61,4 @@ export interface CreateAdversaryRequest {
 
 export type UpdateAdversaryRequest = Partial<CreateAdversaryRequest>;
 
-export const adversariesApi = {
-  list: () => apiClient.list<Adversary>('adversaries'),
-  create: (body: CreateAdversaryRequest) => apiClient.create<Adversary>('adversaries', body),
-  update: (id: string, body: UpdateAdversaryRequest) => apiClient.update<Adversary>('adversaries', id, body),
-  remove: (id: string) => apiClient.remove('adversaries', id),
-};
+export const adversariesApi = createCrudApi<Adversary, CreateAdversaryRequest, UpdateAdversaryRequest>('adversaries');

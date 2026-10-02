@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 import type { Thresholds } from '../components/ThresholdsInput';
 
 export interface Armor {
@@ -22,9 +22,4 @@ export interface CreateArmorRequest {
 
 export type UpdateArmorRequest = Partial<CreateArmorRequest>;
 
-export const armorsApi = {
-  list: () => apiClient.list<Armor>('armors'),
-  create: (body: CreateArmorRequest) => apiClient.create<Armor>('armors', body),
-  update: (id: string, body: UpdateArmorRequest) => apiClient.update<Armor>('armors', id, body),
-  remove: (id: string) => apiClient.remove('armors', id),
-};
+export const armorsApi = createCrudApi<Armor, CreateArmorRequest, UpdateArmorRequest>('armors');

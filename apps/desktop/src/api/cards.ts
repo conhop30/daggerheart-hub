@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 
 export type CardType = 'SPELL' | 'GRIMOIRE' | 'ABILITY';
 
@@ -40,9 +41,6 @@ export interface UpdateCardRequest {
 }
 
 export const cardsApi = {
-  list: () => apiClient.list<Card>('cards'),
+  ...createCrudApi<Card, CreateCardRequest, UpdateCardRequest>('cards'),
   listByDomain: (domainId: string) => apiClient.listCardsByDomain<Card>(domainId),
-  create: (body: CreateCardRequest) => apiClient.create<Card>('cards', body),
-  update: (id: string, body: UpdateCardRequest) => apiClient.update<Card>('cards', id, body),
-  remove: (id: string) => apiClient.remove('cards', id),
 };

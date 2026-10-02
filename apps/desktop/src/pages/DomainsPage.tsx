@@ -6,6 +6,7 @@ import { DomainBanner, DomainBannerCreate } from '../components/DomainBanner';
 import DomainDetail from '../components/DomainDetail';
 import DomainForm from '../components/DomainForm';
 import { upsertById } from '../lib/upsert';
+import { useEntityActions } from '../lib/useApiList';
 import './DomainsPage.css';
 
 export default function DomainsPage() {
@@ -18,7 +19,11 @@ export default function DomainsPage() {
   const [classFilterId, setClassFilterId] = useState<string | null>(null);
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const [creatingDomain, setCreatingDomain] = useState(false);
-  const [editingDomainId, setEditingDomainId] = useState<string | null>(null);
+
+  function removeDomain(id: string) {
+    setDomains((prev) => prev.filter((d) => d.id !== id));
+  }
+  const domainActions = useEntityActions({ items: domains, remove: removeDomain }, domainsApi.remove, 'Domain');
 
   useEffect(() => {
     let cancelled = false;
@@ -59,28 +64,14 @@ export default function DomainsPage() {
   function handleDomainSaved(saved: Domain) {
     setDomains((prev) => upsertById(prev, saved));
     setCreatingDomain(false);
-    setEditingDomainId(null);
+    domainActions.cancelEdit();
   }
 
   // Stabilized so DomainBanner (memoized) can actually skip re-rendering
   // siblings when only one banner's state changes — an inline
-  // `() => handleDeleteDomain(domain)` closure would defeat that regardless
+  // `() => handleOpenDomain(domain)` closure would defeat that regardless
   // of the memo, since it's a fresh function every render either way.
   const handleOpenDomain = useCallback((id: string) => setSelectedDomainId(id), []);
-  const handleEditDomain = useCallback((id: string) => setEditingDomainId(id), []);
-  const handleDeleteDomain = useCallback(
-    async (id: string) => {
-      const domain = domains.find((d) => d.id === id);
-      if (!domain || !window.confirm(`Delete "${domain.name}"? This can't be undone.`)) return;
-      try {
-        await domainsApi.remove(domain.id);
-        setDomains((prev) => prev.filter((d) => d.id !== domain.id));
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Domain.');
-      }
-    },
-    [domains]
-  );
 
   function handleCardsChangedForDomain(domainId: string, cardsForDomain: Card[]) {
     setCards((prev) => [...prev.filter((c) => c.domainId !== domainId), ...cardsForDomain]);
@@ -103,7 +94,7 @@ export default function DomainsPage() {
     );
   }
 
-  const editingDomain = editingDomainId ? domains.find((d) => d.id === editingDomainId) ?? null : null;
+  const editingDomain = domainActions.editingItem;
 
   return (
     <div className="domains-page">
@@ -145,7 +136,7 @@ export default function DomainsPage() {
                 onSaved={handleDomainSaved}
                 onCancel={() => {
                   setCreatingDomain(false);
-                  setEditingDomainId(null);
+                  domainActions.cancelEdit();
                 }}
               />
             </div>
@@ -158,8 +149,8 @@ export default function DomainsPage() {
                 domain={domain}
                 cardCount={cardCountByDomain.get(domain.id) ?? 0}
                 onOpen={handleOpenDomain}
-                onEdit={handleEditDomain}
-                onDelete={handleDeleteDomain}
+                onEdit={domainActions.edit}
+                onDelete={domainActions.handleDelete}
               />
             ))}
             <DomainBannerCreate onClick={() => setCreatingDomain(true)} />

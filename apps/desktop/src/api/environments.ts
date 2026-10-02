@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 import type { FeatureSections } from '../lib/featureKinds';
 
 export type EnvironmentCategory = 'EXPLORATION' | 'EVENT' | 'SOCIAL' | 'TRAVERSAL';
@@ -30,9 +30,6 @@ export interface CreateEnvironmentRequest {
 
 export type UpdateEnvironmentRequest = Partial<CreateEnvironmentRequest>;
 
-export const environmentsApi = {
-  list: () => apiClient.list<Environment>('environments'),
-  create: (body: CreateEnvironmentRequest) => apiClient.create<Environment>('environments', body),
-  update: (id: string, body: UpdateEnvironmentRequest) => apiClient.update<Environment>('environments', id, body),
-  remove: (id: string) => apiClient.remove('environments', id),
-};
+export const environmentsApi = createCrudApi<Environment, CreateEnvironmentRequest, UpdateEnvironmentRequest>(
+  'environments'
+);

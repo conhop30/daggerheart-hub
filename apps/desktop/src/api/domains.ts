@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 
 export interface Domain {
   id: string;
@@ -25,9 +25,4 @@ export interface UpdateDomainRequest {
   gameSetId?: string;
 }
 
-export const domainsApi = {
-  list: () => apiClient.list<Domain>('domains'),
-  create: (body: CreateDomainRequest) => apiClient.create<Domain>('domains', body),
-  update: (id: string, body: UpdateDomainRequest) => apiClient.update<Domain>('domains', id, body),
-  remove: (id: string) => apiClient.remove('domains', id),
-};
+export const domainsApi = createCrudApi<Domain, CreateDomainRequest, UpdateDomainRequest>('domains');

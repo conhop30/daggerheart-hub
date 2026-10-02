@@ -1,4 +1,5 @@
-import { apiClient, type SessionContext } from './client';
+import { apiClient } from './client';
+import { createSessionScopedCrudApi } from './createCrudApi';
 import type { AttackRange, AttackType } from './adversaries';
 import type { Thresholds } from '../components/ThresholdsInput';
 import type { Experience } from '../components/ExperienceListEditor';
@@ -54,10 +55,8 @@ export interface UpdateSessionAdversaryRequest {
 }
 
 export const sessionAdversariesApi = {
-  list: () => apiClient.list<SessionAdversary>('sessionAdversaries'),
+  ...createSessionScopedCrudApi<SessionAdversary, CreateSessionAdversaryRequest, UpdateSessionAdversaryRequest>(
+    'sessionAdversaries'
+  ),
   listBySession: (sessionId: string) => apiClient.listSessionAdversariesBySession<SessionAdversary>(sessionId),
-  create: (body: CreateSessionAdversaryRequest) => apiClient.create<SessionAdversary>('sessionAdversaries', body),
-  update: (id: string, body: UpdateSessionAdversaryRequest, ctx: SessionContext) =>
-    apiClient.update<SessionAdversary>('sessionAdversaries', id, body, ctx),
-  remove: (id: string, ctx: SessionContext) => apiClient.remove('sessionAdversaries', id, ctx),
 };

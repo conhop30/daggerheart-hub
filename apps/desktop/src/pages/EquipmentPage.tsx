@@ -1,11 +1,11 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useState } from 'react';
 import { weaponsApi, type Weapon, type WeaponSlot } from '../api/weapons';
 import { armorsApi, type Armor } from '../api/armors';
 import { lootApi, type Loot } from '../api/loot';
 import { consumablesApi, type Consumable } from '../api/consumables';
 import { lootTablesApi, type LootTable, type LootTableEntry } from '../api/lootTables';
 import { consumableTablesApi, type ConsumableTable, type ConsumableTableEntry } from '../api/consumableTables';
-import { useApiList } from '../lib/useApiList';
+import { useApiList, useEntityActions } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { ContentCard, MetaChip } from '../components/ContentCard';
 import EquipmentSection from '../components/EquipmentSection';
@@ -189,118 +189,24 @@ export default function EquipmentPage() {
   const weaponFilters = useTagFilters(weapons.items, WEAPON_FILTERS);
   const armorFilters = useTagFilters(armors.items, ARMOR_FILTERS);
 
-  const [editingWeaponId, setEditingWeaponId] = useState<string | null>(null);
-  const [editingArmorId, setEditingArmorId] = useState<string | null>(null);
-  const [editingLootId, setEditingLootId] = useState<string | null>(null);
-  const [editingConsumableId, setEditingConsumableId] = useState<string | null>(null);
   const [creatingWeaponSlot, setCreatingWeaponSlot] = useState<WeaponSlot | null>(null);
   const [creatingArmor, setCreatingArmor] = useState(false);
   const [creatingLoot, setCreatingLoot] = useState(false);
   const [creatingConsumable, setCreatingConsumable] = useState(false);
   const [creatingLootTable, setCreatingLootTable] = useState(false);
   const [creatingConsumableTable, setCreatingConsumableTable] = useState(false);
-  const [openLootTableId, setOpenLootTableId] = useState<string | null>(null);
-  const [openConsumableTableId, setOpenConsumableTableId] = useState<string | null>(null);
 
-  // Stabilized (useCallback) so list-item cards below can be memoized: an
-  // inline `() => handleDeleteWeapon(w)` closure is a fresh function every
-  // render regardless, which defeats React.memo on the card component no
-  // matter what. These take an id and look the record up, so their own
-  // identity only changes when the relevant list actually changes.
-  const handleEditWeapon = useCallback((id: string) => setEditingWeaponId(id), []);
-  const handleDeleteWeapon = useCallback(
-    async (id: string) => {
-      const w = weapons.items.find((x) => x.id === id);
-      if (!w || !window.confirm(`Delete "${w.name}"? This can't be undone.`)) return;
-      try {
-        await weaponsApi.remove(w.id);
-        weapons.remove(w.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Weapon.');
-      }
-    },
-    [weapons.items]
-  );
+  const weaponActions = useEntityActions(weapons, weaponsApi.remove, 'Weapon');
+  const armorActions = useEntityActions(armors, armorsApi.remove, 'Armor');
+  const lootActions = useEntityActions(loot, lootApi.remove, 'Loot');
+  const consumableActions = useEntityActions(consumables, consumablesApi.remove, 'Consumable');
+  // "editingId"/"edit" here double as "which table is open"/"open it" — the
+  // table sections below don't inline-edit, they drill into TableDetail.
+  const lootTableActions = useEntityActions(lootTables, lootTablesApi.remove, 'Loot Table');
+  const consumableTableActions = useEntityActions(consumableTables, consumableTablesApi.remove, 'Consumable Table');
 
-  const handleEditArmor = useCallback((id: string) => setEditingArmorId(id), []);
-  const handleDeleteArmor = useCallback(
-    async (id: string) => {
-      const a = armors.items.find((x) => x.id === id);
-      if (!a || !window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
-      try {
-        await armorsApi.remove(a.id);
-        armors.remove(a.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Armor.');
-      }
-    },
-    [armors.items]
-  );
-
-  const handleEditLoot = useCallback((id: string) => setEditingLootId(id), []);
-  const handleDeleteLoot = useCallback(
-    async (id: string) => {
-      const l = loot.items.find((x) => x.id === id);
-      if (!l || !window.confirm(`Delete "${l.name}"? This can't be undone.`)) return;
-      try {
-        await lootApi.remove(l.id);
-        loot.remove(l.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Loot.');
-      }
-    },
-    [loot.items]
-  );
-
-  const handleEditConsumable = useCallback((id: string) => setEditingConsumableId(id), []);
-  const handleDeleteConsumable = useCallback(
-    async (id: string) => {
-      const c = consumables.items.find((x) => x.id === id);
-      if (!c || !window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
-      try {
-        await consumablesApi.remove(c.id);
-        consumables.remove(c.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable.');
-      }
-    },
-    [consumables.items]
-  );
-
-  const handleOpenLootTable = useCallback((id: string) => setOpenLootTableId(id), []);
-  const handleDeleteLootTable = useCallback(
-    async (id: string) => {
-      const t = lootTables.items.find((x) => x.id === id);
-      if (!t || !window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-      try {
-        await lootTablesApi.remove(t.id);
-        lootTables.remove(t.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Loot Table.');
-      }
-    },
-    [lootTables.items]
-  );
-
-  const handleOpenConsumableTable = useCallback((id: string) => setOpenConsumableTableId(id), []);
-  const handleDeleteConsumableTable = useCallback(
-    async (id: string) => {
-      const t = consumableTables.items.find((x) => x.id === id);
-      if (!t || !window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-      try {
-        await consumableTablesApi.remove(t.id);
-        consumableTables.remove(t.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Consumable Table.');
-      }
-    },
-    [consumableTables.items]
-  );
-
-  const openLootTable = openLootTableId ? lootTables.items.find((t) => t.id === openLootTableId) ?? null : null;
-  const openConsumableTable = openConsumableTableId
-    ? consumableTables.items.find((t) => t.id === openConsumableTableId) ?? null
-    : null;
+  const openLootTable = lootTableActions.editingItem;
+  const openConsumableTable = consumableTableActions.editingItem;
 
   if (openLootTable) {
     return (
@@ -313,11 +219,11 @@ export default function EquipmentPage() {
           getItemId={(entry) => entry.lootId}
           update={(id, body) => lootTablesApi.update(id, body)}
           remove={(id) => lootTablesApi.remove(id)}
-          onBack={() => setOpenLootTableId(null)}
+          onBack={lootTableActions.cancelEdit}
           onSaved={(saved) => lootTables.upsert(saved)}
           onDeleted={(id) => {
             lootTables.remove(id);
-            setOpenLootTableId(null);
+            lootTableActions.cancelEdit();
           }}
         />
       </div>
@@ -335,21 +241,21 @@ export default function EquipmentPage() {
           getItemId={(entry) => entry.consumableId}
           update={(id, body) => consumableTablesApi.update(id, body)}
           remove={(id) => consumableTablesApi.remove(id)}
-          onBack={() => setOpenConsumableTableId(null)}
+          onBack={consumableTableActions.cancelEdit}
           onSaved={(saved) => consumableTables.upsert(saved)}
           onDeleted={(id) => {
             consumableTables.remove(id);
-            setOpenConsumableTableId(null);
+            consumableTableActions.cancelEdit();
           }}
         />
       </div>
     );
   }
 
-  const editingWeapon = weapons.items.find((w) => w.id === editingWeaponId) ?? null;
-  const editingArmor = armors.items.find((a) => a.id === editingArmorId) ?? null;
-  const editingLoot = loot.items.find((l) => l.id === editingLootId) ?? null;
-  const editingConsumable = consumables.items.find((c) => c.id === editingConsumableId) ?? null;
+  const editingWeapon = weaponActions.editingItem;
+  const editingArmor = armorActions.editingItem;
+  const editingLoot = lootActions.editingItem;
+  const editingConsumable = consumableActions.editingItem;
 
   return (
     <div className="browse-page">
@@ -404,9 +310,9 @@ export default function EquipmentPage() {
               initial={editingWeapon}
               onSaved={(saved) => {
                 weapons.upsert(saved);
-                setEditingWeaponId(null);
+                weaponActions.cancelEdit();
               }}
-              onCancel={() => setEditingWeaponId(null)}
+              onCancel={weaponActions.cancelEdit}
             />
           )
         }
@@ -420,25 +326,25 @@ export default function EquipmentPage() {
             : 'No Weapons yet — click + New Primary or + New Secondary above to create one.'
         }
         renderCard={(w) =>
-          editingWeaponId === w.id ? (
+          weaponActions.editingId === w.id ? (
             <WeaponForm
               weaponSlot={w.weaponSlot}
               initial={w}
               onSaved={(saved) => {
                 weapons.upsert(saved);
-                setEditingWeaponId(null);
+                weaponActions.cancelEdit();
               }}
-              onCancel={() => setEditingWeaponId(null)}
+              onCancel={weaponActions.cancelEdit}
             />
           ) : (
-            <WeaponCard w={w} onEdit={handleEditWeapon} onDelete={handleDeleteWeapon} />
+            <WeaponCard w={w} onEdit={weaponActions.edit} onDelete={weaponActions.handleDelete} />
           )
         }
         table={{
           view,
           columns: WEAPON_COLUMNS,
-          onEdit: (w) => handleEditWeapon(w.id),
-          onDelete: (w) => handleDeleteWeapon(w.id),
+          onEdit: (w) => weaponActions.edit(w.id),
+          onDelete: (w) => weaponActions.handleDelete(w.id),
           editing: Boolean(editingWeapon),
         }}
         filterBar={{
@@ -473,9 +379,9 @@ export default function EquipmentPage() {
                 initial={editingArmor}
                 onSaved={(saved) => {
                   armors.upsert(saved);
-                  setEditingArmorId(null);
+                  armorActions.cancelEdit();
                 }}
-                onCancel={() => setEditingArmorId(null)}
+                onCancel={armorActions.cancelEdit}
               />
             )
           }
@@ -487,24 +393,24 @@ export default function EquipmentPage() {
             armorFilters.hasActiveFilters ? 'No Armor matches those filters.' : 'No Armor yet — click + New Armor above to create one.'
           }
           renderCard={(a) =>
-            editingArmorId === a.id ? (
+            armorActions.editingId === a.id ? (
               <ArmorForm
                 initial={a}
                 onSaved={(saved) => {
                   armors.upsert(saved);
-                  setEditingArmorId(null);
+                  armorActions.cancelEdit();
                 }}
-                onCancel={() => setEditingArmorId(null)}
+                onCancel={armorActions.cancelEdit}
               />
             ) : (
-              <ArmorCard a={a} onEdit={handleEditArmor} onDelete={handleDeleteArmor} />
+              <ArmorCard a={a} onEdit={armorActions.edit} onDelete={armorActions.handleDelete} />
             )
           }
           table={{
             view,
             columns: ARMOR_COLUMNS,
-            onEdit: (a) => handleEditArmor(a.id),
-            onDelete: (a) => handleDeleteArmor(a.id),
+            onEdit: (a) => armorActions.edit(a.id),
+            onDelete: (a) => armorActions.handleDelete(a.id),
             editing: Boolean(editingArmor),
           }}
           filterBar={{
@@ -547,9 +453,9 @@ export default function EquipmentPage() {
               update={lootApi.update}
               onSaved={(saved) => {
                 loot.upsert(saved);
-                setEditingLootId(null);
+                lootActions.cancelEdit();
               }}
-              onCancel={() => setEditingLootId(null)}
+              onCancel={lootActions.cancelEdit}
             />
           )
         }
@@ -559,7 +465,7 @@ export default function EquipmentPage() {
         getKey={(l) => l.id}
         emptyMessage="No Loot yet — click + New Loot above to create one."
         renderCard={(l) =>
-          editingLootId === l.id ? (
+          lootActions.editingId === l.id ? (
             <SimpleNameDescriptionForm
               title="Loot"
               submitLabel="Create Loot"
@@ -568,19 +474,19 @@ export default function EquipmentPage() {
               update={lootApi.update}
               onSaved={(saved) => {
                 loot.upsert(saved);
-                setEditingLootId(null);
+                lootActions.cancelEdit();
               }}
-              onCancel={() => setEditingLootId(null)}
+              onCancel={lootActions.cancelEdit}
             />
           ) : (
-            <NameDescriptionCard item={l} onEdit={handleEditLoot} onDelete={handleDeleteLoot} />
+            <NameDescriptionCard item={l} onEdit={lootActions.edit} onDelete={lootActions.handleDelete} />
           )
         }
         table={{
           view,
           columns: LOOT_COLUMNS,
-          onEdit: (l) => handleEditLoot(l.id),
-          onDelete: (l) => handleDeleteLoot(l.id),
+          onEdit: (l) => lootActions.edit(l.id),
+          onDelete: (l) => lootActions.handleDelete(l.id),
           editing: Boolean(editingLoot),
         }}
       />
@@ -617,9 +523,9 @@ export default function EquipmentPage() {
               update={consumablesApi.update}
               onSaved={(saved) => {
                 consumables.upsert(saved);
-                setEditingConsumableId(null);
+                consumableActions.cancelEdit();
               }}
-              onCancel={() => setEditingConsumableId(null)}
+              onCancel={consumableActions.cancelEdit}
             />
           )
         }
@@ -629,7 +535,7 @@ export default function EquipmentPage() {
         getKey={(c) => c.id}
         emptyMessage="No Consumables yet — click + New Consumable above to create one."
         renderCard={(c) =>
-          editingConsumableId === c.id ? (
+          consumableActions.editingId === c.id ? (
             <SimpleNameDescriptionForm
               title="Consumable"
               submitLabel="Create Consumable"
@@ -638,19 +544,19 @@ export default function EquipmentPage() {
               update={consumablesApi.update}
               onSaved={(saved) => {
                 consumables.upsert(saved);
-                setEditingConsumableId(null);
+                consumableActions.cancelEdit();
               }}
-              onCancel={() => setEditingConsumableId(null)}
+              onCancel={consumableActions.cancelEdit}
             />
           ) : (
-            <NameDescriptionCard item={c} onEdit={handleEditConsumable} onDelete={handleDeleteConsumable} />
+            <NameDescriptionCard item={c} onEdit={consumableActions.edit} onDelete={consumableActions.handleDelete} />
           )
         }
         table={{
           view,
           columns: CONSUMABLE_COLUMNS,
-          onEdit: (c) => handleEditConsumable(c.id),
-          onDelete: (c) => handleDeleteConsumable(c.id),
+          onEdit: (c) => consumableActions.edit(c.id),
+          onDelete: (c) => consumableActions.handleDelete(c.id),
           editing: Boolean(editingConsumable),
         }}
       />
@@ -682,7 +588,7 @@ export default function EquipmentPage() {
         items={lootTables.items}
         getKey={(t) => t.id}
         emptyMessage="No Loot Tables yet — click + New Loot Table above, then open it to add rollable entries."
-        renderCard={(t) => <TableCard table={t} onOpen={handleOpenLootTable} onDelete={handleDeleteLootTable} />}
+        renderCard={(t) => <TableCard table={t} onOpen={lootTableActions.edit} onDelete={lootTableActions.handleDelete} />}
       />
 
       <EquipmentSection<ConsumableTable>
@@ -713,7 +619,7 @@ export default function EquipmentPage() {
         getKey={(t) => t.id}
         emptyMessage="No Consumable Tables yet — click + New Consumable Table above, then open it to add rollable entries."
         renderCard={(t) => (
-          <TableCard table={t} onOpen={handleOpenConsumableTable} onDelete={handleDeleteConsumableTable} />
+          <TableCard table={t} onOpen={consumableTableActions.edit} onDelete={consumableTableActions.handleDelete} />
         )}
       />
     </div>

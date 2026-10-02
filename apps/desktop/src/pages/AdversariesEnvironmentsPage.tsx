@@ -1,7 +1,7 @@
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { adversariesApi, type Adversary } from '../api/adversaries';
 import { environmentsApi, type Environment } from '../api/environments';
-import { useApiList } from '../lib/useApiList';
+import { useApiList, useEntityActions } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { exportNodeAsImage } from '../lib/exportImage';
 import { StatRail } from '../components/StatRail';
@@ -165,40 +165,11 @@ const EnvironmentSpotlight = memo(function EnvironmentSpotlight({
 export default function AdversariesEnvironmentsPage() {
   const adversaries = useApiList(adversariesApi.list);
   const environments = useApiList(environmentsApi.list);
-  const [editingAdversaryId, setEditingAdversaryId] = useState<string | null>(null);
-  const [editingEnvironmentId, setEditingEnvironmentId] = useState<string | null>(null);
   const [creatingAdversary, setCreatingAdversary] = useState(false);
   const [creatingEnvironment, setCreatingEnvironment] = useState(false);
 
-  const handleEditAdversary = useCallback((id: string) => setEditingAdversaryId(id), []);
-  const handleDeleteAdversary = useCallback(
-    async (id: string) => {
-      const a = adversaries.items.find((x) => x.id === id);
-      if (!a || !window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
-      try {
-        await adversariesApi.remove(a.id);
-        adversaries.remove(a.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Adversary.');
-      }
-    },
-    [adversaries.items]
-  );
-
-  const handleEditEnvironment = useCallback((id: string) => setEditingEnvironmentId(id), []);
-  const handleDeleteEnvironment = useCallback(
-    async (id: string) => {
-      const e = environments.items.find((x) => x.id === id);
-      if (!e || !window.confirm(`Delete "${e.name}"? This can't be undone.`)) return;
-      try {
-        await environmentsApi.remove(e.id);
-        environments.remove(e.id);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Could not delete the Environment.');
-      }
-    },
-    [environments.items]
-  );
+  const adversaryActions = useEntityActions(adversaries, adversariesApi.remove, 'Adversary');
+  const environmentActions = useEntityActions(environments, environmentsApi.remove, 'Environment');
 
   return (
     <div className="browse-page browse-page--wide">
@@ -238,17 +209,17 @@ export default function AdversariesEnvironmentsPage() {
             renderTile={(a) => <AdversaryTile a={a} />}
             renderTileCondensed={(a) => <AdversaryTileCondensed a={a} />}
             renderSpotlight={(a) =>
-              editingAdversaryId === a.id ? (
+              adversaryActions.editingId === a.id ? (
                 <AdversaryForm
                   initial={a}
                   onSaved={(saved) => {
                     adversaries.upsert(saved);
-                    setEditingAdversaryId(null);
+                    adversaryActions.cancelEdit();
                   }}
-                  onCancel={() => setEditingAdversaryId(null)}
+                  onCancel={adversaryActions.cancelEdit}
                 />
               ) : (
-                <AdversarySpotlight a={a} onEdit={handleEditAdversary} onDelete={handleDeleteAdversary} />
+                <AdversarySpotlight a={a} onEdit={adversaryActions.edit} onDelete={adversaryActions.handleDelete} />
               )
             }
           />
@@ -290,17 +261,17 @@ export default function AdversariesEnvironmentsPage() {
             renderTile={(e) => <EnvironmentTile e={e} />}
             renderTileCondensed={(e) => <EnvironmentTileCondensed e={e} />}
             renderSpotlight={(e) =>
-              editingEnvironmentId === e.id ? (
+              environmentActions.editingId === e.id ? (
                 <EnvironmentForm
                   initial={e}
                   onSaved={(saved) => {
                     environments.upsert(saved);
-                    setEditingEnvironmentId(null);
+                    environmentActions.cancelEdit();
                   }}
-                  onCancel={() => setEditingEnvironmentId(null)}
+                  onCancel={environmentActions.cancelEdit}
                 />
               ) : (
-                <EnvironmentSpotlight e={e} onEdit={handleEditEnvironment} onDelete={handleDeleteEnvironment} />
+                <EnvironmentSpotlight e={e} onEdit={environmentActions.edit} onDelete={environmentActions.handleDelete} />
               )
             }
           />

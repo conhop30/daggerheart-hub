@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 import type { Feature } from './heroClasses';
 
 export interface Ancestry {
@@ -18,9 +18,4 @@ export interface CreateAncestryRequest {
 
 export type UpdateAncestryRequest = Partial<CreateAncestryRequest>;
 
-export const ancestriesApi = {
-  list: () => apiClient.list<Ancestry>('ancestries'),
-  create: (body: CreateAncestryRequest) => apiClient.create<Ancestry>('ancestries', body),
-  update: (id: string, body: UpdateAncestryRequest) => apiClient.update<Ancestry>('ancestries', id, body),
-  remove: (id: string) => apiClient.remove('ancestries', id),
-};
+export const ancestriesApi = createCrudApi<Ancestry, CreateAncestryRequest, UpdateAncestryRequest>('ancestries');

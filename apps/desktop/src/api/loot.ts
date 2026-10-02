@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 
 export interface Loot {
   id: string;
@@ -15,9 +15,4 @@ export interface CreateLootRequest {
 
 export type UpdateLootRequest = Partial<CreateLootRequest>;
 
-export const lootApi = {
-  list: () => apiClient.list<Loot>('loot'),
-  create: (body: CreateLootRequest) => apiClient.create<Loot>('loot', body),
-  update: (id: string, body: UpdateLootRequest) => apiClient.update<Loot>('loot', id, body),
-  remove: (id: string) => apiClient.remove('loot', id),
-};
+export const lootApi = createCrudApi<Loot, CreateLootRequest, UpdateLootRequest>('loot');

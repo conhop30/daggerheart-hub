@@ -1,4 +1,5 @@
-import { apiClient, type SessionContext } from './client';
+import { apiClient } from './client';
+import { createSessionScopedCrudApi } from './createCrudApi';
 
 // A snapshot of a master Environment at pull-in time, not a live reference —
 // see electron/store.js's comment on buildSessionEnvironment for why.
@@ -33,10 +34,8 @@ export interface UpdateSessionEnvironmentRequest {
 }
 
 export const sessionEnvironmentsApi = {
-  list: () => apiClient.list<SessionEnvironment>('sessionEnvironments'),
+  ...createSessionScopedCrudApi<SessionEnvironment, CreateSessionEnvironmentRequest, UpdateSessionEnvironmentRequest>(
+    'sessionEnvironments'
+  ),
   listBySession: (sessionId: string) => apiClient.listSessionEnvironmentsBySession<SessionEnvironment>(sessionId),
-  create: (body: CreateSessionEnvironmentRequest) => apiClient.create<SessionEnvironment>('sessionEnvironments', body),
-  update: (id: string, body: UpdateSessionEnvironmentRequest, ctx: SessionContext) =>
-    apiClient.update<SessionEnvironment>('sessionEnvironments', id, body, ctx),
-  remove: (id: string, ctx: SessionContext) => apiClient.remove('sessionEnvironments', id, ctx),
 };

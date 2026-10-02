@@ -4,6 +4,58 @@ Working backlog of feedback and small fixes not yet acted on. Not
 interviewer-facing (see README's Feature Roadmap for that) — this is a
 scratch list for planning the next pass of work.
 
+- [ ] Data-driven/modularity pass (interrupted mid-work 2026-10-02) — four
+      findings from a codebase review against the metrics in Connor's AI
+      Project Initiation Regulations (see `AI_MEMORY.md`'s "Standing
+      development rules" section for the vocabulary: Redundancy,
+      Coupling, Cohesion). In priority order:
+      1. [x] **API CRUD factory** — `src/api/createCrudApi.ts` (two
+         factories: plain `createCrudApi`, and `createSessionScopedCrudApi`
+         for collections where edits need a SessionContext). All 15
+         applicable files converted: `adversaries.ts`, `ancestries.ts`,
+         `armors.ts`, `campaigns.ts`, `communities.ts`,
+         `consumableTables.ts`, `consumables.ts`, `domains.ts`,
+         `environments.ts`, `loot.ts`, `lootTables.ts`,
+         `transformations.ts`, `weapons.ts`, `cards.ts` (composed with its
+         extra `listByDomain`), `sessionAdversaries.ts` +
+         `sessionEnvironments.ts` (session-scoped factory, each keeps its
+         own `listBySession`). Deliberately NOT touched: `subclasses.ts`
+         and `heroClasses.ts` (both are missing `remove` entirely — a
+         pre-existing backend gap, not something to paper over by forcing
+         them into the factory), `partyMembers.ts` (optional ctx + two
+         list variants — different enough from both factories that
+         forcing it in isn't worth it). `npx tsc --noEmit -p .` clean.
+      2. [x] **Shared delete/edit hook** — `useEntityActions` added to
+         `lib/useApiList.ts`: takes a `useApiList` result, an api's
+         `remove`, and an entity label, returns
+         `{ editingId, editingItem, edit, cancelEdit, handleDelete }` (id-
+         based, so memoized cards keep their stable identity). Adopted in
+         all 5 target pages: `EquipmentPage.tsx` (6x — Weapon/Armor/Loot/
+         Consumable; LootTable/ConsumableTable reuse the same hook for
+         "which table is open" instead of inline edit), fixed also
+         previously-unconverted DomainsPage.tsx (plain `useState`, not
+         `useApiList` — wrapped its own domain list/remove in the hook's
+         expected shape), AdversariesEnvironmentsPage.tsx, HeritagePage.tsx,
+         OptionalMechanicsPage.tsx. `npx tsc --noEmit -p .` and `npm test`
+         (227 tests) both clean.
+      3. **Split `EquipmentPage.tsx`** (6 entity types in one component —
+         "Weak" cohesion) into one sub-component per entity type. Now that
+         #2 landed and removed most of the duplicated state/handlers, this
+         should be a much smaller job.
+      4. **Unify the four list-editor components** — `FeatureListEditor`,
+         `StringListEditor`, `FoundationFeatureListEditor`, and
+         `ExperienceListEditor` each independently reimplement identical
+         `add`/`remove`/`update` logic around the existing
+         `useDragReorder` hook, differing only in row shape/JSX. Extract a
+         generic `useListEditor<T>(items, onChange, makeEmpty)` hook that
+         all four call.
+
+      Full e2e suite should run once all four land (shared-component rule
+      — see `AI_MEMORY.md`), not after each one individually, given how
+      interconnected these are. Per the current push policy (see
+      `AI_MEMORY.md`), commit on completion but don't push — that's
+      Connor's own action.
+
 - [x] Add a set of selectable themes beyond the current Light/Dark/System
       choice — landed as Settings > Color Theme (PaletteContext,
       [data-palette] on <html>), a second axis independent of Light/Dark:

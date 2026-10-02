@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 import type { Feature } from './heroClasses';
 
 export interface Community {
@@ -18,9 +18,4 @@ export interface CreateCommunityRequest {
 
 export type UpdateCommunityRequest = Partial<CreateCommunityRequest>;
 
-export const communitiesApi = {
-  list: () => apiClient.list<Community>('communities'),
-  create: (body: CreateCommunityRequest) => apiClient.create<Community>('communities', body),
-  update: (id: string, body: UpdateCommunityRequest) => apiClient.update<Community>('communities', id, body),
-  remove: (id: string) => apiClient.remove('communities', id),
-};
+export const communitiesApi = createCrudApi<Community, CreateCommunityRequest, UpdateCommunityRequest>('communities');

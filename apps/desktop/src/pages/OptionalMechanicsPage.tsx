@@ -1,25 +1,17 @@
 import { useState } from 'react';
-import { transformationsApi, type Transformation } from '../api/transformations';
-import { useApiList } from '../lib/useApiList';
+import { transformationsApi } from '../api/transformations';
+import { useApiList, useEntityActions } from '../lib/useApiList';
 import { ContentCardList } from '../components/ContentCard';
 import EntryCard from '../components/EntryCard';
 import NamedFeatureForm from '../components/NamedFeatureForm';
 import './BrowsePage.css';
 
 export default function OptionalMechanicsPage() {
-  const { items: transformations, loading, error, upsert, remove } = useApiList(transformationsApi.list);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const list = useApiList(transformationsApi.list);
+  const { items: transformations, loading, error, upsert } = list;
   const [creating, setCreating] = useState(false);
 
-  async function handleDelete(t: Transformation) {
-    if (!window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-    try {
-      await transformationsApi.remove(t.id);
-      remove(t.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Transformation.');
-    }
-  }
+  const actions = useEntityActions(list, transformationsApi.remove, 'Transformation');
 
   return (
     <div className="browse-page">
@@ -52,7 +44,7 @@ export default function OptionalMechanicsPage() {
           emptyMessage="No Transformations yet — click + New Transformation above to create one."
           getKey={(t) => t.id}
           renderItem={(t) =>
-            editingId === t.id ? (
+            actions.editingId === t.id ? (
               <NamedFeatureForm
                 title="Transformation"
                 submitLabel="Create Transformation"
@@ -61,12 +53,12 @@ export default function OptionalMechanicsPage() {
                 update={transformationsApi.update}
                 onSaved={(saved) => {
                   upsert(saved);
-                  setEditingId(null);
+                  actions.cancelEdit();
                 }}
-                onCancel={() => setEditingId(null)}
+                onCancel={actions.cancelEdit}
               />
             ) : (
-              <EntryCard item={t} onEdit={() => setEditingId(t.id)} onDelete={() => handleDelete(t)} />
+              <EntryCard item={t} onEdit={() => actions.edit(t.id)} onDelete={() => actions.handleDelete(t.id)} />
             )
           }
         />

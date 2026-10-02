@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { communitiesApi, type Community } from '../api/communities';
-import { ancestriesApi, type Ancestry } from '../api/ancestries';
-import { useApiList } from '../lib/useApiList';
+import { communitiesApi } from '../api/communities';
+import { ancestriesApi } from '../api/ancestries';
+import { useApiList, useEntityActions } from '../lib/useApiList';
 import { ContentCardList } from '../components/ContentCard';
 import EntryCard from '../components/EntryCard';
 import NamedFeatureForm from '../components/NamedFeatureForm';
@@ -10,30 +10,11 @@ import './BrowsePage.css';
 export default function HeritagePage() {
   const communities = useApiList(communitiesApi.list);
   const ancestries = useApiList(ancestriesApi.list);
-  const [editingCommunityId, setEditingCommunityId] = useState<string | null>(null);
-  const [editingAncestryId, setEditingAncestryId] = useState<string | null>(null);
   const [creatingCommunity, setCreatingCommunity] = useState(false);
   const [creatingAncestry, setCreatingAncestry] = useState(false);
 
-  async function handleDeleteCommunity(c: Community) {
-    if (!window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
-    try {
-      await communitiesApi.remove(c.id);
-      communities.remove(c.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Community.');
-    }
-  }
-
-  async function handleDeleteAncestry(a: Ancestry) {
-    if (!window.confirm(`Delete "${a.name}"? This can't be undone.`)) return;
-    try {
-      await ancestriesApi.remove(a.id);
-      ancestries.remove(a.id);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not delete the Ancestry.');
-    }
-  }
+  const communityActions = useEntityActions(communities, communitiesApi.remove, 'Community');
+  const ancestryActions = useEntityActions(ancestries, ancestriesApi.remove, 'Ancestry');
 
   return (
     <div className="browse-page">
@@ -70,7 +51,7 @@ export default function HeritagePage() {
             getKey={(c) => c.id}
             layout="grid"
             renderItem={(c) =>
-              editingCommunityId === c.id ? (
+              communityActions.editingId === c.id ? (
                 <NamedFeatureForm
                   title="Community"
                   submitLabel="Create Community"
@@ -79,15 +60,15 @@ export default function HeritagePage() {
                   update={communitiesApi.update}
                   onSaved={(saved) => {
                     communities.upsert(saved);
-                    setEditingCommunityId(null);
+                    communityActions.cancelEdit();
                   }}
-                  onCancel={() => setEditingCommunityId(null)}
+                  onCancel={communityActions.cancelEdit}
                 />
               ) : (
                 <EntryCard
                   item={c}
-                  onEdit={() => setEditingCommunityId(c.id)}
-                  onDelete={() => handleDeleteCommunity(c)}
+                  onEdit={() => communityActions.edit(c.id)}
+                  onDelete={() => communityActions.handleDelete(c.id)}
                 />
               )
             }
@@ -126,7 +107,7 @@ export default function HeritagePage() {
             getKey={(a) => a.id}
             layout="grid"
             renderItem={(a) =>
-              editingAncestryId === a.id ? (
+              ancestryActions.editingId === a.id ? (
                 <NamedFeatureForm
                   title="Ancestry"
                   submitLabel="Create Ancestry"
@@ -135,15 +116,15 @@ export default function HeritagePage() {
                   update={ancestriesApi.update}
                   onSaved={(saved) => {
                     ancestries.upsert(saved);
-                    setEditingAncestryId(null);
+                    ancestryActions.cancelEdit();
                   }}
-                  onCancel={() => setEditingAncestryId(null)}
+                  onCancel={ancestryActions.cancelEdit}
                 />
               ) : (
                 <EntryCard
                   item={a}
-                  onEdit={() => setEditingAncestryId(a.id)}
-                  onDelete={() => handleDeleteAncestry(a)}
+                  onEdit={() => ancestryActions.edit(a.id)}
+                  onDelete={() => ancestryActions.handleDelete(a.id)}
                 />
               )
             }

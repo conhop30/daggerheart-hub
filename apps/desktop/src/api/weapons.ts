@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createCrudApi } from './createCrudApi';
 
 export type WeaponSlot = 'PRIMARY' | 'SECONDARY';
 export type Burden = 'ONE_HANDED' | 'TWO_HANDED';
@@ -32,9 +32,4 @@ export interface CreateWeaponRequest {
 
 export type UpdateWeaponRequest = Partial<CreateWeaponRequest>;
 
-export const weaponsApi = {
-  list: () => apiClient.list<Weapon>('weapons'),
-  create: (body: CreateWeaponRequest) => apiClient.create<Weapon>('weapons', body),
-  update: (id: string, body: UpdateWeaponRequest) => apiClient.update<Weapon>('weapons', id, body),
-  remove: (id: string) => apiClient.remove('weapons', id),
-};
+export const weaponsApi = createCrudApi<Weapon, CreateWeaponRequest, UpdateWeaponRequest>('weapons');
