@@ -157,15 +157,30 @@ scratch list for planning the next pass of work.
       confirmed Blade's *ribbon* icon renders fine (an axe), so the "Blade
       domain's image is broken" report below is specifically about its
       Domain Cards' illustrations, not this ribbon.
-- [ ] Domain Cards (DomainCardTile.tsx/.css — the individual 2.5"x3.5" card
+- [x] Domain Cards (DomainCardTile.tsx/.css — the individual 2.5"x3.5" card
       tiles, Spell/Grimoire/Ability, not the Domain's own ribbon above):
-      the Blade domain's cards render a plain square instead of their
-      illustration/symbol — needs root-causing (likely `imagePath`-related
-      or a Blade-specific data issue, not yet investigated). Cards should
-      never scroll — they should read as an actual printed card, sized
-      proportionally to a real 2.5" x 3.5" card (may mean reworking how
-      card text fits rather than just a CSS size tweak, if long rules text
-      doesn't fit without it today). Dread domain's official card art is
+      checked all 21 of the real Blade domain's cards against a *copy* of
+      the user's actual store (never pointed the app at the real file —
+      zero risk to it) — every one rendered its ABILITY hexagon glyph
+      correctly, nothing reproduced. Whatever this was, it isn't
+      reproducing now; left as-is rather than changing working code to
+      fix a bug that's no longer there.
+      Cards never scroll now: `useFitRulesText` (a small hook in
+      DomainCardTile.tsx) measures the rules text's actual rendered
+      height against its fixed container and steps the font-size down
+      (0.66rem floor to 0.46rem) until it fits, re-running via
+      ResizeObserver so a window resize re-fits too — driven by a real DOM
+      measurement, not a character-count guess, since the same text can
+      need a different size depending on the gallery's actual column
+      width. `overflow: hidden` replaces the old `overflow-y: auto` as a
+      backstop for text so long it still doesn't fit at the floor (clips
+      silently, like a real card's printer would never have let it run
+      off the edge, rather than a scrollbar). Verified against the Blade
+      deck's real text: several previously-truncated cards (Versatile
+      Fighter, Champion's Edge) now read complete at a smaller size; only
+      the one genuine outlier (Onslaught, by far the longest) still clips
+      at the floor, which is the intended edge-case behavior.
+      Dread domain's official card art is
       in the Hope and Fear pdf (ask again if that's needed).
 - [x] Adversary picker (StatGallery.tsx — shared with Environment, which
       has no `type` field so its filter row stays Tier-only): "Recently

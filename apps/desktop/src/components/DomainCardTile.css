@@ -140,11 +140,17 @@
   color: var(--hope-on-dark);
 }
 
-/* Rules text — fills the remaining space; scrolls internally on longer
-   cards instead of breaking the card's fixed proportions. */
+/* Rules text — fills the remaining space. No scroll: a real printed card
+   never scrolls, so DomainCardTile.tsx's useFitRulesText shrinks the text
+   itself (via an actual DOM measurement, not a fixed breakpoint) until it
+   fits instead. overflow: hidden is just the safety net for text so long
+   it still doesn't fit even at that shrink's floor — a hard clip, same as
+   a real card's printer would never have let it run off the edge, rather
+   than a scrollbar undermining "this is a physical object" the whole tile
+   is going for. */
 .domain-card-tile__rules {
   padding: 6px 10px 10px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .domain-card-tile__rules p {
