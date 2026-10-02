@@ -19,9 +19,17 @@ interface CampaignsPageProps {
   /** Set by the floating music player's "Back to Session" button — see App.tsx. */
   jumpToSession?: SessionJumpRequest | null;
   onJumpHandled?: () => void;
+  /** Set by the Journal bubble's "Open →" action on a campaign row — see App.tsx. */
+  jumpToCampaign?: string | null;
+  onCampaignJumpHandled?: () => void;
 }
 
-export default function CampaignsPage({ jumpToSession, onJumpHandled }: CampaignsPageProps) {
+export default function CampaignsPage({
+  jumpToSession,
+  onJumpHandled,
+  jumpToCampaign,
+  onCampaignJumpHandled,
+}: CampaignsPageProps) {
   const { items: campaigns, loading, error, upsert, remove } = useApiList<Campaign>(campaignsApi.list);
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -55,6 +63,15 @@ export default function CampaignsPage({ jumpToSession, onJumpHandled }: Campaign
       cancelled = true;
     };
   }, [jumpToSession, campaigns.length, onJumpHandled]);
+
+  // Unlike the Session jump above, a campaignId needs no async lookup to
+  // trust — it came straight from campaignsApi.list() data the Journal
+  // bubble already had in hand.
+  useEffect(() => {
+    if (!jumpToCampaign) return;
+    setSelectedCampaignId(jumpToCampaign);
+    onCampaignJumpHandled?.();
+  }, [jumpToCampaign, onCampaignJumpHandled]);
 
   // The banners summarize the party and sessions, both of which are edited
   // inside a Campaign's own pages — so refetch each time the gallery comes

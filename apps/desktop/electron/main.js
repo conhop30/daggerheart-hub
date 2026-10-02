@@ -126,6 +126,7 @@ const LIST = {
   sessionEnvironments: store.listSessionEnvironments,
   musicRegions: store.listMusicRegions,
   musicTracks: store.listMusicTracks,
+  journalEntries: store.listJournalEntries,
 };
 const CREATE = {
   gameSets: store.createGameSet,
@@ -152,6 +153,7 @@ const CREATE = {
   // musicTracks is deliberately absent: a track is only ever created by the
   // audio import flow below, which has to copy the file in first.
   musicRegions: store.createMusicRegion,
+  journalEntries: store.createJournalEntry,
 };
 const UPDATE = {
   gameSets: store.updateGameSet,
@@ -177,6 +179,7 @@ const UPDATE = {
   sessionEnvironments: store.updateSessionEnvironment,
   musicRegions: store.updateMusicRegion,
   musicTracks: store.updateMusicTrack,
+  journalEntries: store.updateJournalEntry,
 };
 // No GameSet/HeroClass/Subclass here — deleting those has real referential-
 // integrity questions (a Class with existing Subclasses, a GameSet with
@@ -214,6 +217,7 @@ const REMOVE = {
     const removed = await store.removeMusicTrack(id);
     fs.rmSync(path.join(musicDir(), removed.fileName), { force: true });
   },
+  journalEntries: store.removeJournalEntry,
 };
 
 function lookup(map, collection) {
@@ -232,6 +236,9 @@ ipcMain.handle('store:listPartyMembersByCampaign', (_event, campaignId) =>
 );
 ipcMain.handle('store:listPartyMembersBySession', (_event, sessionId) => store.listPartyMembersBySession(sessionId));
 ipcMain.handle('store:listSessionsByCampaign', (_event, campaignId) => store.listSessionsByCampaign(campaignId));
+ipcMain.handle('store:listJournalEntriesByCampaign', (_event, campaignId) =>
+  store.listJournalEntriesByCampaign(campaignId)
+);
 ipcMain.handle('store:addSessionLoot', (_event, sessionId, entry) => store.addSessionLoot(sessionId, entry));
 ipcMain.handle('store:removeSessionLoot', (_event, sessionId, entryId) => store.removeSessionLoot(sessionId, entryId));
 ipcMain.handle('store:cloneSession', (_event, sourceId, options) => store.cloneSession(sourceId, options));

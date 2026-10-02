@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('daggerheart', {
     ipcRenderer.invoke('store:listPartyMembersByCampaign', campaignId),
   listPartyMembersBySession: (sessionId) => ipcRenderer.invoke('store:listPartyMembersBySession', sessionId),
   listSessionsByCampaign: (campaignId) => ipcRenderer.invoke('store:listSessionsByCampaign', campaignId),
+  listJournalEntriesByCampaign: (campaignId) =>
+    ipcRenderer.invoke('store:listJournalEntriesByCampaign', campaignId),
   addSessionLoot: (sessionId, entry) => ipcRenderer.invoke('store:addSessionLoot', sessionId, entry),
   removeSessionLoot: (sessionId, entryId) => ipcRenderer.invoke('store:removeSessionLoot', sessionId, entryId),
   listSessionAdversariesBySession: (sessionId) =>

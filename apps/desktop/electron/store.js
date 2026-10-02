@@ -47,6 +47,7 @@ const COLLECTIONS = [
   'sessionEnvironments',
   'musicRegions',
   'musicTracks',
+  'journalEntries',
 ];
 
 // The built-in music region that always exists: it holds the library's
@@ -1092,6 +1093,76 @@ function removeCampaign(id) {
       store[key] = store[key].filter((v) => v.campaignId !== id && !sessionIds.has(v.sessionId));
     }
     store.sessions = store.sessions.filter((s) => s.campaignId !== id);
+    store.journalEntries = store.journalEntries.filter((j) => j.campaignId !== id);
+  });
+}
+
+// ---- Journal Entries ----
+// Freeform "chicken scratch" notes a GM jots against a Campaign while
+// browsing the app's own tabs (Adversaries, Equipment, ...) — deliberately
+// NOT a makeCollection: label is not unique (two blank/same-labeled notes
+// are completely normal here) and starts blank (an entry is created first,
+// then typed into), so the generic name-required/name-deduped shape this
+// store's other collections share doesn't fit. Kind mirrors the app's own
+// content types rather than generic GM-notes buckets, so a note taken while
+// looking at the Equipment page's Weapons section lands in the category a
+// user would expect.
+
+const JOURNAL_ENTRY_KINDS = ['ADVERSARIES', 'LOOT', 'CONSUMABLES', 'ARMOR', 'WEAPONS', 'WORLDBUILDING', 'OTHER'];
+
+function listJournalEntries() {
+  return getCache().journalEntries;
+}
+
+function listJournalEntriesByCampaign(campaignId) {
+  return getCache()
+    .journalEntries.filter((j) => j.campaignId === campaignId)
+    .sort((a, b) => a.order - b.order);
+}
+
+function createJournalEntry(data) {
+  return mutate((store) => {
+    if (!store.campaigns.some((c) => c.id === data.campaignId)) {
+      throw new Error(`No campaign with id ${data.campaignId}`);
+    }
+    if (!JOURNAL_ENTRY_KINDS.includes(data.kind)) {
+      throw new Error(`Journal entry kind must be one of ${JOURNAL_ENTRY_KINDS.join(', ')}`);
+    }
+    // New entries append to the end of their own (campaign, kind) group —
+    // order is otherwise only ever changed by explicit reordering.
+    const highestOrder = store.journalEntries
+      .filter((j) => j.campaignId === data.campaignId && j.kind === data.kind)
+      .reduce((max, j) => Math.max(max, j.order), -1);
+    const record = {
+      id: randomUUID(),
+      campaignId: data.campaignId,
+      kind: data.kind,
+      label: data.label ?? '',
+      notes: data.notes ?? '',
+      order: highestOrder + 1,
+    };
+    store.journalEntries.push(record);
+    return record;
+  });
+}
+
+function updateJournalEntry(id, patch) {
+  return mutate((store) => {
+    const entry = store.journalEntries.find((j) => j.id === id);
+    if (!entry) throw new Error(`No record with id ${id}`);
+    // Kind is fixed at creation — recategorizing isn't a thing this does.
+    if (patch.label !== undefined) entry.label = patch.label;
+    if (patch.notes !== undefined) entry.notes = patch.notes;
+    if (patch.order !== undefined) entry.order = patch.order;
+    return entry;
+  });
+}
+
+function removeJournalEntry(id) {
+  return mutate((store) => {
+    const index = store.journalEntries.findIndex((j) => j.id === id);
+    if (index === -1) throw new Error(`No record with id ${id}`);
+    store.journalEntries.splice(index, 1);
   });
 }
 
@@ -1709,6 +1780,11 @@ module.exports = {
   createCampaign: campaigns.create,
   updateCampaign: campaigns.update,
   removeCampaign,
+  listJournalEntries,
+  createJournalEntry,
+  updateJournalEntry,
+  removeJournalEntry,
+  listJournalEntriesByCampaign,
   listPartyMembers: partyMembers.list,
   createPartyMember: partyMembers.create,
   updatePartyMember: partyMembers.update,

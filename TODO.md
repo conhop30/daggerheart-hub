@@ -312,11 +312,41 @@ scratch list for planning the next pass of work.
       same `items.length > 0` guard pattern as Tier's own filter) adds a
       second "All Types" dropdown next to Tier's, wired up for Adversary
       only.
-- [ ] (For further pondering — discuss with mockups before building.) A
-      draggable "Journal" bubble, dockable to a screen edge. Clicking it
-      opens a notes window with no default text fields; instead, a
-      dropdown of buttons for the kind of entry to add — e.g. a "+ person
-      silhouette" button for "Add Player," which then provides a Name
-      field and a Notes field. Each entry should have a short Label plus
-      a larger text field, so a GM gets a fast-glance label and still has
-      room for detail.
+- [ ] Journal bubble — mockup rounds done (canvas:
+      https://claude.ai/artifact/RpoXM9e5xgjzRMU8QJh4vs), plan written and
+      approved (`~/.claude/plans/abundant-puzzling-emerson.md`), Phase 1
+      landed:
+      - **Data layer**: new `journalEntries` collection in
+        `electron/store.js` (hand-written, not `makeCollection` — label
+        isn't unique and starts blank, which that generic shape doesn't
+        support). 7 fixed kinds mirroring the app's own content types —
+        Adversaries/Loot/Consumables/Armor/Weapons/Worldbuilding/Other —
+        chosen so a note taken while looking at e.g. Equipment's Weapons
+        section lands where you'd expect. Cascade-deletes with its
+        Campaign. `journalApi` (`src/api/journal.ts`) composed via
+        `createCrudApi` + `listByCampaign`, same pattern as `cardsApi`.
+      - **`JournalBubble.tsx`** (+ `.css`): app-wide, always visible next
+        to `FloatingMusicPlayer`. Its own campaign selection is local,
+        transient state — fully decoupled from which page you're on, so a
+        GM can browse Adversaries/Equipment/etc. and jot a note against
+        whichever Campaign they picked without navigating away. Global
+        list of Campaigns when nothing's selected; each row also has a
+        separate "Open →" action that *does* navigate the whole app there
+        (reuses `App.tsx`'s `jumpToSession`-style one-shot-request
+        convention, now `jumpToCampaign`). "+" menu uses plain text
+        buttons for the 7 kinds (no icons — matches Equipment's own
+        plain-text section headers for these same entity names).
+      - Verified: `npx tsc --noEmit -p .` clean, `npm test` (233 tests,
+        was 227 — 6 new `JournalEntry` backend tests) green, new
+        `e2e/journal.spec.ts` (4 tests) green, plus `app.spec.ts` +
+        `campaigns.spec.ts` (19 tests, shared-chrome rule since this adds
+        a new always-mounted component) green.
+      - **Still open — Phase 2** (see the plan file): drag-reorder within
+        a category, the "expand" slide-out detail pane (aligned to the
+        Journal panel's full height, flattened touching corners — from
+        the mockup's validated design) replacing Phase 1's plain inline
+        edit, and outside-click-closes-the-Journal. Full e2e suite once
+        Phase 2 lands, not after each phase individually. Explicitly
+        **not** building the mockup's rounds 2–3 tear-off/floating-dock
+        system — cut once the feature's actual purpose (quick notes while
+        browsing elsewhere, not a heavy multi-window tool) was clarified.

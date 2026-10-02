@@ -32,6 +32,7 @@ export interface DaggerheartBridge {
   listPartyMembersByCampaign: (campaignId: string) => Promise<unknown[]>;
   listPartyMembersBySession: (sessionId: string) => Promise<unknown[]>;
   listSessionsByCampaign: (campaignId: string) => Promise<unknown[]>;
+  listJournalEntriesByCampaign: (campaignId: string) => Promise<unknown[]>;
   addSessionLoot: (sessionId: string, entry: unknown) => Promise<unknown>;
   removeSessionLoot: (sessionId: string, entryId: string) => Promise<unknown>;
   listSessionAdversariesBySession: (sessionId: string) => Promise<unknown[]>;
@@ -108,6 +109,8 @@ export const apiClient = {
     (await unwrap(bridge().listPartyMembersBySession(sessionId))) as T[],
   listSessionsByCampaign: async <T>(campaignId: string): Promise<T[]> =>
     (await unwrap(bridge().listSessionsByCampaign(campaignId))) as T[],
+  listJournalEntriesByCampaign: async <T>(campaignId: string): Promise<T[]> =>
+    (await unwrap(bridge().listJournalEntriesByCampaign(campaignId))) as T[],
   addSessionLoot: async <T>(sessionId: string, entry: unknown): Promise<T> =>
     (await unwrap(bridge().addSessionLoot(sessionId, entry))) as T,
   removeSessionLoot: async <T>(sessionId: string, entryId: string): Promise<T> =>

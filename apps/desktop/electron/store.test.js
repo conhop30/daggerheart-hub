@@ -650,6 +650,61 @@ describe('Session', () => {
   });
 });
 
+describe('JournalEntry', () => {
+  it('rejects a campaignId that does not exist', async () => {
+    await expect(store.createJournalEntry({ campaignId: 'missing', kind: 'OTHER' })).rejects.toThrow(
+      'No campaign with id'
+    );
+  });
+
+  it('rejects a kind outside the enum', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    await expect(store.createJournalEntry({ campaignId: c.id, kind: 'NPC' })).rejects.toThrow(
+      'Journal entry kind must be one of'
+    );
+  });
+
+  it('defaults label and notes to empty strings, and assigns an incrementing order within its (campaign, kind) group', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const first = await store.createJournalEntry({ campaignId: c.id, kind: 'WEAPONS' });
+    expect(first.label).toBe('');
+    expect(first.notes).toBe('');
+    expect(first.order).toBe(0);
+    const second = await store.createJournalEntry({ campaignId: c.id, kind: 'WEAPONS' });
+    expect(second.order).toBe(1);
+    // A different kind in the same campaign starts its own group at 0.
+    const other = await store.createJournalEntry({ campaignId: c.id, kind: 'LOOT' });
+    expect(other.order).toBe(0);
+  });
+
+  it('listJournalEntriesByCampaign only returns matching entries, sorted by order', async () => {
+    const c1 = await store.createCampaign({ name: 'The Wildwood' });
+    const c2 = await store.createCampaign({ name: 'Other Campaign' });
+    const a = await store.createJournalEntry({ campaignId: c1.id, kind: 'OTHER', label: 'A' });
+    const b = await store.createJournalEntry({ campaignId: c1.id, kind: 'OTHER', label: 'B' });
+    await store.createJournalEntry({ campaignId: c2.id, kind: 'OTHER', label: 'C' });
+
+    await store.updateJournalEntry(a.id, { order: 5 });
+    await store.updateJournalEntry(b.id, { order: 1 });
+
+    const c1Entries = store.listJournalEntriesByCampaign(c1.id);
+    expect(c1Entries.map((e) => e.label)).toEqual(['B', 'A']);
+  });
+
+  it('update can change label, notes, and order', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const entry = await store.createJournalEntry({ campaignId: c.id, kind: 'ADVERSARIES' });
+    const updated = await store.updateJournalEntry(entry.id, { label: 'Ogre captain', notes: 'Tough fight', order: 3 });
+    expect(updated.label).toBe('Ogre captain');
+    expect(updated.notes).toBe('Tough fight');
+    expect(updated.order).toBe(3);
+  });
+
+  it('remove throws for an unknown id', async () => {
+    await expect(store.removeJournalEntry('missing')).rejects.toThrow('No record with id');
+  });
+});
+
 describe('SessionAdversary', () => {
   it('rejects a sessionId that does not exist', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
@@ -1597,12 +1652,14 @@ describe('Carrying data across Sessions', () => {
       await store.updatePartyMember(pm.id, { notes: 'v2' }, { sessionId: sessions[1].id });
       const adv = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
       await store.removeSessionAdversary(adv.id, { sessionId: sessions[2].id });
+      await store.createJournalEntry({ campaignId: c.id, kind: 'OTHER', label: 'Remember the bridge toll' });
       await store.removeCampaign(c.id);
       store.flushPendingWrite();
       const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
       expect(raw.partyMembers).toEqual([]);
       expect(raw.sessionAdversaries).toEqual([]);
       expect(raw.sessions).toEqual([]);
+      expect(raw.journalEntries).toEqual([]);
     });
   });
 });

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { SessionJumpRequest } from './pages/CampaignsPage';
 import AppShell, { type View } from './components/AppShell';
 import FloatingMusicPlayer from './components/FloatingMusicPlayer';
+import JournalBubble from './components/JournalBubble';
 import { GameSetsProvider } from './context/GameSetsContext';
 import { MusicProvider } from './context/MusicContext';
 import { RollLogProvider } from './context/RollLogContext';
@@ -27,6 +28,7 @@ function PageLoading() {
 export default function App() {
   const [view, setView] = useState<View>('home');
   const [jumpToSession, setJumpToSession] = useState<SessionJumpRequest | null>(null);
+  const [jumpToCampaign, setJumpToCampaign] = useState<string | null>(null);
 
   // Every view the user has opened this run stays mounted (hidden via CSS)
   // instead of unmounting on nav away — a page's own useApiList calls only
@@ -58,7 +60,12 @@ export default function App() {
             {page('optional-mechanics', <OptionalMechanicsPage />)}
             {page(
               'campaigns',
-              <CampaignsPage jumpToSession={jumpToSession} onJumpHandled={() => setJumpToSession(null)} />
+              <CampaignsPage
+                jumpToSession={jumpToSession}
+                onJumpHandled={() => setJumpToSession(null)}
+                jumpToCampaign={jumpToCampaign}
+                onCampaignJumpHandled={() => setJumpToCampaign(null)}
+              />
             )}
             {page('settings', <SettingsPage />)}
             {page('home', <HomePage onNavigate={setView} />)}
@@ -66,6 +73,12 @@ export default function App() {
           <FloatingMusicPlayer
             onOpenSession={(campaignId, sessionId) => {
               setJumpToSession({ campaignId, sessionId });
+              setView('campaigns');
+            }}
+          />
+          <JournalBubble
+            onOpenCampaign={(campaignId) => {
+              setJumpToCampaign(campaignId);
               setView('campaigns');
             }}
           />
