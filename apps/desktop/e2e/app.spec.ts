@@ -219,6 +219,32 @@ test.describe('Electron app', () => {
     await expect(win.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 
+  test('Settings: switching Color Theme updates the document and persists across reload, independent of Light/Dark', async () => {
+    await win.click('.app-shell__settings');
+    await expect(win.locator('.settings-page__title')).toBeVisible();
+
+    // Palette preference lives in localStorage, which (unlike
+    // DAGGERHEART_STORE_DIR) survives across test runs on the same machine —
+    // so don't assume Ember is the starting state, just that choosing Frost
+    // sets the attribute explicitly.
+    await win.click('.settings-page__option:has-text("Frost")');
+    await expect(win.locator('html')).toHaveAttribute('data-palette', 'frost');
+
+    // Switching Light/Dark doesn't touch the palette choice.
+    await win.click('.settings-page__option:has-text("Light")');
+    await expect(win.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(win.locator('html')).toHaveAttribute('data-palette', 'frost');
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await expect(win.locator('html')).toHaveAttribute('data-palette', 'frost');
+
+    // Back to Ember removes the attribute again rather than leaving it set.
+    await win.click('.app-shell__settings');
+    await win.click('.settings-page__option:has-text("Ember")');
+    await expect(win.locator('html')).not.toHaveAttribute('data-palette');
+  });
+
   test('Settings: applying a window size preset actually resizes the window', async () => {
     await win.click('.app-shell__settings');
     await win.click('.settings-page__option:has-text("Compact")');

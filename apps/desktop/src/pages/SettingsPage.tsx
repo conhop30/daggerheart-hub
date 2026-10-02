@@ -4,12 +4,40 @@ import { isLaunchCheckEnabled, setLaunchCheckEnabled } from '../lib/updatePrefs'
 import { useUpdateState } from '../lib/useUpdateState';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import { useTextSize, type TextSizePreference } from '../context/TextSizeContext';
+import { usePalette, type PalettePreference } from '../context/PaletteContext';
 import './SettingsPage.css';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; description: string }[] = [
   { value: 'light', label: 'Light', description: 'Always use the light theme.' },
   { value: 'dark', label: 'Dark', description: 'Always use the dark theme.' },
   { value: 'system', label: 'System', description: "Match your OS's appearance, live." },
+];
+
+const PALETTE_OPTIONS: {
+  value: PalettePreference;
+  label: string;
+  description: string;
+  hope: string;
+  fear: string;
+}[] = [
+  { value: 'ember', label: 'Ember', description: 'The original Hope/Fear pair.', hope: '#e4b341', fear: '#8867d6' },
+  { value: 'abyss', label: 'Abyss', description: 'Deep-sea teal and rose.', hope: '#45c4b0', fear: '#d6679e' },
+  { value: 'verdant', label: 'Verdant', description: 'Forest green and copper.', hope: '#c9a227', fear: '#d9724a' },
+  { value: 'frost', label: 'Frost', description: 'Icy blue and rosewood.', hope: '#6fb8e8', fear: '#e8829a' },
+  {
+    value: 'cvd-redgreen',
+    label: 'Colorblind-Safe (Red-Green)',
+    description: 'Blue/orange pair for deuteranopia and protanopia — the common forms.',
+    hope: '#56b4e9',
+    fear: '#e69f00',
+  },
+  {
+    value: 'cvd-blueyellow',
+    label: 'Colorblind-Safe (Blue-Yellow)',
+    description: 'Green/red pair for tritanopia, the rarer form.',
+    hope: '#4caf6d',
+    fear: '#e05263',
+  },
 ];
 
 const TEXT_SIZE_OPTIONS: { value: TextSizePreference; label: string; description: string }[] = [
@@ -55,6 +83,7 @@ function describeUpdate(update: UpdateState): string {
 
 export default function SettingsPage() {
   const { preference, setPreference } = useTheme();
+  const { preference: palette, setPreference: setPalette } = usePalette();
   const { preference: textSize, setPreference: setTextSize } = useTextSize();
   const [currentSize, setCurrentSize] = useState<[number, number] | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
@@ -163,6 +192,37 @@ export default function SettingsPage() {
         <div className="settings-page__row">
           <div className="settings-page__row-label">
             <span className="settings-page__row-index">02</span>
+            <div className="settings-page__row-title">Color Theme</div>
+          </div>
+          <div className="settings-page__row-content">
+            <p className="settings-page__section-hint">
+              Pick the Hope/Fear accent pair used throughout the app, independent of Light/Dark.
+            </p>
+            <div className="settings-page__options">
+              {PALETTE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`settings-page__option${palette === option.value ? ' active' : ''}`}
+                  onClick={() => setPalette(option.value)}
+                >
+                  <span className="settings-page__option-label">
+                    <span
+                      className="settings-page__swatch"
+                      style={{ background: `linear-gradient(90deg, ${option.hope} 50%, ${option.fear} 50%)` }}
+                    />
+                    {option.label}
+                  </span>
+                  <span className="settings-page__option-description">{option.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-page__row">
+          <div className="settings-page__row-label">
+            <span className="settings-page__row-index">03</span>
             <div className="settings-page__row-title">Text Size</div>
           </div>
           <div className="settings-page__row-content">
@@ -185,7 +245,7 @@ export default function SettingsPage() {
 
         <div className="settings-page__row">
           <div className="settings-page__row-label">
-            <span className="settings-page__row-index">03</span>
+            <span className="settings-page__row-index">04</span>
             <div className="settings-page__row-title">Window Size</div>
           </div>
           <div className="settings-page__row-content">
@@ -225,7 +285,7 @@ export default function SettingsPage() {
 
         <div className="settings-page__row">
           <div className="settings-page__row-label">
-            <span className="settings-page__row-index">04</span>
+            <span className="settings-page__row-index">05</span>
             <div className="settings-page__row-title">About &amp; Updates</div>
           </div>
           <div className="settings-page__row-content">

@@ -129,6 +129,104 @@
   color-scheme: light;
 }
 
+/* Color Theme (Settings > Color Theme, PaletteContext) — a second,
+   independent axis from light/dark: this swaps only the Hope/Fear accent
+   pair (and their -dim/-on-dark text-role variants), never --void/--panel/
+   --ink/--hairline, so every surface keeps reading as "this app" under any
+   palette. Applied via [data-palette] on <html>; "ember" (the app's
+   original pair) needs no attribute — the base :root block above already
+   is Ember. --hope-on-light/--fear-on-light and the parchment tokens are
+   deliberately NOT part of this axis: that surface represents a fixed
+   physical book page (ClassSpread's Subclass side), not a themeable app
+   chrome surface.
+
+   Each non-Ember palette repeats Ember's own contrast discipline: the base
+   --hope/--fear (used for fills, borders, low-opacity backgrounds — the
+   looser 3:1 non-text bar) clears 3:1 against both dark surfaces on its
+   own; --hope-on-dark/--fear-on-dark (used as text on a dark surface) are
+   verified at >=4.5:1 against --void (#14121b, the tighter of the two dark
+   surfaces); the light-theme override block further down re-points those
+   same two roles at a darkened variant verified >=4.5:1 against the light
+   theme's --void (#f6f2e8), mirroring exactly how Ember's own light-theme
+   block already works. All ratios computed with the standard WCAG relative
+   luminance formula, not eyeballed. */
+:root[data-palette='abyss'] {
+  --hope: #45c4b0;
+  --hope-dim: #266c61;
+  --hope-on-dark: #45c4b0; /* 8.64:1 vs --void */
+  --fear: #d6679e;
+  --fear-dim: #763957;
+  --fear-on-dark: #d6679e; /* 5.56:1 vs --void */
+}
+
+:root[data-palette='verdant'] {
+  --hope: #c9a227;
+  --hope-dim: #6f5915;
+  --hope-on-dark: #c9a227; /* 7.67:1 vs --void */
+  --fear: #d9724a;
+  --fear-dim: #773f29;
+  --fear-on-dark: #d9724a; /* 5.70:1 vs --void */
+}
+
+:root[data-palette='frost'] {
+  --hope: #6fb8e8;
+  --hope-dim: #3d6580;
+  --hope-on-dark: #6fb8e8; /* 8.57:1 vs --void */
+  --fear: #e8829a;
+  --fear-dim: #804855;
+  --fear-on-dark: #e8829a; /* 7.15:1 vs --void */
+}
+
+/* Colorblind-safe — deuteranopia/protanopia (the common, red-green forms,
+   ~8% of men). Built on the Okabe-Ito palette: blue/orange is the standard
+   safe opposing pair for this axis, since red-green is exactly what these
+   confuse. */
+:root[data-palette='cvd-redgreen'] {
+  --hope: #56b4e9;
+  --hope-dim: #2f6380;
+  --hope-on-dark: #56b4e9; /* 8.04:1 vs --void */
+  --fear: #e69f00;
+  --fear-dim: #7f5700;
+  --fear-on-dark: #e69f00; /* 8.24:1 vs --void */
+}
+
+/* Colorblind-safe — tritanopia (rare, blue-yellow). Leans on red/green
+   instead, since that axis isn't the one this form of CVD impairs. */
+:root[data-palette='cvd-blueyellow'] {
+  --hope: #4caf6d;
+  --hope-dim: #2a603c;
+  --hope-on-dark: #4caf6d; /* 6.77:1 vs --void */
+  --fear: #e05263;
+  --fear-dim: #7b2d36;
+  --fear-on-dark: #e46b79; /* lightened from base --fear — base is 4.50:1
+    vs --panel, too close to the AA line to risk; this clears 5.41:1 */
+}
+
+:root[data-theme='light'][data-palette='abyss'] {
+  --hope-on-dark: #29766a; /* 4.82:1 vs light --void */
+  --fear-on-dark: #96486f; /* 5.44:1 vs light --void */
+}
+
+:root[data-theme='light'][data-palette='verdant'] {
+  --hope-on-dark: #796117; /* 5.31:1 vs light --void */
+  --fear-on-dark: #985034; /* 5.32:1 vs light --void */
+}
+
+:root[data-theme='light'][data-palette='frost'] {
+  --hope-on-dark: #436e8b; /* 4.89:1 vs light --void */
+  --fear-on-dark: #8b4e5c; /* 5.62:1 vs light --void */
+}
+
+:root[data-theme='light'][data-palette='cvd-redgreen'] {
+  --hope-on-dark: #346c8c; /* 5.12:1 vs light --void */
+  --fear-on-dark: #8a5f00; /* 5.05:1 vs light --void */
+}
+
+:root[data-theme='light'][data-palette='cvd-blueyellow'] {
+  --hope-on-dark: #357a4c; /* 4.65:1 vs light --void */
+  --fear-on-dark: #b3424f; /* 4.93:1 vs light --void */
+}
+
 * {
   box-sizing: border-box;
 }
