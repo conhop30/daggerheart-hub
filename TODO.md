@@ -123,11 +123,33 @@ scratch list for planning the next pass of work.
           verification scripts used earlier) writes flat-color fixture
           images at test time — no binary fixture files committed.
 
-- [ ] Subclass creation doesn't accept input for an official/core class
-      (reproduced with Ranger) but does work fine inside a custom class —
-      needs root-causing. Separately: the Foundation feature doesn't need
-      the spellcast trait listed on the page. Once card generation exists,
-      the Foundation feature should auto-place into a foundation card.
+- [x] Subclass creation root-caused and fixed (electron/store.js):
+      `createSubclass`'s duplicate-name check searched the *entire*
+      `store.subclasses` list, not scoped to `parentClassId` — unlike
+      Session's identical "two different parents can each have their own
+      same-named child" shape, which does scope (`scope: (r) =>
+      r.campaignId`). Two different classes with a same-named Subclass
+      silently collided: the second `create()` call just returned the
+      FIRST class's existing record, so whichever class got tried second
+      read as "doesn't accept input" (no error, nothing appears) — matches
+      "works in a fresh custom class, fails on Ranger" exactly, since a
+      brand-new custom class's first subclass name is virtually guaranteed
+      not to collide with anything, while an official class already has
+      real seeded sibling names more likely to be hit during testing.
+      `updateSubclass`'s rename-collision check had the identical
+      unscoped bug. Both fixed, scoped to parentClassId; added 2 unit
+      tests covering create and rename across two different classes.
+      Separately: the Foundation feature's own spellcast trait no longer
+      shows per-feature on the page (ClassSpread.tsx) — it only ever
+      existed on `FoundationFeature` (not the plain `Feature` type
+      Specialization/Mastery use), and the Subclass-level "Spellcast
+      Trait: X" line already shown above made it purely redundant; the
+      underlying data field is untouched, still editable, since a
+      Foundation feature really can declare a trait in the corebook.
+      Still blocked, not actionable: "once card generation exists, the
+      Foundation feature should auto-place into a foundation card" — no
+      card-generation feature exists in this codebase yet (checked), so
+      this has no dependency to act on.
 - [ ] Text field styling: give inputs the same curved, initially-invisible
       border treatment Settings buttons already have, plus a focus
       animation where color "grows" out along the top and bottom edges

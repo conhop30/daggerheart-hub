@@ -205,12 +205,18 @@ function SubclassBody({
   );
 }
 
+// A FoundationFeature can carry its own spellcastTrait (the real corebook
+// has Foundation features that state the subclass's trait directly), but
+// it's never shown per-feature here — the Subclass-level "Spellcast
+// Trait: X" line above this already covers it, so repeating it on the
+// Foundation feature itself was just redundant. Specialization/Mastery's
+// plain Feature type has no such field to begin with.
 function FeatureTier({
   label,
   features,
 }: {
   label: string;
-  features: { name: string; description?: string; spellcastTrait?: SpellcastTrait | null }[];
+  features: { name: string; description?: string }[];
 }) {
   if (features.length === 0) return null;
   return (
@@ -222,9 +228,6 @@ function FeatureTier({
       {features.map((feature, i) => (
         <p key={i} className="spread-feature-inline">
           <em>{feature.name}:</em> {feature.description}
-          {feature.spellcastTrait && (
-            <span className="spread-trait-tag"> {formatTrait(feature.spellcastTrait)}</span>
-          )}
         </p>
       ))}
     </>

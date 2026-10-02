@@ -133,6 +133,67 @@ describe('Subclass', () => {
     expect(wizardSubclasses).toHaveLength(1);
     expect(wizardSubclasses[0].name).toBe('School of Knowledge');
   });
+
+  // Regression: createSubclass's duplicate-name check used to search the
+  // whole store.subclasses list, not scoped to parentClassId (unlike
+  // Session's own identical "two different parents can each have their own
+  // same-named child" shape, which does scope — see store.js). Two
+  // different classes with a same-named Subclass used to silently collide:
+  // the second create() returned the FIRST class's existing record
+  // instead of creating one for the second class, which from the UI read
+  // as "doesn't accept input" for whichever class tried second.
+  it('two different classes can each have a same-named Subclass without colliding', async () => {
+    const d1 = await store.createDomain({ name: 'Arcana', gameSetId: 'gs-1' });
+    const d2 = await store.createDomain({ name: 'Blade', gameSetId: 'gs-1' });
+    const wizard = await store.createHeroClass({
+      name: 'Wizard',
+      primaryDomainId: d1.id,
+      secondaryDomainId: d2.id,
+      gameSetId: 'gs-1',
+    });
+    const ranger = await store.createHeroClass({
+      name: 'Ranger',
+      primaryDomainId: d1.id,
+      secondaryDomainId: d2.id,
+      gameSetId: 'gs-1',
+    });
+    const first = await store.createSubclass({ name: 'Wayfinder', parentClassId: wizard.id, gameSetId: 'gs-1' });
+    const second = await store.createSubclass({ name: 'Wayfinder', parentClassId: ranger.id, gameSetId: 'gs-1' });
+
+    expect(second.id).not.toBe(first.id);
+    expect(second.parentClassId).toBe(ranger.id);
+    expect(store.listSubclassesByParentClass(ranger.id)).toHaveLength(1);
+    expect(store.listSubclassesByParentClass(wizard.id)).toHaveLength(1);
+  });
+
+  it('renaming a Subclass to collide with a sibling under the SAME class is skipped, but a same name under a DIFFERENT class is not', async () => {
+    const d1 = await store.createDomain({ name: 'Arcana', gameSetId: 'gs-1' });
+    const d2 = await store.createDomain({ name: 'Blade', gameSetId: 'gs-1' });
+    const wizard = await store.createHeroClass({
+      name: 'Wizard',
+      primaryDomainId: d1.id,
+      secondaryDomainId: d2.id,
+      gameSetId: 'gs-1',
+    });
+    const ranger = await store.createHeroClass({
+      name: 'Ranger',
+      primaryDomainId: d1.id,
+      secondaryDomainId: d2.id,
+      gameSetId: 'gs-1',
+    });
+    const wizardSub = await store.createSubclass({ name: 'School of Knowledge', parentClassId: wizard.id, gameSetId: 'gs-1' });
+    await store.createSubclass({ name: 'Wayfinder', parentClassId: ranger.id, gameSetId: 'gs-1' });
+    const other = await store.createSubclass({ name: 'Beastbound', parentClassId: ranger.id, gameSetId: 'gs-1' });
+
+    // Same class, name collides with a sibling -> skipped (existing behavior, unchanged).
+    const skipped = await store.updateSubclass(other.id, { name: 'Wayfinder' });
+    expect(skipped.name).toBe('Beastbound');
+
+    // Different class, same name as a sibling's name under another class -> allowed now.
+    const renamed = await store.updateSubclass(other.id, { name: 'School of Knowledge' });
+    expect(renamed.name).toBe('School of Knowledge');
+    expect(renamed.id).not.toBe(wizardSub.id);
+  });
 });
 
 describe('Card', () => {

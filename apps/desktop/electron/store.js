@@ -404,10 +404,26 @@ function listSubclassesByParentClass(parentClassId) {
   return getCache().subclasses.filter((s) => s.parentClassId === parentClassId);
 }
 
+// Root cause of a real bug (reproduced with Ranger — an official/core
+// class — but not inside a freshly-created custom class): this lookup used
+// to be a plain findByNameIgnoreCase(store.subclasses, ...), scoped to
+// nothing. Two DIFFERENT classes having a same-named Subclass (easy to hit
+// once real corebook content is seeded, or just by testing with the same
+// placeholder name under two classes) silently matched the WRONG class's
+// existing record and returned it — "doesn't accept input" was really
+// "silently returned someone else's Subclass instead of creating this
+// one." Scoped to parentClassId now, the same fix Session already got
+// (scope: (r) => r.campaignId, via makeCollection) for the identical
+// "two different parents can each have their own same-named child" shape.
+// Subclass is hand-rolled rather than makeCollection-based (it needs the
+// extra parentClassId existence check below), so the scoping is inline
+// instead of makeCollection's own scope option.
 function createSubclass(data) {
   return mutate((store) => {
     requireName(data);
-    const existing = findByNameIgnoreCase(store.subclasses, data.name);
+    const existing = store.subclasses.find(
+      (s) => s.parentClassId === data.parentClassId && s.name.toLowerCase() === data.name.toLowerCase()
+    );
     if (existing) return existing;
     if (!store.heroClasses.some((c) => c.id === data.parentClassId)) {
       throw new Error(`No hero class with id ${data.parentClassId}`);
@@ -436,7 +452,17 @@ function updateSubclass(id, patch) {
       throw new Error(`No hero class with id ${patch.parentClassId}`);
     }
     const merged = mergePatch(existing, patch);
-    applyRename(store.subclasses, id, existing, patch, merged);
+    // Same parentClassId scoping as createSubclass above, applied to the
+    // rename-collision check too — pre-filtered to siblings under the same
+    // class before handing off to the shared (deliberately global, correct
+    // for GameSet/Domain/HeroClass) applyRename helper.
+    applyRename(
+      store.subclasses.filter((s) => s.parentClassId === merged.parentClassId),
+      id,
+      existing,
+      patch,
+      merged
+    );
     Object.assign(existing, merged);
     return existing;
   });

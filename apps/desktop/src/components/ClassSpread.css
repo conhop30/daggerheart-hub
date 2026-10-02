@@ -271,18 +271,6 @@
   font-style: italic;
 }
 
-.spread-trait-tag {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--hope-on-light);
-  border: 1px solid var(--hope-dim);
-  border-radius: 999px;
-  padding: 1px 8px;
-  white-space: nowrap;
-}
-
 @media (max-width: 860px) {
   .class-spread {
     grid-template-columns: 1fr;
