@@ -74,7 +74,7 @@ test.describe('Campaign row and carrying a session forward', () => {
     await expect(row).not.toContainText('Mode');
   });
 
-  test('New Session suggests the next number and carries the campaign forward; Clone Most Recent also copies Session Notes', async () => {
+  test('New Session suggests the next number and carries the campaign forward; Clone Most Recent also copies the mode', async () => {
     await createCampaign('The Wildwood');
     await openCampaign('The Wildwood');
 
@@ -88,8 +88,6 @@ test.describe('Campaign row and carrying a session forward', () => {
 
     await win.getByRole('button', { name: 'Set Fear to 5' }).click();
     await win.click('.mode-toggle__option:has-text("Combat")');
-    await win.click('.mode-toggle__option:has-text("Adventuring")');
-    await win.fill('.adventuring-panel__note-field:has-text("Session Notes") textarea', 'The bridge is out.');
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
     await win.click('.session-view__back');
 
@@ -97,12 +95,10 @@ test.describe('Campaign row and carrying a session forward', () => {
     await win.click('.session-list__clone');
 
     // Cloning drops you straight into the copy: Fear carries forward, and the
-    // clone also starts with the source's Session Notes.
+    // clone also starts with the source's mode.
     await expect(win.locator('.session-view__title')).toHaveText('Session 2');
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
-    await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue(
-      'The bridge is out.'
-    );
+    await expect(win.locator('.mode-toggle__option--active')).toHaveText('Combat');
 
     // Changing the copy leaves the original alone.
     await win.getByRole('button', { name: 'Set Fear to 9' }).click();
@@ -111,14 +107,13 @@ test.describe('Campaign row and carrying a session forward', () => {
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
     await win.click('.session-view__back');
 
-    // A plain New Session suggests the next number, carries Fear forward from
-    // the latest session (9, set in Session 2), and starts with blank Session Notes.
+    // A plain New Session suggests the next number and carries Fear forward
+    // from the latest session (9, set in Session 2).
     await win.click('.session-list__add');
     await expect(win.locator('.create-form input[type="text"]')).toHaveValue('Session 3');
     await win.click('button:has-text("Start Session")');
     await win.locator('.content-card', { hasText: 'Session 3' }).getByRole('button', { name: 'Open' }).click();
     await expect(win.locator('.fear-track__value')).toHaveText('9 / 12');
-    await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue('');
 
     // Back at the list, the most recently created Session (3) is on top —
     // the list itself still stores creation order (Session 2 is still the

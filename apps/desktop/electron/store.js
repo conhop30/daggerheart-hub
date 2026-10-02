@@ -842,14 +842,13 @@ const transformations = makeCollection('transformations', {
 
 // ---- Carry-forward across sessions ----
 // A Campaign's data follows it from session to session (see carry.js for the
-// rules): Party members, pulled-in Adversaries/Environments, Fear, Campaign
-// and NPC notes, per-PC notes, the music region, and the loot log all carry;
-// only a Session's own name, mode, and "Session Notes" stay put. Editing or
-// deleting inside session N reaches N and everything after it, never the
-// sessions before.
+// rules): Party members, pulled-in Adversaries/Environments, Fear, the music
+// region, and the loot log all carry; only a Session's own name and mode stay
+// put. Editing or deleting inside session N reaches N and everything after
+// it, never the sessions before.
 
 const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments'];
-const CARRIED_SESSION_FIELDS = ['fear', 'regionId', 'campaignNotes', 'npcNotes'];
+const CARRIED_SESSION_FIELDS = ['fear', 'regionId'];
 
 function sessionOrder(store, campaignId) {
   return store.sessions.filter((s) => s.campaignId === campaignId).map((s) => s.id);
@@ -1208,10 +1207,9 @@ const listPartyMembersByCampaign = partyMembers.listByCampaign;
 const listPartyMembersBySession = partyMembers.listBySession;
 
 // ---- Sessions ----
-// A persistent, resumable run of a Campaign: a combat/adventuring mode, a
-// "Session Notes" scratchpad, and everything that carries forward (Fear,
-// Campaign/NPC/PC notes, music region, loot log). Built with makeCollection
-// like Campaign itself — a Session always has a user-given name ("The
+// A persistent, resumable run of a Campaign: a combat/adventuring mode, and
+// everything that carries forward (Fear, music region, loot log). Built with
+// makeCollection like Campaign itself — a Session always has a user-given name ("The
 // Ambush at Dawn") and idempotent-by-name create is an acceptable, already-
 // familiar behavior here, scoped to the Campaign so two Campaigns can each
 // have a "Session 1".
@@ -1253,26 +1251,15 @@ function presentSession(store, session) {
     ...own,
     fear: carry.resolveScalar(inCampaign, index, 'fear', 0),
     regionId: carry.resolveScalar(inCampaign, index, 'regionId', null),
-    campaignNotes: carry.resolveScalar(inCampaign, index, 'campaignNotes', null),
-    npcNotes: carry.resolveScalar(inCampaign, index, 'npcNotes', null),
-    pcNotes: carry.resolvePcNotes(inCampaign, index),
     lootLog: carry.resolveLootLog(inCampaign, index),
   };
-}
-
-// A PC-notes patch names only the members whose notes changed; the rest keep
-// whatever they carry from earlier sessions.
-function mergePcNotes(existing, incoming) {
-  const merged = existing.filter((n) => !incoming.some((i) => i.partyMemberId === n.partyMemberId));
-  return [...merged, ...incoming];
 }
 
 const sessions = makeCollection('sessions', {
   validate: validateSession,
   scope: (r) => r.campaignId,
   present: presentSession,
-  mergeExtra(existing, patch, merged) {
-    merged.pcNotes = patch.pcNotes !== undefined ? mergePcNotes(existing.pcNotes ?? [], patch.pcNotes) : (existing.pcNotes ?? []);
+  mergeExtra(existing, _patch, merged) {
     // The loot log has its own add/remove calls (addSessionLoot/removeSessionLoot).
     merged.lootLog = existing.lootLog ?? [];
     merged.lootRemoved = existing.lootRemoved ?? [];
@@ -1283,8 +1270,6 @@ const sessions = makeCollection('sessions', {
       campaignId: data.campaignId,
       name: data.name,
       mode: data.mode ?? 'adventuring',
-      generalNotes: data.generalNotes ?? null,
-      pcNotes: data.pcNotes ?? [],
       lootLog: (data.lootLog ?? []).map((e) => ({ ...e, id: e.id ?? randomUUID() })),
       lootRemoved: [],
     };
@@ -1325,9 +1310,9 @@ function removeSessionLoot(sessionId, entryId) {
 }
 
 // Deleting a Session must not change what the *later* ones show, so anything
-// it authored (versions, carried fields, notes, loot) moves to the session
-// right after it — unless that session already set its own. With no later
-// session it just goes away.
+// it authored (versions, carried fields, loot) moves to the session right
+// after it — unless that session already set its own. With no later session
+// it just goes away.
 function removeSession(id) {
   return mutate((store) => {
     const index = store.sessions.findIndex((s) => s.id === id);
@@ -1343,7 +1328,6 @@ function removeSession(id) {
       for (const field of CARRIED_SESSION_FIELDS) {
         if (has(session, field) && !has(next, field)) next[field] = session[field];
       }
-      next.pcNotes = mergePcNotes(session.pcNotes ?? [], next.pcNotes ?? []);
       next.lootLog = [...(session.lootLog ?? []), ...(next.lootLog ?? [])];
       next.lootRemoved = [...new Set([...(session.lootRemoved ?? []), ...(next.lootRemoved ?? [])])];
     }
@@ -1490,12 +1474,12 @@ const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
 
 // ---- Starting the next Session ----
 // "New Session" is just createSession: everything that carries is inherited
-// automatically, so it starts with the Party, the board, Fear, and notes as
-// the previous session left them, and a blank "Session Notes".
+// automatically, so it starts with the Party, the board, and Fear as the
+// previous session left them.
 //
-// "Clone Most Recent" additionally copies that session's Session Notes and
-// mode — the one-off state a plain new session leaves blank. It always lands
-// at the end of the timeline, so it carries forward from the latest session.
+// "Clone Most Recent" additionally copies that session's mode — the one-off
+// state a plain new session leaves at its default. It always lands at the
+// end of the timeline, so it carries forward from the latest session.
 
 function nextSessionName(name, taken) {
   const numbered = name.match(/^(.*?)(\d+)\s*$/);
@@ -1520,8 +1504,6 @@ function cloneSession(sourceId, { name } = {}) {
       campaignId: source.campaignId,
       name: name && name.trim() ? name.trim() : nextSessionName(source.name, taken),
       mode: source.mode,
-      generalNotes: source.generalNotes ?? null,
-      pcNotes: [],
       lootLog: [],
       lootRemoved: [],
     };

@@ -45,7 +45,7 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await win.click('button:has-text("Start Session")');
   }
 
-  test('Fear, the Party, notes and the board carry forward; a change in a later session never rewrites an earlier one', async () => {
+  test('Fear, the Party and the board carry forward; a change in a later session never rewrites an earlier one', async () => {
     // An Adversary to pull in.
     await win.click('.create-panel__toggle');
     await win.click('.chip:text-is("Adversary")');
@@ -76,8 +76,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     const [startCurrent, hpMax] = startHp.split('/').map((n) => Number(n.trim()));
 
     await win.getByRole('button', { name: 'Set Fear to 4' }).click();
-    await win.fill('.adventuring-panel__note-field:has-text("Campaign Notes") textarea', 'The king is dead.');
-    await win.fill('.adventuring-panel__note-field:has-text("Session Notes") textarea', 'Night one.');
     await win.locator('.party-roster .content-card', { hasText: 'Mira' }).getByRole('button', { name: 'Decrease HP' }).click();
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
 
@@ -93,8 +91,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await openSession('Session 2');
     await expect(win.locator('.session-view__title')).toHaveText('Session 2');
     await expect(win.locator('.fear-track__value')).toHaveText('4 / 12');
-    await expect(win.locator('.adventuring-panel__note-field:has-text("Campaign Notes") textarea')).toHaveValue('The king is dead.');
-    await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue('');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
     await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(ogreHp()).toHaveText('7 / 8');
@@ -111,10 +107,7 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await openSession('Session 1');
     await expect(win.locator('.fear-track__value')).toHaveText('4 / 12');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
-    // (Session 1 was left in Combat; mode belongs to the session, so it reopens that way.)
-    await win.click('.mode-toggle__option:has-text("Adventuring")');
-    await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue('Night one.');
-    await win.click('.mode-toggle__option:has-text("Combat")');
+    // Session 1 was left in Combat; mode belongs to the session, so it reopens that way.
     await expect(ogreHp()).toHaveText('7 / 8');
     await win.click('.session-view__back');
 

@@ -268,11 +268,10 @@ scratch list for planning the next pass of work.
       single-field Notes cards (`SessionEnvironmentTile`). Deliberately
       NOT applied to: the dense list-editor rows (`FoundationFeatureListEditor`
       and siblings — already raw-styled for table-row density, predating
-      this pass), `GameSetSelect`/`StatGallery`/the music-panel selects
-      (standalone pickers, not form fields), or `AdventuringPanel`'s notes
-      grid (multiple adjacent fields plus one per party member — needs a
-      visible, not placeholder-only, label per field, which the shared
-      chrome doesn't support yet).
+      this pass), or `GameSetSelect`/`StatGallery`/the music-panel selects
+      (standalone pickers, not form fields). (`AdventuringPanel`'s old
+      multi-field Notes grid, which would have needed the same treatment,
+      was removed outright instead — see the Journal bubble entry below.)
 - [x] Heritage tab (EntryCard.tsx — also used by Optional Mechanics'
       Transformation, which gets both fixes for free): Features now render
       unconditionally, right after the tagline — only the long-form
@@ -382,3 +381,27 @@ scratch list for planning the next pass of work.
         click/reopen-restores-detail-pane and drag-reorder-persists)
         green, plus the full e2e suite (74 tests) green, per the plan's
         "full suite once after Phase 2" rule.
+      - **Follow-up fix**: the Journal's "Open →" action could silently
+        no-op — `CampaignsPage`'s `jumpToCampaign` effect set the new
+        `selectedCampaignId` but never cleared a leftover `selectedSession`
+        from browsing deep into a *different* campaign's Session, so the
+        render branch that checks `selectedCampaign && selectedSession`
+        kept showing the stale Session instead of switching campaigns.
+        Fixed by clearing `selectedSession` in that same effect.
+      - **Adventuring Notes removed**: `AdventuringPanel`'s old Campaign/
+        NPC/Party/Session Notes fields were cut now that the Journal
+        covers the same need (per-Campaign GM notes), per-Session rather
+        than Journal's per-Campaign scope. `AdventuringPanel` now renders
+        only the Loot Table roller. Removed end-to-end: the
+        `campaignNotes`/`npcNotes`/`generalNotes`/`pcNotes` fields are
+        gone from the Session data model (`electron/store.js`'s
+        `CARRIED_SESSION_FIELDS`, `buildRecord`, `presentSession`,
+        `mergeExtra`, `removeSession`, `cloneSession`; `carry.js`'s
+        `resolvePcNotes`; `src/api/sessions.ts`), `SessionView` no longer
+        tracks a `members` list solely to feed the notes panel, and every
+        e2e spec that filled/asserted on a Notes field
+        (`sessions.spec.ts`, `carryForward.spec.ts`, `campaignRow.spec.ts`)
+        was updated to drop that coverage while keeping its other
+        assertions (Fear/mode/loot carry-forward, rename/delete, clone).
+        Only `fear` and `regionId` still carry forward as session-level
+        scalars.

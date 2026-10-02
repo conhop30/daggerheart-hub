@@ -591,7 +591,6 @@ describe('Session', () => {
     const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
     expect(session.fear).toBe(0);
     expect(session.mode).toBe('adventuring');
-    expect(session.pcNotes).toEqual([]);
     expect(session.lootLog).toEqual([]);
   });
 
@@ -1075,9 +1074,6 @@ describe('cloneSession', () => {
       name: 'Session 3',
       fear: 7,
       mode: 'combat',
-      generalNotes: 'The bridge is out.',
-      npcNotes: 'Old Marn lies.',
-      pcNotes: [{ partyMemberId: 'pm-1', text: 'Low on arrows' }],
       lootLog: [{ rolledAt: 'x', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] }],
     });
     const sa = await store.createSessionAdversary({ sessionId: source.id, adversaryId: adv.id, label: 'Ogre A' });
@@ -1086,13 +1082,12 @@ describe('cloneSession', () => {
     return { c, source };
   }
 
-  it('starts from the source Session Notes and mode, with the rest carried forward', async () => {
+  it('starts from the source mode, with the rest carried forward', async () => {
     const { c, source } = await setup();
     const copy = await store.cloneSession(source.id);
     expect(copy.id).not.toBe(source.id);
     expect(copy.campaignId).toBe(c.id);
-    expect(copy).toMatchObject({ fear: 7, mode: 'combat', generalNotes: 'The bridge is out.', npcNotes: 'Old Marn lies.' });
-    expect(copy.pcNotes).toEqual([{ partyMemberId: 'pm-1', text: 'Low on arrows' }]);
+    expect(copy).toMatchObject({ fear: 7, mode: 'combat' });
 
     const advs = store.listSessionAdversariesBySession(copy.id);
     expect(advs).toHaveLength(1);
@@ -1290,12 +1285,12 @@ describe('Carrying data across Sessions', () => {
   const view = (id) => store.listSessions().find((s) => s.id === id);
 
   describe('session-level values', () => {
-    it('a new session starts with Fear, Campaign notes, NPC notes and region as the last one left them', async () => {
+    it('a new session starts with Fear and region as the last one left them', async () => {
       const c = await store.createCampaign({ name: 'The Wildwood' });
       const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
-      await store.updateSession(s1.id, { fear: 6, campaignNotes: 'The king is dead.', npcNotes: 'Marn lies.' });
+      await store.updateSession(s1.id, { fear: 6 });
       const s2 = await store.createSession({ campaignId: c.id, name: 'Session 2' });
-      expect(s2).toMatchObject({ fear: 6, campaignNotes: 'The king is dead.', npcNotes: 'Marn lies.' });
+      expect(s2).toMatchObject({ fear: 6 });
     });
 
     it('a change in session N never edits earlier sessions but flows into later ones', async () => {
@@ -1318,33 +1313,10 @@ describe('Carrying data across Sessions', () => {
       expect(view(sessions[2].id).fear).toBe(9);
     });
 
-    it('Session Notes and mode belong to one session and never carry', async () => {
+    it('mode belongs to one session and never carries', async () => {
       const { sessions } = await campaignWithSessions(2);
-      await store.updateSession(sessions[0].id, { generalNotes: 'Rained all night.', mode: 'combat' });
-      expect(view(sessions[1].id).generalNotes).toBeNull();
+      await store.updateSession(sessions[0].id, { mode: 'combat' });
       expect(view(sessions[1].id).mode).toBe('adventuring');
-    });
-
-    it('a note can be cleared in a later session without touching the earlier one', async () => {
-      const { sessions } = await campaignWithSessions(2);
-      await store.updateSession(sessions[0].id, { campaignNotes: 'Secret.' });
-      await store.updateSession(sessions[1].id, { campaignNotes: '' });
-      expect(view(sessions[0].id).campaignNotes).toBe('Secret.');
-      expect(view(sessions[1].id).campaignNotes).toBe('');
-    });
-
-    it('PC notes carry member by member', async () => {
-      const { sessions } = await campaignWithSessions();
-      await store.updateSession(sessions[0].id, {
-        pcNotes: [
-          { partyMemberId: 'p1', text: 'one' },
-          { partyMemberId: 'p2', text: 'two' },
-        ],
-      });
-      await store.updateSession(sessions[1].id, { pcNotes: [{ partyMemberId: 'p1', text: 'ONE' }] });
-      const texts = (id) => Object.fromEntries(view(id).pcNotes.map((n) => [n.partyMemberId, n.text]));
-      expect(texts(sessions[0].id)).toEqual({ p1: 'one', p2: 'two' });
-      expect(texts(sessions[2].id)).toEqual({ p1: 'ONE', p2: 'two' });
     });
   });
 
@@ -1615,11 +1587,11 @@ describe('Carrying data across Sessions', () => {
   });
 
   describe('deleting a Session', () => {
-    it('keeps what later sessions were showing: fear, notes, loot, party and board', async () => {
+    it('keeps what later sessions were showing: fear, loot, party and board', async () => {
       const gs = await store.createGameSet({ name: 'Core' });
       const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
       const { c, sessions } = await campaignWithSessions();
-      await store.updateSession(sessions[1].id, { fear: 9, campaignNotes: 'Set in session 2' });
+      await store.updateSession(sessions[1].id, { fear: 9 });
       await store.addSessionLoot(sessions[1].id, { rolledAt: 't', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] });
       const pm = await store.createPartyMember({ campaignId: c.id, sessionId: sessions[1].id, name: 'Late Joiner' });
       const adv = await store.createSessionAdversary({ sessionId: sessions[1].id, adversaryId: ogre.id });
@@ -1627,7 +1599,7 @@ describe('Carrying data across Sessions', () => {
       await store.removeSession(sessions[1].id);
 
       const after = view(sessions[2].id);
-      expect(after).toMatchObject({ fear: 9, campaignNotes: 'Set in session 2' });
+      expect(after).toMatchObject({ fear: 9 });
       expect(after.lootLog).toHaveLength(1);
       expect(store.listPartyMembersBySession(sessions[2].id).map((m) => m.id)).toEqual([pm.id]);
       expect(store.listSessionAdversariesBySession(sessions[2].id).map((a) => a.id)).toEqual([adv.id]);

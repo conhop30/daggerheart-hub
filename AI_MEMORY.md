@@ -85,9 +85,18 @@ seam, askew growing focus lines) applied to every create/edit `*Form.tsx`
 component, every inline numeric chip, and single-field Notes cards —
 including a full number-input overhaul (no native spinners, no
 scroll/arrow-key stepping anywhere). Deliberately not applied to the
-dense list-editor rows, standalone pickers (`GameSetSelect`, `StatGallery`,
-the music-panel selects), or `AdventuringPanel`'s notes grid — see
-`TODO.md`'s "Text field styling" entry for why each was left alone.
+dense list-editor rows or standalone pickers (`GameSetSelect`,
+`StatGallery`, the music-panel selects) — see `TODO.md`'s "Text field
+styling" entry for why each was left alone.
+
+`AdventuringPanel`'s old Campaign/NPC/Party/Session Notes fields were
+removed once the Journal bubble covered the same need (GM note-taking is
+now per-Campaign there instead of split across four per-Session fields);
+`AdventuringPanel` now renders only the Loot Table roller. The
+`campaignNotes`/`npcNotes`/`generalNotes`/`pcNotes` fields are gone from
+the Session data model entirely (`electron/store.js`, `electron/carry.js`,
+`src/api/sessions.ts`) — only `fear` and `regionId` still carry forward
+as session-level scalars.
 
 The **Music System Refactor** (editing reachable from inside a live
 session, drag-and-drop import, per-track volume, compact track rows) has

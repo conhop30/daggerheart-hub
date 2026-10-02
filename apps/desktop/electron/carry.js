@@ -156,24 +156,15 @@ function rehomeVersions(versions, order, deletedSessionId) {
 }
 
 /**
- * Session-level values that follow the Campaign (Fear, notes...): a session
- * stores one only when it has been set *in that session*; otherwise it takes
- * the nearest earlier session's, then the default.
+ * Session-level values that follow the Campaign (Fear, the music region...):
+ * a session stores one only when it has been set *in that session*;
+ * otherwise it takes the nearest earlier session's, then the default.
  */
 function resolveScalar(sessions, index, key, fallback) {
   for (let i = index; i >= 0; i--) {
     if (Object.prototype.hasOwnProperty.call(sessions[i], key) && sessions[i][key] !== undefined) return sessions[i][key];
   }
   return fallback;
-}
-
-/** Per-Party-member notes, resolved member by member so one edit never freezes the others. */
-function resolvePcNotes(sessions, index) {
-  const byMember = new Map();
-  for (let i = 0; i <= index; i++) {
-    for (const note of sessions[i].pcNotes ?? []) byMember.set(note.partyMemberId, note.text);
-  }
-  return [...byMember].map(([partyMemberId, text]) => ({ partyMemberId, text }));
 }
 
 /**
@@ -198,6 +189,5 @@ module.exports = {
   removeVersions,
   rehomeVersions,
   resolveScalar,
-  resolvePcNotes,
   resolveLootLog,
 };

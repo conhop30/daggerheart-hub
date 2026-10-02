@@ -135,27 +135,16 @@ describe('rehomeVersions', () => {
 
 describe('session-level values', () => {
   const sessions = [
-    { id: 's1', fear: 4, pcNotes: [{ partyMemberId: 'p1', text: 'a' }], lootLog: [{ id: 'l1' }] },
-    { id: 's2', pcNotes: [{ partyMemberId: 'p2', text: 'b' }], lootLog: [{ id: 'l2' }], lootRemoved: ['l1'] },
-    { id: 's3', fear: 9, pcNotes: [{ partyMemberId: 'p1', text: 'c' }] },
+    { id: 's1', fear: 4, lootLog: [{ id: 'l1' }] },
+    { id: 's2', lootLog: [{ id: 'l2' }], lootRemoved: ['l1'] },
+    { id: 's3', fear: 9 },
   ];
 
   it('resolveScalar takes the nearest earlier value, then the fallback', () => {
     expect(carry.resolveScalar(sessions, 0, 'fear', 0)).toBe(4);
     expect(carry.resolveScalar(sessions, 1, 'fear', 0)).toBe(4);
     expect(carry.resolveScalar(sessions, 2, 'fear', 0)).toBe(9);
-    expect(carry.resolveScalar(sessions, 2, 'npcNotes', null)).toBeNull();
-  });
-
-  it('resolvePcNotes resolves member by member', () => {
-    expect(carry.resolvePcNotes(sessions, 1)).toEqual([
-      { partyMemberId: 'p1', text: 'a' },
-      { partyMemberId: 'p2', text: 'b' },
-    ]);
-    expect(carry.resolvePcNotes(sessions, 2)).toEqual([
-      { partyMemberId: 'p1', text: 'c' },
-      { partyMemberId: 'p2', text: 'b' },
-    ]);
+    expect(carry.resolveScalar(sessions, 2, 'regionId', null)).toBeNull();
   });
 
   it('resolveLootLog accumulates, and a removal only reaches its own session onward', () => {

@@ -17,7 +17,8 @@ interface SessionEnvironmentTileProps {
 // Environments have no HP/Stress in Daggerheart, so this is lighter than
 // SessionAdversaryTile — description, impulses, and a notes field are the
 // only things a GM actually touches during play. (These notes travel with the
-// Environment into later sessions; they're not the per-session "Session Notes".)
+// Environment into later sessions — they live on the Environment record
+// itself, unrelated to Session-level note-taking.)
 export default function SessionEnvironmentTile({ environment, masterFeatures, onChange, onRemove }: SessionEnvironmentTileProps) {
   const [featuresOpen, setFeaturesOpen] = useState(true);
   const featureRows = featureRowsFor(masterFeatures);

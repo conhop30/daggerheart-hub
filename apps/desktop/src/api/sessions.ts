@@ -3,11 +3,6 @@ import type { Rarity } from '../lib/lootRarity';
 
 export type SessionMode = 'adventuring' | 'combat';
 
-export interface PcNote {
-  partyMemberId: string;
-  text: string;
-}
-
 export interface LootLogResult {
   tableId: string;
   tableName: string;
@@ -38,12 +33,6 @@ export interface Session {
   mode: SessionMode;
   /** The music region this session plays from; null = the built-in Everywhere region. */
   regionId: string | null;
-  /** Session Notes: belongs to this one session and is never carried into later ones. */
-  generalNotes: string | null;
-  /** Everything below follows the Campaign: a session shows what it set itself, else what the nearest earlier session did. */
-  campaignNotes: string | null;
-  npcNotes: string | null;
-  pcNotes: PcNote[];
   lootLog: LootLogEntry[];
 }
 
@@ -56,11 +45,6 @@ export interface CreateSessionRequest {
   fear?: number;
   mode?: SessionMode;
   regionId?: string | null;
-  generalNotes?: string;
-  campaignNotes?: string;
-  npcNotes?: string;
-  /** Only the members whose notes changed; the rest keep what they carry from earlier sessions. */
-  pcNotes?: PcNote[];
 }
 
 export type UpdateSessionRequest = Partial<Omit<CreateSessionRequest, 'campaignId'>>;
@@ -69,7 +53,7 @@ export const sessionsApi = {
   list: () => apiClient.list<Session>('sessions'),
   listByCampaign: (campaignId: string) => apiClient.listSessionsByCampaign<Session>(campaignId),
   create: (body: CreateSessionRequest) => apiClient.create<Session>('sessions', body),
-  /** A new session that also starts with the source's Session Notes and mode (everything else carries anyway). */
+  /** A new session that also starts with the source's mode (everything else carries anyway). */
   clone: (sourceId: string, options?: { name?: string }) => apiClient.cloneSession<Session>(sourceId, options),
   update: (id: string, body: UpdateSessionRequest) => apiClient.update<Session>('sessions', id, body),
   remove: (id: string) => apiClient.remove('sessions', id),

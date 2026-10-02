@@ -223,19 +223,19 @@ content above, as opposed to authoring it. Delivered in three phases:
 - **A Campaign carries forward across sessions.** Nearly everything follows
   the Campaign into its later sessions: the Party (names, notes, marked HP/
   Stress/Hope), pulled-in Adversaries and Environments with what's marked on
-  them, Fear, Campaign / NPC / per-PC notes, the music region, and the loot
-  log. Only a session's name, mode, and **Session Notes** belong to that one
-  session. An edit made in session N applies to N and the sessions after it
-  and **never rewrites an earlier one**. A delete acts only on the session
-  it's made in: push an Ogre out in session 3 and it's gone from session 3
-  (sessions 1 and 2 still show it, and a session created afterward starts
-  from session 3's board, so it doesn't have it either). *New Session* therefore starts with
-  the board as the last session left it (and blank Session Notes, suggesting
-  the next "Session N"); *Clone Most Recent* additionally copies that
-  session's Session Notes and mode. Deleting a session hands whatever it
-  authored to the next one so later sessions don't change. Session and
-  Party-member names are unique per Campaign rather than across the whole
-  app, so two Campaigns can each have a "Session 1".
+  them, Fear, the music region, and the loot log. Only a session's name and
+  mode belong to that one session. An edit made in session N applies to N and
+  the sessions after it and **never rewrites an earlier one**. A delete acts
+  only on the session it's made in: push an Ogre out in session 3 and it's
+  gone from session 3 (sessions 1 and 2 still show it, and a session created
+  afterward starts from session 3's board, so it doesn't have it either).
+  *New Session* therefore starts with the board as the last session left it,
+  suggesting the next "Session N"; *Clone Most Recent* additionally copies
+  that session's mode. Deleting a session hands whatever it authored to the
+  next one so later sessions don't change. Session and Party-member names
+  are unique per Campaign rather than across the whole app, so two Campaigns
+  can each have a "Session 1". (GM note-taking lives in the Journal bubble
+  instead — an app-wide floating panel scoped per-Campaign, not per-Session.)
 - **Campaign banners at a glance.** Each Campaign has a party level (1–10),
   and its banner shows that level and the players' names.
 - **Music library.** A tab under Campaigns: audio files are copied into the
@@ -448,17 +448,21 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       (`rollD12Pool`/`sumPool`/`resolveTableRoll`) driving the in-session
       Loot Roller
 - [x] **Session Builder Phase 3** — live Sessions: Fear tracking, pulled-in
-      Adversary/Environment snapshot tracking, per-PC/NPC/general notes, a
-      combat/adventuring mode toggle, and a Loot Roller wired to the Phase 2
-      tables with a reverse-chronological session log — **the whole Session
-      Builder feature is now complete**
+      Adversary/Environment snapshot tracking, a combat/adventuring mode
+      toggle, and a Loot Roller wired to the Phase 2 tables with a
+      reverse-chronological session log — **the whole Session Builder
+      feature is now complete**
 - [x] Clone-most-recent session, Campaign party level and player names on
       the banner, and a per-region Music library with looping defaults per
       session mode
-- [x] Campaign data carried across sessions (Party, board, Fear, Campaign/
-      NPC/PC notes, loot log): edits apply from a session onward and never
-      rewrite earlier sessions, a delete only acts on the session it's made
-      in; only Session Notes stay per-session
+- [x] Campaign data carried across sessions (Party, board, Fear, loot log):
+      edits apply from a session onward and never rewrite earlier sessions,
+      a delete only acts on the session it's made in; only name and mode
+      stay per-session
+- [x] Journal bubble: an app-wide floating panel for quick GM notes scoped
+      per-Campaign, with categories mirroring the app's own content types
+      (Adversaries/Loot/Consumables/Armor/Weapons/Worldbuilding/Other) —
+      superseded the old per-Session Campaign/NPC/PC/Session Notes fields
 - [x] In-app updates that ask first: a notice with Update now / Later,
       opt-in download with progress, Restart & install (Windows installer and
       Linux AppImage; falls back to a download link elsewhere)

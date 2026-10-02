@@ -132,19 +132,8 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
   });
 
-  test('Adventuring notes save and persist, and a session can be renamed and deleted', async () => {
+  test('a session can be renamed and deleted', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-
-    await win.fill('.adventuring-panel__note-field:has-text("Session Notes") textarea', 'The party enters the cave.');
-
-    await win.reload();
-    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
-    await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
-    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
-    await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue(
-      'The party enters the cave.'
-    );
 
     await win.click('.session-view__header-action:not(.session-view__header-action--danger)');
     await win.fill('.create-form input[type="text"]', 'Session 1 Renamed');

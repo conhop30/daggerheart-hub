@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import type { PartyMember } from '../api/partyMembers';
 import { sessionsApi, type Session, type UpdateSessionRequest } from '../api/sessions';
 import { sessionAdversariesApi, type SessionAdversary, type UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import SessionForm from './SessionForm';
@@ -31,14 +30,10 @@ interface SessionViewProps {
 // beyond the single line that renders it.
 //
 // Nearly everything on this screen follows the Campaign into later sessions
-// (Fear, the Party, pulled-in combatants, Campaign/NPC/PC notes, the loot
-// log); only the name, mode, and "Session Notes" belong to this session
-// alone. See electron/carry.js for the rules.
+// (Fear, the Party, pulled-in combatants, the loot log); only the name and
+// mode belong to this session alone. See electron/carry.js for the rules.
 export default function SessionView({ session, campaignId, onBack, onSessionSaved, onSessionDeleted }: SessionViewProps) {
   const [editing, setEditing] = useState(false);
-  // The roster owns loading/editing the party; it shares the current list so
-  // the notes panel below lists the same members.
-  const [members, setMembers] = useState<PartyMember[]>([]);
 
   // Owned here (not by CombatPanel) because SessionCombatSidebar shows this
   // very same live list at the same time, on the same screen — both need to
@@ -183,7 +178,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
         <div className="session-view__main">
           <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
 
-          <PartyRoster campaignId={campaignId} sessionId={session.id} onChange={setMembers} layout="grid" />
+          <PartyRoster campaignId={campaignId} sessionId={session.id} layout="grid" />
 
           <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
 
@@ -200,7 +195,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
               onRoll={addRoll}
             />
           ) : (
-            <AdventuringPanel session={session} members={members} onSessionSaved={onSessionSaved} />
+            <AdventuringPanel session={session} onSessionSaved={onSessionSaved} />
           )}
         </div>
 

@@ -66,10 +66,14 @@ export default function CampaignsPage({
 
   // Unlike the Session jump above, a campaignId needs no async lookup to
   // trust — it came straight from campaignsApi.list() data the Journal
-  // bubble already had in hand.
+  // bubble already had in hand. Also clears any selectedSession left over
+  // from browsing deep into a *different* campaign — otherwise the overview
+  // render branch below (selectedCampaign && selectedSession) would show a
+  // stale Session that doesn't belong to the campaign just jumped to.
   useEffect(() => {
     if (!jumpToCampaign) return;
     setSelectedCampaignId(jumpToCampaign);
+    setSelectedSession(null);
     onCampaignJumpHandled?.();
   }, [jumpToCampaign, onCampaignJumpHandled]);
 
