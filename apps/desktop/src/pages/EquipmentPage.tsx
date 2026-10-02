@@ -12,7 +12,7 @@ import LootTablesSection from '../components/LootTablesSection';
 import ConsumableTablesSection from '../components/ConsumableTablesSection';
 import TableDetail from '../components/TableDetail';
 import { loadEquipmentView, saveEquipmentView, type EquipmentView } from '../lib/equipmentView';
-import '../components/ModeToggle.css';
+import '../components/SegmentedToggle.css';
 import './BrowsePage.css';
 
 // Each entity type's own gallery/form/table wiring lives in its own

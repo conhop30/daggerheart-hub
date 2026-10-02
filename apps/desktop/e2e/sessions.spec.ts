@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
+test.describe('Sessions (Fear, combat, loot rolling)', () => {
   let tempDir: string;
   let app: ElectronApplication;
   let win: Page;
@@ -71,14 +71,12 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(win.locator('.session-view__title')).toHaveText(sessionName);
   }
 
-  test('Fear track, mode toggle, and pulling an Adversary into Combat all persist across reload', async () => {
+  test('Fear track and pulling an Adversary into Combat persist across reload', async () => {
     await createAdversary('Ogre', '8', '3');
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
     await win.getByRole('button', { name: 'Set Fear to 5' }).click();
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
-
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(win.locator('.combat-panel')).toBeVisible();
 
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
@@ -104,7 +102,6 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
 
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
-    await expect(win.locator('.mode-toggle__option--active')).toHaveText('Combat');
     const reloadedTile = win.locator('.combat-panel .content-card');
     await expect(reloadedTile.locator('.stat-stepper__value').first()).toHaveText('7 / 8');
 
@@ -112,23 +109,16 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await expect(reloadedTile).toHaveCount(0);
   });
 
-  test('the Party is always grid-formatted and sits above the Adventuring/Combat tabs, in both modes', async () => {
+  test('the Party is always grid-formatted and sits above the Combat panel', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
     await win.click('.party-roster__add');
     await win.fill('.create-form input[type="text"]', 'Mira');
     await win.click('button:has-text("Add Party Member")');
     await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toBeVisible();
 
-    // Party, then the mode tabs, then whichever panel is active — same
-    // order and same grid formatting regardless of mode.
     const mainChildren = win.locator('.session-view__main > *');
     await expect(mainChildren.nth(1)).toHaveClass(/party-roster/);
-    await expect(mainChildren.nth(2)).toHaveClass(/mode-toggle/);
-    await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
-
-    await win.click('.mode-toggle__option:has-text("Combat")');
-    await expect(mainChildren.nth(1)).toHaveClass(/party-roster/);
-    await expect(mainChildren.nth(2)).toHaveClass(/mode-toggle/);
+    await expect(mainChildren.nth(2)).toHaveClass(/combat-panel/);
     await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
   });
 
@@ -191,7 +181,6 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     );
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ashen Warden")');
 
@@ -231,7 +220,6 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.app-shell__brand');
 
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Marsh Stalker")');
     const tile = win.locator('.combat-panel .content-card');
@@ -276,7 +264,6 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
       'While in marsh terrain, this creature is Hidden.'
     );
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ashen Warden")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
@@ -315,7 +302,6 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await createAdversary('Ashen Warden', '8', '3');
     await createAdversary('Marsh Stalker', '6', '2');
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ashen Warden")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
@@ -350,7 +336,6 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.click('.app-shell__brand');
 
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-    await win.click('.mode-toggle__option:has-text("Combat")');
 
     // Pulling the same Adversary in twice numbers the un-renamed copies.
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');

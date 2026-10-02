@@ -123,8 +123,11 @@ export default function CampaignsPage({
   const handleOpenCampaign = useCallback((id: string) => setSelectedCampaignId(id), []);
 
   if (selectedCampaign && selectedSession) {
+    // The Combat panel's multi-column Adversary/Environment grid is always
+    // on screen now (there's no more Adventuring/Combat tab swap it was
+    // conditional on), so the wide layout it needs is now unconditional too.
     return (
-      <div className={`campaigns-page${selectedSession.mode === 'combat' ? ' campaigns-page--wide' : ''}`}>
+      <div className="campaigns-page campaigns-page--wide">
         <SessionView
           session={selectedSession}
           campaignId={selectedCampaign.id}

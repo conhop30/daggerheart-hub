@@ -586,19 +586,11 @@ describe('Session', () => {
     );
   });
 
-  it('defaults fear to 0 and mode to adventuring', async () => {
+  it('defaults fear to 0', async () => {
     const c = await store.createCampaign({ name: 'The Wildwood' });
     const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
     expect(session.fear).toBe(0);
-    expect(session.mode).toBe('adventuring');
     expect(session.lootLog).toEqual([]);
-  });
-
-  it('rejects a mode outside the enum', async () => {
-    const c = await store.createCampaign({ name: 'The Wildwood' });
-    await expect(store.createSession({ campaignId: c.id, name: 'Session 1', mode: 'stealth' })).rejects.toThrow(
-      'Session mode must be one of'
-    );
   });
 
   it('clamps fear to [0, 12] instead of rejecting an out-of-range value', async () => {
@@ -1073,7 +1065,6 @@ describe('cloneSession', () => {
       campaignId: c.id,
       name: 'Session 3',
       fear: 7,
-      mode: 'combat',
       lootLog: [{ rolledAt: 'x', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] }],
     });
     const sa = await store.createSessionAdversary({ sessionId: source.id, adversaryId: adv.id, label: 'Ogre A' });
@@ -1082,12 +1073,12 @@ describe('cloneSession', () => {
     return { c, source };
   }
 
-  it('starts from the source mode, with the rest carried forward', async () => {
+  it('lands at the end of the timeline, with everything carried forward', async () => {
     const { c, source } = await setup();
     const copy = await store.cloneSession(source.id);
     expect(copy.id).not.toBe(source.id);
     expect(copy.campaignId).toBe(c.id);
-    expect(copy).toMatchObject({ fear: 7, mode: 'combat' });
+    expect(copy).toMatchObject({ fear: 7 });
 
     const advs = store.listSessionAdversariesBySession(copy.id);
     expect(advs).toHaveLength(1);
@@ -1174,7 +1165,7 @@ describe('Music', () => {
 
   it('creates regions and files tracks under them (default region if none given)', async () => {
     const coast = await store.createMusicRegion({ name: 'The Sunken Coast' });
-    expect(coast).toMatchObject({ isDefault: false, adventuringTrackId: null, combatTrackId: null });
+    expect(coast).toMatchObject({ isDefault: false, campaignId: null, defaultTrackId: null });
     const a = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
     const b = await store.createMusicTrack({ name: 'Tide', fileName: 'b.mp3' }); // same name is fine
     expect(a.regionId).toBe(coast.id);
@@ -1194,32 +1185,54 @@ describe('Music', () => {
     const inCoast = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
     const elsewhere = await store.createMusicTrack({ name: 'Drums', fileName: 'b.mp3' });
 
-    const set = await store.updateMusicRegion(coast.id, { adventuringTrackId: inCoast.id });
-    expect(set.adventuringTrackId).toBe(inCoast.id);
-    await expect(store.updateMusicRegion(coast.id, { combatTrackId: elsewhere.id })).rejects.toThrow('filed under it');
-    await expect(store.updateMusicRegion(coast.id, { combatTrackId: 'missing' })).rejects.toThrow('No music track');
+    const set = await store.updateMusicRegion(coast.id, { defaultTrackId: inCoast.id });
+    expect(set.defaultTrackId).toBe(inCoast.id);
+    await expect(store.updateMusicRegion(coast.id, { defaultTrackId: elsewhere.id })).rejects.toThrow('filed under it');
+    await expect(store.updateMusicRegion(coast.id, { defaultTrackId: 'missing' })).rejects.toThrow('No music track');
 
-    const global = await store.updateMusicRegion(DEFAULT, { combatTrackId: inCoast.id });
-    expect(global.combatTrackId).toBe(inCoast.id);
-    const cleared = await store.updateMusicRegion(DEFAULT, { combatTrackId: null });
-    expect(cleared.combatTrackId).toBeNull();
+    const global = await store.updateMusicRegion(DEFAULT, { defaultTrackId: inCoast.id });
+    expect(global.defaultTrackId).toBe(inCoast.id);
+    const cleared = await store.updateMusicRegion(DEFAULT, { defaultTrackId: null });
+    expect(cleared.defaultTrackId).toBeNull();
   });
 
   it('moving a track out of a region clears that region\'s default pointing at it', async () => {
     const coast = await store.createMusicRegion({ name: 'The Sunken Coast' });
     const t = await store.createMusicTrack({ name: 'Tide', fileName: 'a.mp3', regionId: coast.id });
-    await store.updateMusicRegion(coast.id, { adventuringTrackId: t.id });
+    await store.updateMusicRegion(coast.id, { defaultTrackId: t.id });
     await store.updateMusicTrack(t.id, { regionId: DEFAULT });
-    expect(store.listMusicRegions().find((r) => r.id === coast.id).adventuringTrackId).toBeNull();
+    expect(store.listMusicRegions().find((r) => r.id === coast.id).defaultTrackId).toBeNull();
   });
 
   it('removing a track returns its record and clears any default that used it', async () => {
     const t = await store.createMusicTrack({ name: 'Drums', fileName: 'b.mp3' });
-    await store.updateMusicRegion(DEFAULT, { combatTrackId: t.id });
+    await store.updateMusicRegion(DEFAULT, { defaultTrackId: t.id });
     const removed = await store.removeMusicTrack(t.id);
     expect(removed.fileName).toBe('b.mp3');
     expect(store.listMusicTracks()).toHaveLength(0);
-    expect(store.listMusicRegions()[0].combatTrackId).toBeNull();
+    expect(store.listMusicRegions()[0].defaultTrackId).toBeNull();
+  });
+
+  it('creates a Campaign-scoped region, rejects another Campaign defaulting to it, and survives the Campaign\'s deletion by becoming application-wide', async () => {
+    const a = await store.createCampaign({ name: 'Campaign A' });
+    const b = await store.createCampaign({ name: 'Campaign B' });
+    const scoped = await store.createMusicRegion({ name: 'Battle Music', campaignId: a.id });
+    expect(scoped.campaignId).toBe(a.id);
+
+    // Same name, different scope — not a collision (regions are scoped by campaignId).
+    const globalOne = await store.createMusicRegion({ name: 'Battle Music' });
+    expect(globalOne.campaignId).toBeNull();
+    expect(globalOne.id).not.toBe(scoped.id);
+
+    // Campaign A can default to its own scoped region; Campaign B cannot.
+    const updatedA = await store.updateCampaign(a.id, { defaultRegionId: scoped.id });
+    expect(updatedA.defaultRegionId).toBe(scoped.id);
+    await expect(store.updateCampaign(b.id, { defaultRegionId: scoped.id })).rejects.toThrow(
+      'application-wide region or one of its own'
+    );
+
+    await store.removeCampaign(a.id);
+    expect(store.listMusicRegions().find((r) => r.id === scoped.id).campaignId).toBeNull();
   });
 
   it('removing a region keeps its tracks (moved to Everywhere) and un-sets Sessions using it', async () => {
@@ -1273,6 +1286,27 @@ describe('Music', () => {
     const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
     expect(onDisk.musicTracks[0].volume).toBeUndefined();
   });
+
+  it('a region record from before campaignId/defaultTrackId existed presents with both backfilled, preferring the old Adventuring default, without rewriting the stored file', async () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'data.json'),
+      JSON.stringify({
+        version: 1,
+        campaigns: [],
+        musicRegions: [
+          { id: DEFAULT, name: 'Global', isDefault: true, adventuringTrackId: null, combatTrackId: null },
+          { id: 'legacy-region', name: 'The Sunken Coast', isDefault: false, adventuringTrackId: 'calm', combatTrackId: 'drums' },
+        ],
+        musicTracks: [],
+      })
+    );
+    store.__resetCacheForTests();
+    const legacy = store.listMusicRegions().find((r) => r.id === 'legacy-region');
+    expect(legacy).toMatchObject({ campaignId: null, defaultTrackId: 'calm' });
+
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
+    expect(onDisk.musicRegions[1].defaultTrackId).toBeUndefined();
+  });
 });
 
 describe('Carrying data across Sessions', () => {
@@ -1313,10 +1347,16 @@ describe('Carrying data across Sessions', () => {
       expect(view(sessions[2].id).fear).toBe(9);
     });
 
-    it('mode belongs to one session and never carries', async () => {
-      const { sessions } = await campaignWithSessions(2);
-      await store.updateSession(sessions[0].id, { mode: 'combat' });
-      expect(view(sessions[1].id).mode).toBe('adventuring');
+    it("a Campaign's defaultRegionId pre-fills only its first Session; later ones carry forward from the previous one instead", async () => {
+      const region = await store.createMusicRegion({ name: 'The Sunken Coast' });
+      const c = await store.createCampaign({ name: 'The Wildwood', defaultRegionId: region.id });
+      const s1 = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+      expect(s1.regionId).toBe(region.id);
+
+      const other = await store.createMusicRegion({ name: 'The Ember Wastes' });
+      await store.updateSession(s1.id, { regionId: other.id });
+      const s2 = await store.createSession({ campaignId: c.id, name: 'Session 2' });
+      expect(s2.regionId).toBe(other.id);
     });
   });
 

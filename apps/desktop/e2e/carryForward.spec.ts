@@ -79,7 +79,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await win.locator('.party-roster .content-card', { hasText: 'Mira' }).getByRole('button', { name: 'Decrease HP' }).click();
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
 
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
     await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Decrease HP' }).click();
@@ -92,7 +91,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await expect(win.locator('.session-view__title')).toHaveText('Session 2');
     await expect(win.locator('.fear-track__value')).toHaveText('4 / 12');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(ogreHp()).toHaveText('7 / 8');
 
     // Change things in Session 2.
@@ -107,7 +105,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await openSession('Session 1');
     await expect(win.locator('.fear-track__value')).toHaveText('4 / 12');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
-    // Session 1 was left in Combat; mode belongs to the session, so it reopens that way.
     await expect(ogreHp()).toHaveText('7 / 8');
     await win.click('.session-view__back');
 
@@ -121,12 +118,10 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await openSession('Session 3');
     await expect(win.locator('.fear-track__value')).toHaveText('7 / 12');
     await expect(partyHp().first()).toHaveText(`${startCurrent - 2} / ${hpMax}`);
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
     await win.click('.session-view__back');
 
     await openSession('Session 1');
-    await win.click('.mode-toggle__option:has-text("Combat")');
     await expect(ogreHp()).toHaveText('7 / 8'); // still there in the session it was pulled into
   });
 

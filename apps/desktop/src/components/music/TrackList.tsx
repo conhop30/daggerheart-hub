@@ -127,8 +127,7 @@ export default function TrackList({
                 <span className="track-list__name">{track.name}</span>
               )}
 
-              {selectedRegion.adventuringTrackId === track.id && <em className="track-list__tag">ADV</em>}
-              {selectedRegion.combatTrackId === track.id && <em className="track-list__tag">COM</em>}
+              {selectedRegion.defaultTrackId === track.id && <em className="track-list__tag">DEFAULT</em>}
 
               <div className="track-list__menu">
                 <button

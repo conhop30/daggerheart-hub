@@ -40,10 +40,10 @@
   border-color: var(--hope);
 }
 
-/* Same segmented-selector visual language as ModeToggle.css (Session combat/
-   adventuring) and SettingsPage's theme picker — a persistent multi-option
-   selector, so selection reads as a soft radial-glow wash rather than a
-   filled/bordered pill. */
+/* Same segmented-selector visual language as SegmentedToggle.css
+   (EquipmentPage's Cards/Table view switch) and SettingsPage's theme
+   picker — a persistent multi-option selector, so selection reads as a
+   soft radial-glow wash rather than a filled/bordered pill. */
 .stat-gallery__mode-toggle {
   display: inline-flex;
   gap: 4px;

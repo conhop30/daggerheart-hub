@@ -91,16 +91,27 @@ styling" entry for why each was left alone.
 
 `AdventuringPanel`'s old Campaign/NPC/Party/Session Notes fields were
 removed once the Journal bubble covered the same need (GM note-taking is
-now per-Campaign there instead of split across four per-Session fields);
-`AdventuringPanel` now renders only the Loot Table roller. The
-`campaignNotes`/`npcNotes`/`generalNotes`/`pcNotes` fields are gone from
-the Session data model entirely (`electron/store.js`, `electron/carry.js`,
-`src/api/sessions.ts`) — only `fear` and `regionId` still carry forward
-as session-level scalars.
+now per-Campaign there instead of split across four per-Session fields).
+The `campaignNotes`/`npcNotes`/`generalNotes`/`pcNotes` fields are gone
+from the Session data model entirely.
+
+The Session page's Adventuring/Combat tabs are gone too — `ModeToggle`/
+`ModeTransitionFX`/`AdventuringPanel` are all deleted, `CombatPanel`
+(Adversaries/Environments) always renders, and `LootRoller` moved into
+the sidebar next to `SessionMusicPanel`/`SessionCombatSidebar`.
+`Session.mode` is gone from the data model entirely — nothing replaced
+it; Music no longer depends on a session's combat state at all. A GM now
+switches which Music folder (region) is playing by hand, the same way
+they'd switch a playlist, rather than it auto-swapping with mode. Only
+`fear` and `regionId` still carry forward as session-level scalars.
 
 The **Music System Refactor** (editing reachable from inside a live
 session, drag-and-drop import, per-track volume, compact track rows) has
-landed — see `e2e/music.spec.ts` for the covered behavior.
+landed, and Music folders (`musicRegion`) can now also be scoped to one
+Campaign (`campaignId: null` = application-wide, as before; set = only
+that Campaign's own Sessions see it) — `Campaign.defaultRegionId` gives
+a Campaign its own "usual place" by pre-filling its first Session's
+region. See `e2e/music.spec.ts` for the covered behavior.
 
 The code-quality findings flagged 2026-10-02 have all since been acted
 on: `createCrudApi`/`createSessionScopedCrudApi` factories now back every
@@ -110,6 +121,10 @@ entity type (`b027dbc`); the four list-editor components were unified
 behind a shared `useListEditor` hook (`befe7bb`). Treat this repo's own
 `git log` as the source of truth for whether a future finding like this
 has since been resolved, rather than trusting this note indefinitely.
+
+The Adventuring/Combat merge and Music Campaign-scoping work above is
+verified (`npx tsc --noEmit -p .` clean, `npm test` 238 tests green, full
+Playwright suite 75 tests green) and shipped as v1.7.0.
 
 See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if

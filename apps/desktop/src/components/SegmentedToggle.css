@@ -1,3 +1,8 @@
+/* A pill-shaped, two-or-more-option segmented selector — shared visual
+   language for any "pick exactly one of these mutually exclusive states"
+   control (EquipmentPage's Cards/Table view switch is the one consumer of
+   this exact stylesheet; StatGallery's own viewing-mode toggle reimplements
+   the same look independently rather than importing this). */
 .mode-toggle {
   position: relative;
   display: inline-flex;

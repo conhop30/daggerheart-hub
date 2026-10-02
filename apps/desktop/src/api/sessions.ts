@@ -1,8 +1,6 @@
 import { apiClient } from './client';
 import type { Rarity } from '../lib/lootRarity';
 
-export type SessionMode = 'adventuring' | 'combat';
-
 export interface LootLogResult {
   tableId: string;
   tableName: string;
@@ -30,7 +28,6 @@ export interface Session {
   campaignId: string;
   name: string;
   fear: number;
-  mode: SessionMode;
   /** The music region this session plays from; null = the built-in Everywhere region. */
   regionId: string | null;
   lootLog: LootLogEntry[];
@@ -43,7 +40,6 @@ export interface CreateSessionRequest {
   campaignId: string;
   name: string;
   fear?: number;
-  mode?: SessionMode;
   regionId?: string | null;
 }
 
@@ -53,7 +49,7 @@ export const sessionsApi = {
   list: () => apiClient.list<Session>('sessions'),
   listByCampaign: (campaignId: string) => apiClient.listSessionsByCampaign<Session>(campaignId),
   create: (body: CreateSessionRequest) => apiClient.create<Session>('sessions', body),
-  /** A new session that also starts with the source's mode (everything else carries anyway). */
+  /** A new session at the end of the timeline, same as a plain create (there's no non-carried field left to copy). */
   clone: (sourceId: string, options?: { name?: string }) => apiClient.cloneSession<Session>(sourceId, options),
   update: (id: string, body: UpdateSessionRequest) => apiClient.update<Session>('sessions', id, body),
   remove: (id: string) => apiClient.remove('sessions', id),

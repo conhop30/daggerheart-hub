@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { musicApi, trackUrl, type MusicRegion, type MusicTrack } from '../api/music';
-import type { SessionMode } from '../api/sessions';
 import { resolveDefaultTrack } from '../lib/music';
 import { loadVolume, saveVolume } from '../lib/musicVolume';
 
@@ -9,7 +8,6 @@ export interface MusicSessionInfo {
   campaignId: string;
   sessionId: string;
   sessionName: string;
-  mode: SessionMode;
   regionId: string | null;
 }
 
@@ -46,7 +44,10 @@ const MusicContext = createContext<MusicContextValue | null>(null);
 // navigate away": there's nothing left to unmount when a session's view
 // closes, since the audio element was never a child of it.
 export function MusicProvider({ children }: { children: ReactNode }) {
-  const [regions, setRegions] = useState<MusicRegion[]>([]);
+  // The whole library, as fetched — never exposed directly (see `regions`
+  // below), since a Campaign-scoped region belonging to a *different*
+  // Campaign than the one currently being viewed must never surface here.
+  const [allRegions, setAllRegions] = useState<MusicRegion[]>([]);
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [session, setSessionState] = useState<MusicSessionInfo | null>(null);
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const refreshLibrary = useCallback(() => {
     return Promise.all([musicApi.listRegions(), musicApi.listTracks()])
       .then(([r, t]) => {
-        setRegions(r);
+        setAllRegions(r);
         setTracks(t);
       })
       .catch(() => {
@@ -81,13 +82,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const track = session ? resolveDefaultTrack(session.mode, session.regionId, regions, tracks) : null;
+  // Application-wide regions, plus the current Session's own Campaign's
+  // scoped ones — a region scoped to some *other* Campaign is invisible
+  // here, same rule useMusicLibraryEditor applies for its own editing UI.
+  const regions = useMemo(
+    () => allRegions.filter((r) => r.campaignId == null || r.campaignId === session?.campaignId),
+    [allRegions, session?.campaignId]
+  );
+
+  const track = session ? resolveDefaultTrack(session.regionId, regions, tracks) : null;
 
   const setSession = useCallback((info: MusicSessionInfo) => {
     // Regions/tracks are fetched once at startup, so this is what picks up
     // any music-library edits (new tracks, changed region defaults) made
     // before entering — or between visits to — a Session. Cheap enough to
-    // run on every mode/region change too, not just the first mount.
+    // run on every region change too, not just the first mount.
     refreshLibrary();
     setSessionState((prev) => {
       if (prev && prev.sessionId !== info.sessionId) setEverPlayed(false);

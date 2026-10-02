@@ -5,6 +5,7 @@ import MusicLibraryEditor from './music/MusicLibraryEditor';
 import './SessionMusicPanel.css';
 
 interface SessionMusicPanelProps {
+  campaignId: string;
   regionId: string | null;
   onRegionChange: (regionId: string | null) => void;
 }
@@ -21,9 +22,8 @@ interface SessionMusicPanelProps {
 // Music" section beneath it, so a GM can fix the music without leaving the
 // Session; refreshLibrary() is what makes an edit made there actually take
 // effect on the spot instead of waiting for the next time setSession() runs.
-export default function SessionMusicPanel({ regionId, onRegionChange }: SessionMusicPanelProps) {
-  const { regions, session, track, playing, volume, toggle, setVolume, audioError, refreshLibrary } = useMusicContext();
-  const modeLabel = session?.mode === 'combat' ? 'combat' : 'adventuring';
+export default function SessionMusicPanel({ campaignId, regionId, onRegionChange }: SessionMusicPanelProps) {
+  const { regions, track, playing, volume, toggle, setVolume, audioError, refreshLibrary } = useMusicContext();
 
   return (
     <div className="session-music-panel" role="group" aria-label="Music">
@@ -46,7 +46,7 @@ export default function SessionMusicPanel({ regionId, onRegionChange }: SessionM
       </div>
 
       <span className="session-music-panel__now" data-testid="now-playing">
-        {track ? track.name : `No ${modeLabel} music set`}
+        {track ? track.name : 'No music set'}
       </span>
 
       <div className="session-music-panel__row">
@@ -75,12 +75,12 @@ export default function SessionMusicPanel({ regionId, onRegionChange }: SessionM
       </label>
 
       {!track && (
-        <p className="session-music-panel__hint">No music set for this region/mode yet — add some under &ldquo;Manage Music&rdquo; below.</p>
+        <p className="session-music-panel__hint">No music set for this region yet — add some under &ldquo;Manage Music&rdquo; below.</p>
       )}
       {audioError && <p className="session-music-panel__hint session-music-panel__hint--error">{audioError}</p>}
 
       <CollapsibleSection title="Manage Music">
-        <MusicLibraryEditor onLibraryChanged={refreshLibrary} />
+        <MusicLibraryEditor campaignId={campaignId} onLibraryChanged={refreshLibrary} />
       </CollapsibleSection>
     </div>
   );

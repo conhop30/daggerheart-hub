@@ -405,3 +405,69 @@ scratch list for planning the next pass of work.
         assertions (Fear/mode/loot carry-forward, rename/delete, clone).
         Only `fear` and `regionId` still carry forward as session-level
         scalars.
+- [x] Merged the Adventuring/Combat Session tabs into one page, and let
+      Music folders be scoped to a Campaign:
+      - **SessionView**: `ModeToggle`/`ModeTransitionFX` (the sword/
+        footstep switch animation) and `AdventuringPanel` are deleted
+        outright — there's no more mode to toggle or animate between.
+        `CombatPanel` (Adversaries/Environments) always renders in the
+        main column now. `LootRoller` moved into the sidebar, after
+        `SessionCombatSidebar`, and was compacted
+        (`LootRoller.css`) to fit the ~260px column alongside
+        `SessionMusicPanel` and the Adversary compactor. `Session.mode`
+        is gone from the data model entirely — nothing replaced it, since
+        Music no longer depends on it (see below). `CampaignsPage`'s
+        `campaigns-page--wide` layout, previously conditional on
+        `mode === 'combat'`, is now unconditional whenever a Session is
+        open, since the wide grid it was built for is always on screen.
+      - **Music folders, scoped to a Campaign**: a `musicRegion` gets a
+        nullable `campaignId` — `null` is application-wide (today's
+        behavior, picked from any Campaign's Sessions), set scopes it to
+        just that one Campaign (offered only from that Campaign's own
+        Sessions; a different Campaign never sees it). Deleting a
+        Campaign promotes its scoped regions to application-wide rather
+        than destroying them (same "keep the folder's tracks" spirit as
+        deleting a region already had). Each region's two single-track
+        mode-defaults (`adventuringTrackId`/`combatTrackId`) collapse
+        into one `defaultTrackId`, since there's no more mode axis to
+        pick between — a GM switches regions by hand whenever they want
+        different music playing, same as picking a different playlist;
+        `resolveDefaultTrack` (`src/lib/music.ts`) drops its `mode`
+        parameter to match. New: `Campaign.defaultRegionId` (nullable,
+        must be an application-wide region or one already scoped to that
+        Campaign) pre-fills a Campaign's *first* Session's region only —
+        every later Session still carries forward whatever the previous
+        one had, same as today. `useMusicLibraryEditor`'s
+        `scopeCampaignId` option (null = app-wide only, for the main
+        Music tab; a Campaign's id = app-wide plus that Campaign's own,
+        for the in-Session "Manage Music" editor) filters both the
+        region list and what a new "+ New Region" gets stamped with;
+        `MusicContext`'s own `regions` does the same narrowing for
+        playback/the region `<select>` itself.
+      - Backward-compatible: a region or Campaign record written by an
+        older version of the app (missing `campaignId`/`defaultTrackId`/
+        `defaultRegionId` entirely) is backfilled at read time, never
+        rewritten on disk — same convention as the existing track-volume
+        and Campaign-coverImage fixups. A region's old
+        `adventuringTrackId`/`combatTrackId` pair, if present, resolves
+        to the new `defaultTrackId` preferring the Adventuring one.
+      - Updated: `electron/store.test.js`/`carry.test.js` (dropped the
+        mode-enum tests, renamed the Music-region field assertions, added
+        Campaign-scoped-region + `defaultRegionId` coverage, added the
+        region/Campaign backfill tests), `e2e/music.spec.ts` (all 14
+        existing tests moved to the single-`defaultTrackId` shape; the
+        mode-switch test became a manual-region-switch test; added a new
+        Campaign-scoping test), `e2e/sessions.spec.ts`/`carryForward.spec.ts`/
+        `campaignRow.spec.ts` (dropped every `.mode-toggle` click/
+        assertion).
+      - Verified: `npx tsc --noEmit -p .` clean, `npm test` (238 tests)
+        green, full `playwright test` suite (75 tests) green. Shipped as
+        v1.7.0.
+      - One real bug caught by the new Campaign-scoping e2e test itself
+        (not the app): its helper assumed clicking the top "Campaigns"
+        nav link resets `CampaignsPage` back to the gallery, but that
+        page keeps its own drill-down state (`selectedCampaignId`/
+        `selectedSession`) across that click by design — only its two
+        dedicated back buttons clear it. Fixed by backing out through
+        `.session-view__back`/`.campaign-detail__back` first when either
+        is open.

@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
-import { sessionsApi, type Session, type UpdateSessionRequest } from '../api/sessions';
+import { sessionsApi, type NewLootLogEntry, type Session, type UpdateSessionRequest } from '../api/sessions';
 import { sessionAdversariesApi, type SessionAdversary, type UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
-import ModeToggle from './ModeToggle';
 import SessionMusicPanel from './SessionMusicPanel';
 import CombatPanel, { type CombatSpotlightSignal } from './CombatPanel';
 import SessionCombatSidebar from './SessionCombatSidebar';
-import AdventuringPanel from './AdventuringPanel';
+import LootRoller from './LootRoller';
 import PartyRoster from './PartyRoster';
 import DiceTray from './DiceTray';
 import RollLogPanel from './RollLogPanel';
@@ -23,15 +22,14 @@ interface SessionViewProps {
   onSessionDeleted: (id: string) => void;
 }
 
-// A thin shell, not the owner of any panel's data — it wires FearTrack,
-// ModeToggle, the Party, and whichever of CombatPanel/AdventuringPanel is
-// active together, but each of those manages (or is handed) its own state.
-// Ripping out and rebuilding any one panel never means touching this file
-// beyond the single line that renders it.
+// A thin shell, not the owner of any panel's data — it wires FearTrack, the
+// Party, and CombatPanel together, but each of those manages (or is handed)
+// its own state. Ripping out and rebuilding any one panel never means
+// touching this file beyond the single line that renders it.
 //
 // Nearly everything on this screen follows the Campaign into later sessions
-// (Fear, the Party, pulled-in combatants, the loot log); only the name and
-// mode belong to this session alone. See electron/carry.js for the rules.
+// (Fear, the Party, pulled-in combatants, the loot log); only the name
+// belongs to this session alone. See electron/carry.js for the rules.
 export default function SessionView({ session, campaignId, onBack, onSessionSaved, onSessionDeleted }: SessionViewProps) {
   const [editing, setEditing] = useState(false);
 
@@ -105,13 +103,33 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
     }
   }
 
-  // Keeps the shared music context pointed at this Session's mode/region
-  // (so it resolves the right track and the sidebar/floating players agree
-  // with what's actually playing) — the context is what survives navigating
+  // Moved here from the now-deleted AdventuringPanel along with LootRoller
+  // itself — just translates a finished roll/removal into the Session API
+  // call, the same role this file already plays for the Adversary handlers
+  // above.
+  async function handleRoll(entry: NewLootLogEntry) {
+    try {
+      onSessionSaved(await sessionsApi.addLoot(session.id, entry));
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not save that roll.');
+    }
+  }
+
+  async function handleRemoveLoot(entryId: string) {
+    try {
+      onSessionSaved(await sessionsApi.removeLoot(session.id, entryId));
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not remove that entry.');
+    }
+  }
+
+  // Keeps the shared music context pointed at this Session's region (so it
+  // resolves the right track and the sidebar/floating players agree with
+  // what's actually playing) — the context is what survives navigating
   // away, this effect is just what keeps it in sync while here.
   useEffect(() => {
-    setMusicSession({ campaignId, sessionId: session.id, sessionName: session.name, mode: session.mode, regionId: session.regionId ?? null });
-  }, [campaignId, session.id, session.name, session.mode, session.regionId, setMusicSession]);
+    setMusicSession({ campaignId, sessionId: session.id, sessionName: session.name, regionId: session.regionId ?? null });
+  }, [campaignId, session.id, session.name, session.regionId, setMusicSession]);
 
   useEffect(() => {
     setViewingSessionId(session.id);
@@ -180,33 +198,32 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
 
           <PartyRoster campaignId={campaignId} sessionId={session.id} layout="grid" />
 
-          <ModeToggle mode={session.mode} onChange={(mode) => persist({ mode })} />
-
-          {session.mode === 'combat' ? (
-            <CombatPanel
-              sessionId={session.id}
-              sessionAdversaries={sessionAdversaries}
-              adversariesLoading={adversariesLoading}
-              adversariesError={adversariesError}
-              spotlightSignal={combatSpotlight}
-              onPullInAdversary={pullInAdversary}
-              onAdversaryChange={handleAdversaryChange}
-              onAdversaryRemove={handleAdversaryRemove}
-              onRoll={addRoll}
-            />
-          ) : (
-            <AdventuringPanel session={session} onSessionSaved={onSessionSaved} />
-          )}
+          <CombatPanel
+            sessionId={session.id}
+            sessionAdversaries={sessionAdversaries}
+            adversariesLoading={adversariesLoading}
+            adversariesError={adversariesError}
+            spotlightSignal={combatSpotlight}
+            onPullInAdversary={pullInAdversary}
+            onAdversaryChange={handleAdversaryChange}
+            onAdversaryRemove={handleAdversaryRemove}
+            onRoll={addRoll}
+          />
         </div>
 
         <aside className="session-view__sidebar">
-          <SessionMusicPanel regionId={session.regionId ?? null} onRegionChange={(regionId) => persist({ regionId })} />
+          <SessionMusicPanel
+            campaignId={campaignId}
+            regionId={session.regionId ?? null}
+            onRegionChange={(regionId) => persist({ regionId })}
+          />
           <SessionCombatSidebar
             sessionAdversaries={sessionAdversaries}
             onChange={handleAdversaryChange}
             onSelect={(id) => setCombatSpotlight({ id, key: Date.now() })}
             onRemove={handleAdversaryRemove}
           />
+          <LootRoller lootLog={session.lootLog} sessionId={session.id} onRoll={handleRoll} onRemove={handleRemoveLoot} />
         </aside>
       </div>
 

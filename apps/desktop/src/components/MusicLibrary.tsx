@@ -30,8 +30,10 @@ export default function MusicLibrary() {
     <div className="music-library">
       <p className="music-library__guide">
         Organize your library into <strong>regions</strong> &mdash; folders of tracks &mdash; then set one default
-        track per region for each Session mode. The built-in <strong>Global</strong> region is the fallback used
-        whenever a more specific region has no default of its own set.
+        track per region: what loops when a Session picks it to play from. The built-in <strong>Global</strong>{' '}
+        region is the fallback used whenever a more specific region has no default of its own set. These regions
+        are application-wide, reachable from every Campaign's Sessions &mdash; a Campaign can also have its own
+        private regions, managed from inside that Campaign's own Sessions instead.
       </p>
 
       <h2 className="music-library__overview-title">Library overview</h2>
@@ -63,7 +65,7 @@ export default function MusicLibrary() {
             region={editor.selected}
             candidates={editor.candidates}
             inheritLabel={editor.inheritLabel}
-            onSetDefault={(field, trackId) => editor.setDefault(editor.selected!, field, trackId)}
+            onSetDefault={(trackId) => editor.setDefault(editor.selected!, trackId)}
           />
 
           {editor.error && <p className="music-library__status music-library__status--error">{editor.error}</p>}

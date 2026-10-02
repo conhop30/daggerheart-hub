@@ -61,6 +61,13 @@ test.describe('Music library and session playback', () => {
   }
 
   async function openMusicTab() {
+    // Same drill-down-state caveat as startSessionInNewCampaign below: back
+    // out of a Session/Campaign detail page if one happens to be open,
+    // since the nav link alone won't do it.
+    const sessionBack = win.locator('.session-view__back');
+    if (await sessionBack.isVisible().catch(() => false)) await sessionBack.click();
+    const campaignBack = win.locator('.campaign-detail__back');
+    if (await campaignBack.isVisible().catch(() => false)) await campaignBack.click();
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.click('.campaigns-page__tab:has-text("Music")');
   }
@@ -77,11 +84,10 @@ test.describe('Music library and session playback', () => {
     expect(stored).toHaveLength(3);
     expect(stored.every((f) => f.endsWith('.wav') && !f.includes('Calm'))).toBe(true);
 
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
-    await win.selectOption('select[aria-label="Combat default"]', { label: 'War Drums' });
-    await expect(win.locator('.track-list__track', { hasText: 'Calm Road' })).toContainText('ADV');
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Calm Road' });
+    await expect(win.locator('.track-list__track', { hasText: 'Calm Road' })).toContainText('DEFAULT');
 
-    // A region, with one track moved into it and its own combat default.
+    // A region, with one track moved into it and its own default.
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
     await win.click('.region-list__inline-form button:has-text("Add")');
@@ -92,17 +98,17 @@ test.describe('Music library and session playback', () => {
     await win.selectOption('select[aria-label="Move Sea Surf to region"]', { label: 'The Sunken Coast' });
     await win.click('.region-list__region:has-text("The Sunken Coast")');
     await expect(win.locator('.track-list__track')).toHaveCount(1);
-    await win.selectOption('select[aria-label="Combat default"]', { label: 'Sea Surf' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Sea Surf' });
 
     // A region can only pick from its own tracks.
-    const options = await win.locator('select[aria-label="Combat default"] option').allTextContents();
+    const options = await win.locator('select[aria-label="Default track"] option').allTextContents();
     expect(options).toEqual(['Use the Global default', 'Sea Surf']);
 
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await openMusicTab();
     await win.click('.region-list__region:has-text("The Sunken Coast")');
-    await expect(win.locator('select[aria-label="Combat default"]')).toHaveValue(/.+/);
+    await expect(win.locator('select[aria-label="Default track"]')).toHaveValue(/.+/);
     await win.click('.region-list__region:has-text("Global")');
     await expect(win.locator('.track-list__track')).toHaveCount(2);
   });
@@ -165,15 +171,14 @@ test.describe('Music library and session playback', () => {
     expect(bad).toBe('error');
   });
 
-  test('a session loops the default track for its mode, and switches when the mode changes', async () => {
+  test('a session loops the selected region\'s default track, and switching regions by hand swaps it', async () => {
     test.setTimeout(60000); // sets up a library and a session before it gets to the assertions
     await openMusicTab();
     await pickFiles('Calm Road', 'War Drums', 'Sea Surf');
     await expect(win.locator('.track-list__track')).toHaveCount(3);
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
-    await win.selectOption('select[aria-label="Combat default"]', { label: 'War Drums' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Calm Road' });
 
-    // A region with only a combat override.
+    // A region with its own default.
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
     await win.click('.region-list__inline-form button:has-text("Add")');
@@ -181,7 +186,7 @@ test.describe('Music library and session playback', () => {
     await win.locator('.track-list__track', { hasText: 'Sea Surf' }).getByRole('button', { name: /More actions/ }).click();
     await win.selectOption('select[aria-label="Move Sea Surf to region"]', { label: 'The Sunken Coast' });
     await win.click('.region-list__region:has-text("The Sunken Coast")');
-    await win.selectOption('select[aria-label="Combat default"]', { label: 'Sea Surf' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Sea Surf' });
 
     // Into a session (we are still on the Music tab, so switch back to Campaigns).
     await win.click('.campaigns-page__tab:has-text("Campaigns")');
@@ -206,17 +211,11 @@ test.describe('Music library and session playback', () => {
     const calmSrc = await audio.evaluate((a: HTMLAudioElement) => a.src);
     expect(calmSrc).toMatch(/^dhmedia:\/\/track\//);
 
-    // Combat swaps to the combat default and keeps playing.
-    await win.click('.mode-toggle__option:has-text("Combat")');
-    await expect(now).toHaveText('War Drums');
-    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.src)).not.toBe(calmSrc);
-    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
-
-    // The region's own combat default wins; its missing adventuring default falls back to Global.
+    // Switching regions by hand swaps the track and keeps playing.
     await win.selectOption('select[aria-label="Music region"]', { label: 'The Sunken Coast' });
     await expect(now).toHaveText('Sea Surf');
-    await win.click('.mode-toggle__option:has-text("Adventuring")');
-    await expect(now).toHaveText('Calm Road');
+    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.src)).not.toBe(calmSrc);
+    await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
 
     // Pausing sticks, and the region choice is saved on the session.
     await win.click('button[aria-label="Pause music"]');
@@ -317,7 +316,7 @@ test.describe('Music library and session playback', () => {
     await win.click('button:has-text("Start Session")');
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
 
-    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No music set');
     await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
     await expect(win.locator('.session-music-panel__hint')).toContainText('Manage Music');
   });
@@ -346,12 +345,12 @@ test.describe('Music library and session playback', () => {
 
   test('editing music from inside a Session takes effect immediately, with no reload', async () => {
     await openQuietSession();
-    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No music set');
     await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
 
     await win.click('.session-music-panel button:has-text("Manage Music")');
     await pickFiles('Calm Road');
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Calm Road' });
 
     // Still expanded, still without leaving the Session or reloading.
     await expect(win.locator('[data-testid="now-playing"]')).toHaveText('Calm Road');
@@ -370,7 +369,7 @@ test.describe('Music library and session playback', () => {
     await openQuietSession();
     await win.click('.session-music-panel button:has-text("Manage Music")');
     await pickFiles('Calm Road', 'War Drums');
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Calm Road' });
 
     await win.click('button[aria-label="Play music"]');
     const realAudio = win.locator('audio[loop]');
@@ -397,29 +396,29 @@ test.describe('Music library and session playback', () => {
     await openQuietSession();
     await win.click('.session-music-panel button:has-text("Manage Music")');
     await pickFiles('Calm Road', 'War Drums');
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Calm Road' });
 
     await win.click('button[aria-label="Play music"]');
     const audio = win.locator('audio[loop]');
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false);
 
     // Clear the default that's actively playing.
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'None' });
-    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No adventuring music set');
+    await win.selectOption('select[aria-label="Default track"]', { label: 'None' });
+    await expect(win.locator('[data-testid="now-playing"]')).toHaveText('No music set');
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
     await expect(win.locator('button[aria-label="Play music"]')).toBeDisabled();
 
     // Setting a new default afterwards must NOT auto-resume on its own.
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'War Drums' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'War Drums' });
     await expect(win.locator('[data-testid="now-playing"]')).toHaveText('War Drums');
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
     await expect(win.locator('button[aria-label="Play music"]')).toHaveText('▶ Play');
   });
 
-  test('the Music tab\'s overview grid shows track counts and each mode\'s default, and "Open" jumps the selection below', async () => {
+  test('the Music tab\'s overview grid shows track counts and each region\'s default, and "Open" jumps the selection below', async () => {
     await openMusicTab();
     await pickFiles('Calm Road', 'War Drums');
-    await win.selectOption('select[aria-label="Adventuring default"]', { label: 'Calm Road' });
+    await win.selectOption('select[aria-label="Default track"]', { label: 'Calm Road' });
 
     await win.click('button:has-text("+ New Region")');
     await win.fill('input[aria-label="New region name"]', 'The Sunken Coast');
@@ -427,10 +426,8 @@ test.describe('Music library and session playback', () => {
 
     const globalCard = win.locator('.content-card', { hasText: 'Global' });
     await expect(globalCard).toContainText('Tracks: 2');
-    await expect(globalCard).toContainText('Adventuring:');
+    await expect(globalCard).toContainText('Default:');
     await expect(globalCard).toContainText('Calm Road');
-    await expect(globalCard).toContainText('Combat:');
-    await expect(globalCard).toContainText('Not set');
 
     const coastCard = win.locator('.content-card', { hasText: 'The Sunken Coast' });
     await expect(coastCard).toContainText('Tracks: 0');
@@ -459,5 +456,43 @@ test.describe('Music library and session playback', () => {
 
     await win.fill('input[aria-label="Search tracks"]', '');
     await expect(win.locator('.track-list__track')).toHaveCount(3);
+  });
+
+  async function startSessionInNewCampaign(campaignName: string) {
+    // The top nav link doesn't reset CampaignsPage's own drill-down state —
+    // clicking it while a Session is open just leaves that Session on
+    // screen — so back out of it (and a Campaign detail page, if open) by
+    // hand before creating the next Campaign.
+    const sessionBack = win.locator('.session-view__back');
+    if (await sessionBack.isVisible().catch(() => false)) await sessionBack.click();
+    const campaignBack = win.locator('.campaign-detail__back');
+    if (await campaignBack.isVisible().catch(() => false)) await campaignBack.click();
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.click('.campaign-row--hollow');
+    await win.fill('.create-form input[type="text"]', campaignName);
+    await win.click('button:has-text("Create Campaign")');
+    await win.locator('.campaign-row', { hasText: campaignName }).click();
+    await win.click('.session-list__add');
+    await win.click('button:has-text("Start Session")');
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+  }
+
+  test('a region created from inside a Session is scoped to that Campaign — usable there, invisible to another Campaign and the app-wide Music tab', async () => {
+    await startSessionInNewCampaign('Campaign A');
+    await win.click('.session-music-panel button:has-text("Manage Music")');
+    await win.click('button:has-text("+ New Region")');
+    await win.fill('input[aria-label="New region name"]', "A's Soundtrack");
+    await win.click('.region-list__inline-form button:has-text("Add")');
+    await expect(win.locator('.region-header__title')).toHaveText("A's Soundtrack");
+    // It's immediately pickable as this same Session's region.
+    await expect(win.locator('select[aria-label="Music region"] option', { hasText: "A's Soundtrack" })).toHaveCount(1);
+
+    await startSessionInNewCampaign('Campaign B');
+    await win.click('.session-music-panel button:has-text("Manage Music")');
+    await expect(win.locator('.region-list__region', { hasText: "A's Soundtrack" })).toHaveCount(0);
+    await expect(win.locator('select[aria-label="Music region"] option', { hasText: "A's Soundtrack" })).toHaveCount(0);
+
+    await openMusicTab();
+    await expect(win.locator('.region-list__region', { hasText: "A's Soundtrack" })).toHaveCount(0);
   });
 });

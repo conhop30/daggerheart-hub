@@ -7,6 +7,8 @@ import { loadVolume, saveVolume } from './musicVolume';
 interface UseMusicLibraryEditorOptions {
   /** Called after every successful mutation — lets an embedding context (MusicContext, when this runs inside a live Session) pick up the change immediately instead of waiting for its own next refetch. */
   onLibraryChanged?: () => void;
+  /** null (the default) = application-wide only, for the main Music tab. Set it to a Campaign's id to also include that Campaign's own scoped regions — see SessionMusicPanel's embedded editor. New regions created from here are stamped with this same scope. */
+  scopeCampaignId?: string | null;
 }
 
 // All of the Music library's editing state and mutations, with no JSX of its
@@ -14,7 +16,7 @@ interface UseMusicLibraryEditorOptions {
 // both the full-page library (MusicLibrary.tsx) and the in-session
 // collapsible editor (MusicLibraryEditor.tsx) can share one implementation
 // instead of forking it.
-export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEditorOptions = {}) {
+export function useMusicLibraryEditor({ onLibraryChanged, scopeCampaignId = null }: UseMusicLibraryEditorOptions = {}) {
   const { pause: pauseSessionPlayback, registerPreviewStopper } = useMusicContext();
   const [regions, setRegions] = useState<MusicRegion[]>([]);
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
@@ -29,13 +31,26 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [volume, setVolume] = useState(loadVolume);
 
+  // Application-wide regions, plus this scope's own Campaign-scoped ones —
+  // a region/track belonging to a *different* Campaign never appears here.
+  // Tracks are filtered down to those same visible regions too (not just
+  // regions), so an Everywhere region's "pick any track in the library"
+  // default can't surface a track that actually belongs to someone else's
+  // Campaign-scoped folder.
+  const visibleRegions = useCallback(
+    (all: MusicRegion[]) => all.filter((r) => r.campaignId == null || r.campaignId === scopeCampaignId),
+    [scopeCampaignId]
+  );
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([musicApi.listRegions(), musicApi.listTracks()])
       .then(([r, t]) => {
         if (cancelled) return;
-        setRegions(r);
-        setTracks(t);
+        const shownRegions = visibleRegions(r);
+        const shownIds = new Set(shownRegions.map((region) => region.id));
+        setRegions(shownRegions);
+        setTracks(t.filter((track) => shownIds.has(track.regionId)));
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load the music library.');
@@ -46,7 +61,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [visibleRegions]);
 
   // Stop any preview when the editor unmounts (e.g. the collapsible section closes).
   useEffect(() => {
@@ -110,7 +125,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     const trimmed = name.trim();
     if (!trimmed) return;
     try {
-      const region = await musicApi.createRegion({ name: trimmed });
+      const region = await musicApi.createRegion({ name: trimmed, campaignId: scopeCampaignId });
       setRegions((prev) => (prev.some((r) => r.id === region.id) ? prev : [...prev, region]));
       setSelectedId(region.id);
       onLibraryChanged?.();
@@ -146,9 +161,9 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
     }
   }
 
-  async function setDefault(region: MusicRegion, field: 'adventuringTrackId' | 'combatTrackId', trackId: string) {
+  async function setDefault(region: MusicRegion, trackId: string) {
     try {
-      const saved = await musicApi.updateRegion(region.id, { [field]: trackId || null });
+      const saved = await musicApi.updateRegion(region.id, { defaultTrackId: trackId || null });
       setRegions((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
       onLibraryChanged?.();
     } catch (err) {
@@ -235,7 +250,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
       const saved = await musicApi.updateTrack(track.id, { regionId });
       setTracks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
       // Moving a track out of a user region can clear that region's default for it.
-      setRegions(await musicApi.listRegions());
+      setRegions(visibleRegions(await musicApi.listRegions()));
       onLibraryChanged?.();
     } catch (err) {
       fail(err, 'Could not move the track.');
@@ -248,7 +263,7 @@ export function useMusicLibraryEditor({ onLibraryChanged }: UseMusicLibraryEdito
       if (previewId === track.id) setPreviewId(null);
       await musicApi.removeTrack(track.id);
       setTracks((prev) => prev.filter((t) => t.id !== track.id));
-      setRegions(await musicApi.listRegions());
+      setRegions(visibleRegions(await musicApi.listRegions()));
       onLibraryChanged?.();
     } catch (err) {
       fail(err, 'Could not remove the track.');

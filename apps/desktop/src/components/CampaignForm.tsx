@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
+import { musicApi, type MusicRegion } from '../api/music';
 import ImageUploadField from './ImageUploadField';
 import TextField from './TextField';
 import TextAreaField from './TextAreaField';
+import SelectField from './SelectField';
 import './forms.css';
 
 interface CampaignFormProps {
@@ -21,14 +23,35 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
   const [colorHex, setColorHex] = useState(initial?.colorHex ?? '#A97815');
   const [level, setLevel] = useState(String(initial?.level ?? 1));
   const [coverImage, setCoverImage] = useState<string | null>(initial?.coverImage ?? null);
+  const [defaultRegionId, setDefaultRegionId] = useState(initial?.defaultRegionId ?? '');
+  const [regions, setRegions] = useState<MusicRegion[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Application-wide regions plus this Campaign's own scoped ones — a
+  // brand-new Campaign (no id yet) can't own any scoped regions, so this
+  // naturally only offers application-wide ones until first saved.
+  useEffect(() => {
+    musicApi
+      .listRegions()
+      .then((list) => setRegions(list.filter((r) => r.campaignId == null || r.campaignId === initial?.id)))
+      .catch(() => {
+        // No library yet, or running outside Electron — the field just shows "No default".
+      });
+  }, [initial?.id]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const body = { name, notes, colorHex, level: Number(level) || 1, coverImage };
+    const body = {
+      name,
+      notes,
+      colorHex,
+      level: Number(level) || 1,
+      coverImage,
+      defaultRegionId: defaultRegionId || null,
+    };
     try {
       const campaign = isEditing ? await campaignsApi.update(initial!.id, body) : await campaignsApi.create(body);
       onSaved(campaign);
@@ -56,6 +79,14 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
         onChange={setCoverImage}
         aspectRatio="2.4"
       />
+      <SelectField label="Default Music Folder" value={defaultRegionId} onChange={setDefaultRegionId}>
+        <option value="">No default</option>
+        {regions.map((region) => (
+          <option key={region.id} value={region.id}>
+            {region.name}
+          </option>
+        ))}
+      </SelectField>
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">
         <button type="button" onClick={onCancel} className="create-form__cancel">

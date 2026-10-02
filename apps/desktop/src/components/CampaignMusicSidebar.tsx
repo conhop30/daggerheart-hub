@@ -27,7 +27,6 @@ export default function CampaignMusicSidebar({ campaignId, session }: CampaignMu
       campaignId,
       sessionId: session.id,
       sessionName: session.name,
-      mode: session.mode,
       regionId: session.regionId ?? null,
     });
     setViewingSessionId(session.id);
@@ -63,7 +62,7 @@ export default function CampaignMusicSidebar({ campaignId, session }: CampaignMu
 
   return (
     <div className="campaign-music-sidebar">
-      <SessionMusicPanel regionId={session.regionId ?? null} onRegionChange={handleRegionChange} />
+      <SessionMusicPanel campaignId={campaignId} regionId={session.regionId ?? null} onRegionChange={handleRegionChange} />
     </div>
   );
 }

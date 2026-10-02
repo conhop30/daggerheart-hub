@@ -57,7 +57,7 @@ const COLLECTIONS = [
 const DEFAULT_REGION_ID = 'everywhere';
 const DEFAULT_REGION_NAME = 'Global';
 function defaultMusicRegion() {
-  return { id: DEFAULT_REGION_ID, name: DEFAULT_REGION_NAME, isDefault: true, adventuringTrackId: null, combatTrackId: null };
+  return { id: DEFAULT_REGION_ID, name: DEFAULT_REGION_NAME, isDefault: true, campaignId: null, defaultTrackId: null };
 }
 // Backfills the default region if a store predates it entirely, AND — the
 // one deliberate exception to "never rewrite existing data.json content on
@@ -843,9 +843,9 @@ const transformations = makeCollection('transformations', {
 // ---- Carry-forward across sessions ----
 // A Campaign's data follows it from session to session (see carry.js for the
 // rules): Party members, pulled-in Adversaries/Environments, Fear, the music
-// region, and the loot log all carry; only a Session's own name and mode stay
-// put. Editing or deleting inside session N reaches N and everything after
-// it, never the sessions before.
+// region, and the loot log all carry; only a Session's own name stays put.
+// Editing or deleting inside session N reaches N and everything after it,
+// never the sessions before.
 
 const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments'];
 const CARRIED_SESSION_FIELDS = ['fear', 'regionId'];
@@ -969,11 +969,21 @@ function makeVersionedCollection(key, { context, build, validate, uniqueByName =
 // The party's level, shown at a glance on the Campaign banner. Daggerheart
 // characters run level 1-10, so clamp into that range (same normalize-then-
 // persist use of validate as Session's fear).
-function validateCampaign(_store, data) {
+function validateCampaign(store, data) {
   if (data.level !== undefined) {
     data.level = Math.max(1, Math.min(10, Math.round(Number(data.level)) || 1));
   }
   validateImageDataUrl(data, 'coverImage');
+  if (data.defaultRegionId != null) {
+    const region = store.musicRegions.find((r) => r.id === data.defaultRegionId);
+    if (!region) throw new Error(`No music region with id ${data.defaultRegionId}`);
+    // data.id is only present on update (create assigns it after validate
+    // runs) — a brand-new Campaign can't yet own a region scoped to it, so
+    // this naturally rejects any Campaign-scoped region at create time too.
+    if (region.campaignId != null && region.campaignId !== data.id) {
+      throw new Error('A Campaign can only default to an application-wide region or one of its own.');
+    }
+  }
 }
 
 // ---- Shared data-sanitization helpers ----
@@ -1075,11 +1085,13 @@ const campaigns = makeCollection('campaigns', {
     colorHex: data.colorHex ?? null,
     level: data.level ?? 1,
     coverImage: data.coverImage ?? null,
+    defaultRegionId: data.defaultRegionId ?? null,
   }),
-  // A Campaign created before coverImage existed has no such key at all —
-  // default it at read time (never rewriting the stored record), same
-  // fix as the Music track volume read-time default above.
-  present: (_store, record) => ({ ...record, coverImage: record.coverImage ?? null }),
+  // A Campaign created before coverImage/defaultRegionId existed has no
+  // such keys at all — default them at read time (never rewriting the
+  // stored record), same fix as the Music track volume read-time default
+  // above.
+  present: (_store, record) => ({ ...record, coverImage: record.coverImage ?? null, defaultRegionId: record.defaultRegionId ?? null }),
 });
 
 function removeCampaign(id) {
@@ -1093,6 +1105,10 @@ function removeCampaign(id) {
     }
     store.sessions = store.sessions.filter((s) => s.campaignId !== id);
     store.journalEntries = store.journalEntries.filter((j) => j.campaignId !== id);
+    // Music folders are the user's, so a Campaign-scoped one is promoted to
+    // application-wide rather than destroyed along with the Campaign — same
+    // "keep the folder's tracks" spirit as removeMusicRegion above.
+    for (const region of store.musicRegions) if (region.campaignId === id) region.campaignId = null;
   });
 }
 
@@ -1207,25 +1223,20 @@ const listPartyMembersByCampaign = partyMembers.listByCampaign;
 const listPartyMembersBySession = partyMembers.listBySession;
 
 // ---- Sessions ----
-// A persistent, resumable run of a Campaign: a combat/adventuring mode, and
-// everything that carries forward (Fear, music region, loot log). Built with
-// makeCollection like Campaign itself — a Session always has a user-given name ("The
-// Ambush at Dawn") and idempotent-by-name create is an acceptable, already-
-// familiar behavior here, scoped to the Campaign so two Campaigns can each
-// have a "Session 1".
+// A persistent, resumable run of a Campaign: everything that carries
+// forward (Fear, music region, loot log). Built with makeCollection like
+// Campaign itself — a Session always has a user-given name ("The Ambush at
+// Dawn") and idempotent-by-name create is an acceptable, already-familiar
+// behavior here, scoped to the Campaign so two Campaigns can each have a
+// "Session 1".
 //
 // A carried field is stored on a session only when it was set *in* that
 // session (`hasOwnProperty`); every read resolves the rest from earlier
 // sessions — see presentSession.
 
-const SESSION_MODES = ['adventuring', 'combat'];
-
 function validateSession(store, data) {
   if (!store.campaigns.some((c) => c.id === data.campaignId)) {
     throw new Error(`No campaign with id ${data.campaignId}`);
-  }
-  if (data.mode !== undefined && !SESSION_MODES.includes(data.mode)) {
-    throw new Error(`Session mode must be one of ${SESSION_MODES.join(', ')}`);
   }
   if (data.regionId != null && !store.musicRegions.some((r) => r.id === data.regionId)) {
     throw new Error(`No music region with id ${data.regionId}`);
@@ -1242,15 +1253,20 @@ function validateSession(store, data) {
 }
 
 // What callers see of a stored session: its own fields plus the carried ones
-// resolved from this session back through earlier ones.
+// resolved from this session back through earlier ones. A session's own
+// regionId falls back to its Campaign's defaultRegionId — but only for the
+// very first session in that Campaign; every later session instead carries
+// forward whatever the previous one had (resolveScalar walks earlier
+// sessions first and only reaches this fallback when none of them set it).
 function presentSession(store, session) {
   const inCampaign = store.sessions.filter((s) => s.campaignId === session.campaignId);
   const index = inCampaign.findIndex((s) => s.id === session.id);
   const { lootRemoved: _removed, ...own } = session;
+  const campaignDefaultRegionId = store.campaigns.find((c) => c.id === session.campaignId)?.defaultRegionId ?? null;
   return {
     ...own,
     fear: carry.resolveScalar(inCampaign, index, 'fear', 0),
-    regionId: carry.resolveScalar(inCampaign, index, 'regionId', null),
+    regionId: carry.resolveScalar(inCampaign, index, 'regionId', campaignDefaultRegionId),
     lootLog: carry.resolveLootLog(inCampaign, index),
   };
 }
@@ -1269,7 +1285,6 @@ const sessions = makeCollection('sessions', {
       id: randomUUID(),
       campaignId: data.campaignId,
       name: data.name,
-      mode: data.mode ?? 'adventuring',
       lootLog: (data.lootLog ?? []).map((e) => ({ ...e, id: e.id ?? randomUUID() })),
       lootRemoved: [],
     };
@@ -1477,9 +1492,11 @@ const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
 // automatically, so it starts with the Party, the board, and Fear as the
 // previous session left them.
 //
-// "Clone Most Recent" additionally copies that session's mode — the one-off
-// state a plain new session leaves at its default. It always lands at the
-// end of the timeline, so it carries forward from the latest session.
+// "Clone Most Recent" is functionally the same now that a Session has no
+// non-carried field left to copy on top of that (the one that used to
+// exist, mode, is gone) — it still exists as its own entry point since nothing
+// asked for it to be removed, but it always lands at the end of the
+// timeline the same way a plain new session does.
 
 function nextSessionName(name, taken) {
   const numbered = name.match(/^(.*?)(\d+)\s*$/);
@@ -1503,7 +1520,6 @@ function cloneSession(sourceId, { name } = {}) {
       id: randomUUID(),
       campaignId: source.campaignId,
       name: name && name.trim() ? name.trim() : nextSessionName(source.name, taken),
-      mode: source.mode,
       lootLog: [],
       lootRemoved: [],
     };
@@ -1514,41 +1530,54 @@ function cloneSession(sourceId, { name } = {}) {
 
 // ---- Music ----
 // A small library the GM files into "regions" (folders like "The Sunken
-// Coast"), with a default track per Session mode: what loops while
-// adventuring, what loops in combat. The built-in "Everywhere" region holds
-// the fallback defaults; a user region can override them, and a Session
-// picks a region to play from. The audio files themselves live on disk under
-// <store dir>/music (copied there at import time, so the library survives
-// the originals moving) — only their metadata is in data.json, which is also
-// why an Export/Import moves the library's structure but not the audio.
+// Coast"), each with one default track: what loops when a Session picks
+// that region to play from — the GM switches regions by hand whenever they
+// want different music playing, there's no mode-based auto-switching. The
+// built-in "Everywhere" region holds the app-wide fallback default; a user
+// region can set its own. A region's campaignId is null for an
+// application-wide folder (offered from every Campaign's Sessions) or set
+// to scope it to just one Campaign (offered only from that Campaign's own
+// Sessions) — see resolveDefaultTrack (src/lib/music.ts) and
+// CampaignForm/SessionMusicPanel for how each side of that is surfaced.
+// The audio files themselves live on disk under <store dir>/music (copied
+// there at import time, so the library survives the originals moving) —
+// only their metadata is in data.json, which is also why an Export/Import
+// moves the library's structure but not the audio.
 
-function validateRegionDefaults(store, data) {
-  for (const field of ['adventuringTrackId', 'combatTrackId']) {
-    if (data[field] == null) continue;
-    const track = store.musicTracks.find((t) => t.id === data[field]);
-    if (!track) throw new Error(`No music track with id ${data[field]}`);
-    // A user region's defaults come from its own tracks; the built-in
-    // region's are the app-wide fallback, so any track in the library works.
-    if (!data.isDefault && track.regionId !== data.id) {
-      throw new Error('A region can only default to a track filed under it.');
-    }
+function validateRegionDefault(store, data) {
+  if (data.campaignId != null && !store.campaigns.some((c) => c.id === data.campaignId)) {
+    throw new Error(`No campaign with id ${data.campaignId}`);
+  }
+  if (data.defaultTrackId == null) return;
+  const track = store.musicTracks.find((t) => t.id === data.defaultTrackId);
+  if (!track) throw new Error(`No music track with id ${data.defaultTrackId}`);
+  // A user region's default comes from its own tracks; the built-in
+  // region's is the app-wide fallback, so any track in the library works.
+  if (!data.isDefault && track.regionId !== data.id) {
+    throw new Error('A region can only default to a track filed under it.');
   }
 }
 
 const musicRegions = makeCollection('musicRegions', {
-  validate: validateRegionDefaults,
+  validate: validateRegionDefault,
+  // Name uniqueness is per scope, not global — two different Campaigns (or
+  // a Campaign and the application-wide library) can each have their own
+  // "Battle Music" folder without colliding into the same record.
+  scope: (r) => r.campaignId ?? null,
+  present: (_store, record) => presentMusicRegion(record),
   buildRecord: (data) => ({
     id: randomUUID(),
     name: data.name,
     isDefault: false,
-    adventuringTrackId: null,
-    combatTrackId: null,
+    campaignId: data.campaignId ?? null,
+    defaultTrackId: null,
   }),
 });
 
 function updateMusicRegion(id, patch) {
-  // isDefault is never client-settable, and the built-in region keeps its name.
-  const { isDefault: _ignored, ...rest } = patch;
+  // isDefault and campaignId are never client-settable after creation, and
+  // the built-in region keeps its name.
+  const { isDefault: _ignored, campaignId: _scope, ...rest } = patch;
   if (id === DEFAULT_REGION_ID) delete rest.name;
   return musicRegions.update(id, rest);
 }
@@ -1560,15 +1589,32 @@ function removeMusicRegion(id) {
     if (index === -1) throw new Error(`No record with id ${id}`);
     store.musicRegions.splice(index, 1);
     // Tracks are the user's, so they're kept (moved to Everywhere), not
-    // destroyed along with the folder; Sessions that pointed at the region
-    // fall back to it too.
+    // destroyed along with the folder; Sessions and Campaigns that pointed
+    // at the region fall back to it too.
     for (const track of store.musicTracks) if (track.regionId === id) track.regionId = DEFAULT_REGION_ID;
     for (const session of store.sessions) if (session.regionId === id) session.regionId = null;
+    for (const campaign of store.campaigns) if (campaign.defaultRegionId === id) campaign.defaultRegionId = null;
   });
 }
 
+// A read-time backfill, same spirit as the track-volume one below: a region
+// stored by a version of this app before campaignId/defaultTrackId existed
+// has neither key at all. campaignId simply defaults to null (application-
+// wide); defaultTrackId recovers whichever of the two now-removed mode
+// defaults was set (adventuring preferred — it's the "normal", non-combat
+// state) rather than silently losing the GM's existing choice.
+function presentMusicRegion(region) {
+  if (region.campaignId !== undefined && region.defaultTrackId !== undefined) return region;
+  const { adventuringTrackId, combatTrackId, ...rest } = region;
+  return {
+    ...rest,
+    campaignId: region.campaignId ?? null,
+    defaultTrackId: region.defaultTrackId ?? adventuringTrackId ?? combatTrackId ?? null,
+  };
+}
+
 function listMusicRegions() {
-  return getCache().musicRegions;
+  return musicRegions.list();
 }
 
 // A read-only fixup, same spirit as the Global-rename one above: tracks
@@ -1626,10 +1672,7 @@ function updateMusicTrack(id, patch) {
       if (!store.musicRegions.some((r) => r.id === patch.regionId)) throw new Error(`No music region with id ${patch.regionId}`);
       // A user region can't keep defaulting to a track it no longer holds.
       const from = store.musicRegions.find((r) => r.id === track.regionId);
-      if (from && !from.isDefault) {
-        if (from.adventuringTrackId === id) from.adventuringTrackId = null;
-        if (from.combatTrackId === id) from.combatTrackId = null;
-      }
+      if (from && !from.isDefault && from.defaultTrackId === id) from.defaultTrackId = null;
       track.regionId = patch.regionId;
     }
     return track;
@@ -1644,8 +1687,7 @@ function removeMusicTrack(id) {
     if (index === -1) throw new Error(`No record with id ${id}`);
     const [removed] = store.musicTracks.splice(index, 1);
     for (const region of store.musicRegions) {
-      if (region.adventuringTrackId === id) region.adventuringTrackId = null;
-      if (region.combatTrackId === id) region.combatTrackId = null;
+      if (region.defaultTrackId === id) region.defaultTrackId = null;
     }
     return removed;
   });

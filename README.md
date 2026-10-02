@@ -208,14 +208,17 @@ content above, as opposed to authoring it. Delivered in three phases:
   snapshot copies — not references, so editing or even deleting the master
   content later can't corrupt an in-progress session — with HP/Stress
   tracked as *marked boxes* (Daggerheart's actual mechanic) via the same
-  stepper UI as Party trackables. A combat/adventuring mode toggle swaps
-  between a live combatant grid and a notes-and-loot-rolling view (general/
-  NPC/per-PC notes, plus a Loot Roller wired directly to Phase 2's tables
-  that appends every roll to a reverse-chronological session log). Built as
-  independent, self-contained panels on purpose — `SessionView` itself is a
-  thin shell that owns no combat/notes state at all, so any one panel can
-  be reworked without touching the others (see
+  stepper UI as Party trackables. One page, not a tab switch: the
+  combatant grid is always on screen, with a Loot Roller (wired directly
+  to Phase 2's tables, appending every roll to a reverse-chronological
+  session log) alongside the Music panel and a condensed Adversary
+  readout in the sidebar. Built as independent, self-contained panels on
+  purpose — `SessionView` itself is a thin shell that owns no combat
+  state at all, so any one panel can be reworked without touching the
+  others (see
   [Engineering Challenges](#engineering-challenges--how-they-were-solved)).
+  GM note-taking lives in the Journal bubble instead (app-wide, scoped
+  per-Campaign) — see the carry-forward section below.
 
 
 **Follow-ups after the three phases:**
@@ -223,29 +226,35 @@ content above, as opposed to authoring it. Delivered in three phases:
 - **A Campaign carries forward across sessions.** Nearly everything follows
   the Campaign into its later sessions: the Party (names, notes, marked HP/
   Stress/Hope), pulled-in Adversaries and Environments with what's marked on
-  them, Fear, the music region, and the loot log. Only a session's name and
-  mode belong to that one session. An edit made in session N applies to N and
+  them, Fear, the music region, and the loot log. Only a session's name
+  belongs to that one session. An edit made in session N applies to N and
   the sessions after it and **never rewrites an earlier one**. A delete acts
   only on the session it's made in: push an Ogre out in session 3 and it's
   gone from session 3 (sessions 1 and 2 still show it, and a session created
   afterward starts from session 3's board, so it doesn't have it either).
-  *New Session* therefore starts with the board as the last session left it,
-  suggesting the next "Session N"; *Clone Most Recent* additionally copies
-  that session's mode. Deleting a session hands whatever it authored to the
-  next one so later sessions don't change. Session and Party-member names
-  are unique per Campaign rather than across the whole app, so two Campaigns
-  can each have a "Session 1". (GM note-taking lives in the Journal bubble
-  instead — an app-wide floating panel scoped per-Campaign, not per-Session.)
+  *New Session* starts with the board as the last session left it,
+  suggesting the next "Session N"; *Clone Most Recent* lands at the end of
+  the timeline the same way. Deleting a session hands whatever it authored
+  to the next one so later sessions don't change. Session and Party-member
+  names are unique per Campaign rather than across the whole app, so two
+  Campaigns can each have a "Session 1". (GM note-taking lives in the
+  Journal bubble instead — an app-wide floating panel scoped per-Campaign,
+  not per-Session. A Campaign's *first* Session also inherits that
+  Campaign's own default Music region, if one is set.)
 - **Campaign banners at a glance.** Each Campaign has a party level (1–10),
   and its banner shows that level and the players' names.
 - **Music library.** A tab under Campaigns: audio files are copied into the
   app's own folder and filed into user-made *regions* (folders like "The
-  Sunken Coast"), with a default loop per mode (adventuring / combat). A
-  region can override the built-in *Everywhere* defaults, and a session
-  picks a region; its player loops the mode's default and swaps when the
-  mode changes. Audio is served to the renderer over a small custom
-  `dhmedia://` protocol that answers byte-range requests by hand, since a
-  looping `<audio>` element can't seek on a source that can't.
+  Sunken Coast"), each with one default track. A region can override the
+  built-in *Everywhere* default, and a Session picks a region; a GM
+  switches which region is playing by hand whenever they want different
+  music, the same way they'd switch a playlist. A region can also be
+  scoped to one Campaign instead of the whole app — offered only from
+  that Campaign's own Sessions, invisible to every other Campaign — and a
+  Campaign can set its own default region, pre-filling its first Session's
+  pick. Audio is served to the renderer over a small custom `dhmedia://`
+  protocol that answers byte-range requests by hand, since a looping
+  `<audio>` element can't seek on a source that can't.
 - **Music survives leaving the Session.** The player used to live inside
   `SessionView` and stop the moment you navigated away — unmounting a
   React component unmounts its `<audio>` element with it. Playback state
@@ -362,20 +371,25 @@ reasoning `GameSet` already established for "no natural idempotency key"),
 rather than forcing every collection through one factory regardless of fit.
 
 **9. Building Phase 3 as independent panels instead of one screen, on
-request.** Sessions needed to compose a lot at once — Fear, a mode toggle, a
-combat view, a notes-and-loot view — and the ask going in was explicit:
-build it so any one piece can be "unplugged" and reworked without a ripple
-effect, expecting several iteration passes. The result mirrors the
-ownership boundaries already established elsewhere in the app rather than
-inventing a new pattern: `FearTrack` and `ModeToggle` are purely controlled
-(no API awareness, like `StatStepper`); `CombatPanel` is fully self-contained
-given only a `sessionId` (it fetches and persists its own
-SessionAdversaries/SessionEnvironments, the same shape `PartyRoster` already
-uses for a `campaignId`); `LootRoller` needs nothing but a log array and an
-`onRoll` callback, so it's droppable anywhere a "roll and report" button
-would make sense later. `SessionView` itself ends up owning almost no state —
-it's a thin shell wiring independent pieces together, so a rewrite of, say,
-the combat grid never touches the notes panel or the Fear track.
+request.** Sessions needed to compose a lot at once — Fear, a combat/
+adventuring mode toggle, a combat view, a notes-and-loot view — and the ask
+going in was explicit: build it so any one piece can be "unplugged" and
+reworked without a ripple effect, expecting several iteration passes. The
+result mirrored the ownership boundaries already established elsewhere in
+the app rather than inventing a new pattern: `FearTrack` and the (since
+removed) `ModeToggle` were purely controlled (no API awareness, like
+`StatStepper`); `CombatPanel` is fully self-contained given only a
+`sessionId` (it fetches and persists its own SessionAdversaries/
+SessionEnvironments, the same shape `PartyRoster` already uses for a
+`campaignId`); `LootRoller` needs nothing but a log array and an `onRoll`
+callback, so it's droppable anywhere a "roll and report" button would make
+sense later. `SessionView` itself ends up owning almost no state — it's a
+thin shell wiring independent pieces together. That decoupling paid off
+directly later on: when the mode toggle and its notes-and-loot view were
+cut in favor of one always-visible combat page (with the Loot Roller
+moved into the sidebar instead), removing `ModeToggle`/`AdventuringPanel`
+and always rendering `CombatPanel` never touched the Fear track, the
+Party roster, or any of the Music/Adversary-sidebar panels around it.
 
 **10. "Carry it forward, but never rewrite the past" is a versioning
 problem, not a copying one.** The obvious way to make a new session start
@@ -448,17 +462,17 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       (`rollD12Pool`/`sumPool`/`resolveTableRoll`) driving the in-session
       Loot Roller
 - [x] **Session Builder Phase 3** — live Sessions: Fear tracking, pulled-in
-      Adversary/Environment snapshot tracking, a combat/adventuring mode
-      toggle, and a Loot Roller wired to the Phase 2 tables with a
-      reverse-chronological session log — **the whole Session Builder
-      feature is now complete**
+      Adversary/Environment snapshot tracking, and a Loot Roller wired to
+      the Phase 2 tables with a reverse-chronological session log —
+      **the whole Session Builder feature is now complete**
 - [x] Clone-most-recent session, Campaign party level and player names on
-      the banner, and a per-region Music library with looping defaults per
-      session mode
+      the banner, and a per-region Music library, each region with one
+      looping default track — switched by hand, scopable to one Campaign
+      or left application-wide
 - [x] Campaign data carried across sessions (Party, board, Fear, loot log):
       edits apply from a session onward and never rewrite earlier sessions,
-      a delete only acts on the session it's made in; only name and mode
-      stay per-session
+      a delete only acts on the session it's made in; only name stays
+      per-session
 - [x] Journal bubble: an app-wide floating panel for quick GM notes scoped
       per-Campaign, with categories mirroring the app's own content types
       (Adversaries/Loot/Consumables/Armor/Weapons/Worldbuilding/Other) —
@@ -504,6 +518,14 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
 - [x] A "+Subclass" affordance next to a Class's subclass tabs (and its
       empty state), and a volume slider on the Music Library's own preview
       player (the Session player already had one)
+- [x] Merged the Session page's Adventuring/Combat tabs into one page — the
+      combatant grid is always on screen, the Loot Roller moved into the
+      sidebar, and the swords/footsteps tab-switch animation is gone.
+      Decoupled Music from the removed mode entirely: a region now has one
+      default track (not a separate Adventuring/Combat pair), picked by
+      hand like switching a playlist, and a Music region can now be scoped
+      to a single Campaign instead of always being application-wide, with
+      a Campaign able to set its own default region
 
 **In progress / planned**
 - [ ] Same gallery/spotlight/`StatRail` treatment for the other

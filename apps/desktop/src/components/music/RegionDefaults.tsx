@@ -5,36 +5,17 @@ interface RegionDefaultsProps {
   region: MusicRegion;
   candidates: MusicTrack[];
   inheritLabel: string;
-  onSetDefault: (field: 'adventuringTrackId' | 'combatTrackId', trackId: string) => void;
+  onSetDefault: (trackId: string) => void;
 }
 
-// The two mode-default pickers for the selected region — what loops while
-// Adventuring vs. in Combat.
+// The default-track picker for the selected region — what loops when a
+// Session picks this region to play from.
 export default function RegionDefaults({ region, candidates, inheritLabel, onSetDefault }: RegionDefaultsProps) {
   return (
     <div className="region-defaults">
       <label>
-        Adventuring loops
-        <select
-          aria-label="Adventuring default"
-          value={region.adventuringTrackId ?? ''}
-          onChange={(e) => onSetDefault('adventuringTrackId', e.target.value)}
-        >
-          <option value="">{inheritLabel}</option>
-          {candidates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Combat loops
-        <select
-          aria-label="Combat default"
-          value={region.combatTrackId ?? ''}
-          onChange={(e) => onSetDefault('combatTrackId', e.target.value)}
-        >
+        Default track
+        <select aria-label="Default track" value={region.defaultTrackId ?? ''} onChange={(e) => onSetDefault(e.target.value)}>
           <option value="">{inheritLabel}</option>
           {candidates.map((t) => (
             <option key={t.id} value={t.id}>

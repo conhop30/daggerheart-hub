@@ -9,6 +9,8 @@ export interface Campaign {
   level: number;
   /** Optional cover art for the Campaign row, as a data: URL. Falls back to the colorHex gradient when unset. */
   coverImage: string | null;
+  /** Pre-fills this Campaign's first Session's music region; null = none (falls back to the built-in Everywhere region). Must be an application-wide region or one already scoped to this Campaign. */
+  defaultRegionId: string | null;
 }
 
 export interface CreateCampaignRequest {
@@ -17,6 +19,7 @@ export interface CreateCampaignRequest {
   colorHex?: string;
   level?: number;
   coverImage?: string | null;
+  defaultRegionId?: string | null;
 }
 
 export interface UpdateCampaignRequest {
@@ -25,6 +28,7 @@ export interface UpdateCampaignRequest {
   colorHex?: string;
   level?: number;
   coverImage?: string | null;
+  defaultRegionId?: string | null;
 }
 
 export const campaignsApi = createCrudApi<Campaign, CreateCampaignRequest, UpdateCampaignRequest>('campaigns');

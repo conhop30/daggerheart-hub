@@ -7,6 +7,8 @@ import TrackList from './TrackList';
 import './MusicLibraryEditor.css';
 
 interface MusicLibraryEditorProps {
+  /** Scopes the region list (and new "+ New Region" creates) to this Campaign's own folders, on top of the application-wide ones — see SessionMusicPanel, the only embedder. */
+  campaignId: string;
   /** Called after every successful edit — wired to MusicContext.refreshLibrary so a live Session picks up the change immediately. */
   onLibraryChanged?: () => void;
 }
@@ -19,8 +21,8 @@ interface MusicLibraryEditorProps {
 // no overview grid — that's the Music tab's job); this is the "edit
 // without leaving the session" surface, not the "organize your whole
 // library" one.
-export default function MusicLibraryEditor({ onLibraryChanged }: MusicLibraryEditorProps) {
-  const editor = useMusicLibraryEditor({ onLibraryChanged });
+export default function MusicLibraryEditor({ campaignId, onLibraryChanged }: MusicLibraryEditorProps) {
+  const editor = useMusicLibraryEditor({ onLibraryChanged, scopeCampaignId: campaignId });
 
   if (editor.loading) return <p className="music-library-editor__status">Loading&hellip;</p>;
   if (!editor.selected) return <p className="music-library-editor__status">{editor.error ?? 'No regions.'}</p>;
@@ -51,7 +53,7 @@ export default function MusicLibraryEditor({ onLibraryChanged }: MusicLibraryEdi
         region={editor.selected}
         candidates={editor.candidates}
         inheritLabel={editor.inheritLabel}
-        onSetDefault={(field, trackId) => editor.setDefault(editor.selected!, field, trackId)}
+        onSetDefault={(trackId) => editor.setDefault(editor.selected!, trackId)}
       />
 
       {editor.error && <p className="music-library-editor__status music-library-editor__status--error">{editor.error}</p>}

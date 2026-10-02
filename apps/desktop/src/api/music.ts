@@ -10,10 +10,10 @@ export interface MusicRegion {
   id: string;
   name: string;
   isDefault: boolean;
-  /** What loops while adventuring. null = inherit from Everywhere. */
-  adventuringTrackId: string | null;
-  /** What loops in combat. null = inherit from Everywhere. */
-  combatTrackId: string | null;
+  /** null = application-wide, offered from every Campaign's Sessions. Set = scoped to just that one Campaign. */
+  campaignId: string | null;
+  /** What loops when a Session picks this region. null = inherit from Everywhere. */
+  defaultTrackId: string | null;
 }
 
 export interface MusicTrack {
@@ -27,7 +27,7 @@ export interface MusicTrack {
   volume: number;
 }
 
-export type UpdateMusicRegionRequest = Partial<Pick<MusicRegion, 'name' | 'adventuringTrackId' | 'combatTrackId'>>;
+export type UpdateMusicRegionRequest = Partial<Pick<MusicRegion, 'name' | 'defaultTrackId'>>;
 export interface UpdateMusicTrackRequest {
   name?: string;
   regionId?: string;
@@ -36,7 +36,8 @@ export interface UpdateMusicTrackRequest {
 
 export const musicApi = {
   listRegions: () => apiClient.list<MusicRegion>('musicRegions'),
-  createRegion: (body: { name: string }) => apiClient.create<MusicRegion>('musicRegions', body),
+  /** campaignId omitted or null creates an application-wide region; set it to scope the new region to just that Campaign. */
+  createRegion: (body: { name: string; campaignId?: string | null }) => apiClient.create<MusicRegion>('musicRegions', body),
   updateRegion: (id: string, body: UpdateMusicRegionRequest) =>
     apiClient.update<MusicRegion>('musicRegions', id, body),
   removeRegion: (id: string) => apiClient.remove('musicRegions', id),
