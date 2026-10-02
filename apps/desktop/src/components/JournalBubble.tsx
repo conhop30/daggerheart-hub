@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
 import { journalApi, type JournalEntry, type JournalEntryKind } from '../api/journal';
+import { useDragReorder } from '../lib/useDragReorder';
 import './JournalBubble.css';
 
 interface JournalBubbleProps {
@@ -39,7 +40,10 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   // working on right now" pick, not data: resets to the global list on
   // every launch, entirely decoupled from app navigation/current page.
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Which entry's "expand" detail pane is open — not cleared when the
+  // Journal itself closes, only the pane's own visibility depends on
+  // `open`, so reopening via the bubble restores it exactly as it was.
+  const [detailEntryId, setDetailEntryId] = useState<string | null>(null);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
@@ -103,6 +107,25 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     };
   }, [selectedCampaignId]);
 
+  // Closes the Journal on a click anywhere outside the panel, the detail
+  // pane, or the bubble itself — only attached while actually open.
+  // Listens on mousedown, not click: a click that selects a Campaign (or
+  // otherwise swaps the panel's content) detaches the clicked element from
+  // the DOM synchronously before the "click" event finishes bubbling up to
+  // document, which would make target.closest() fail to find its own
+  // ancestor and misfire as an outside click. mousedown fires first, before
+  // that re-render happens.
+  useEffect(() => {
+    if (!open) return;
+    function handleDocumentMouseDown(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (target.closest('.journal-panel, .journal-detail, .journal-bubble')) return;
+      setOpen(false);
+    }
+    document.addEventListener('mousedown', handleDocumentMouseDown);
+    return () => document.removeEventListener('mousedown', handleDocumentMouseDown);
+  }, [open]);
+
   function toggleOpen() {
     setOpen((prev) => !prev);
     setMenuOpen(false);
@@ -110,12 +133,12 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
 
   function selectCampaign(id: string) {
     setSelectedCampaignId(id);
-    setEditingId(null);
+    setDetailEntryId(null);
   }
 
   function backToList() {
     setSelectedCampaignId(null);
-    setEditingId(null);
+    setDetailEntryId(null);
     setMenuOpen(false);
   }
 
@@ -125,7 +148,7 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     try {
       const created = await journalApi.create({ campaignId: selectedCampaignId, kind });
       setEntries((prev) => [...prev, created]);
-      setEditingId(created.id);
+      setDetailEntryId(created.id);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not create the entry.');
     }
@@ -149,9 +172,23 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     try {
       await journalApi.remove(id);
       setEntries((prev) => prev.filter((e) => e.id !== id));
-      setEditingId((current) => (current === id ? null : current));
+      setDetailEntryId((current) => (current === id ? null : current));
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not delete the entry.');
+    }
+  }
+
+  // Reordering within one category only ever touches that category's own
+  // entries — each gets renumbered to its new position.
+  async function reorderGroup(kind: JournalEntryKind, orderedIds: string[]) {
+    try {
+      const saved = await Promise.all(orderedIds.map((id, index) => journalApi.update(id, { order: index })));
+      setEntries((prev) => {
+        const others = prev.filter((e) => e.kind !== kind);
+        return [...others, ...saved];
+      });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not reorder the entries.');
     }
   }
 
@@ -161,127 +198,117 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     items: entries.filter((e) => e.kind === def.key).sort((a, b) => a.order - b.order),
   })).filter((g) => g.items.length > 0);
 
+  const detailEntry = detailEntryId != null ? entries.find((e) => e.id === detailEntryId) ?? null : null;
+  const detailOpen = Boolean(open && detailEntry);
+
   return (
     <div className="journal-bubble-wrap">
-      {open && (
-        <div className="journal-panel">
-          {selectedCampaign ? (
-            <>
-              <div className="journal-panel__header">
-                <button type="button" className="journal-panel__back" onClick={backToList}>
-                  &larr; All Campaigns
-                </button>
-                <div className="journal-panel__plus-wrap">
-                  <button
-                    type="button"
-                    className="journal-panel__plus"
-                    onClick={() => setMenuOpen((prev) => !prev)}
-                    aria-label="Add a journal entry"
-                  >
-                    +
+      <div className="journal-stack">
+        {open && (
+          <div className={`journal-panel${detailOpen ? ' journal-panel--attached' : ''}`}>
+            {selectedCampaign ? (
+              <>
+                <div className="journal-panel__header">
+                  <button type="button" className="journal-panel__back" onClick={backToList}>
+                    &larr; All Campaigns
                   </button>
-                  {menuOpen && (
-                    <div className="journal-panel__menu">
-                      {KIND_DEFS.map((def) => (
+                  <div className="journal-panel__plus-wrap">
+                    <button
+                      type="button"
+                      className="journal-panel__plus"
+                      onClick={() => setMenuOpen((prev) => !prev)}
+                      aria-label="Add a journal entry"
+                    >
+                      +
+                    </button>
+                    {menuOpen && (
+                      <div className="journal-panel__menu">
+                        {KIND_DEFS.map((def) => (
+                          <button
+                            type="button"
+                            key={def.key}
+                            className="journal-panel__menu-item"
+                            onClick={() => addEntry(def.key)}
+                          >
+                            + {def.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="journal-panel__title">{selectedCampaign.name}</div>
+
+                <div className="journal-panel__body">
+                  {entriesLoading && <p className="journal-panel__status">Loading&hellip;</p>}
+                  {entriesError && (
+                    <p className="journal-panel__status journal-panel__status--error">{entriesError}</p>
+                  )}
+                  {!entriesLoading && !entriesError && entries.length === 0 && (
+                    <p className="journal-panel__status">No notes yet &mdash; tap + above to add one.</p>
+                  )}
+                  {!entriesLoading &&
+                    !entriesError &&
+                    groups.map((group) => (
+                      <JournalCategoryGroup
+                        key={group.key}
+                        label={group.label}
+                        items={group.items}
+                        activeEntryId={detailEntryId}
+                        onReorder={(ids) => reorderGroup(group.key, ids)}
+                        onEdit={setDetailEntryId}
+                        onRemove={removeEntry}
+                      />
+                    ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="journal-panel__title">Journal</div>
+                <div className="journal-panel__body">
+                  {campaignsLoading && <p className="journal-panel__status">Loading&hellip;</p>}
+                  {campaignsError && (
+                    <p className="journal-panel__status journal-panel__status--error">{campaignsError}</p>
+                  )}
+                  {!campaignsLoading && !campaignsError && campaigns.length === 0 && (
+                    <p className="journal-panel__status">No Campaigns yet &mdash; create one from the Campaigns tab.</p>
+                  )}
+                  {!campaignsLoading &&
+                    !campaignsError &&
+                    campaigns.map((campaign) => (
+                      <div className="journal-campaign-row" key={campaign.id}>
                         <button
                           type="button"
-                          key={def.key}
-                          className="journal-panel__menu-item"
-                          onClick={() => addEntry(def.key)}
+                          className="journal-campaign-row__name"
+                          onClick={() => selectCampaign(campaign.id)}
                         >
-                          + {def.label}
+                          {campaign.name}
                         </button>
-                      ))}
-                    </div>
-                  )}
+                        <button
+                          type="button"
+                          className="journal-campaign-row__open"
+                          onClick={() => onOpenCampaign(campaign.id)}
+                        >
+                          Open &rarr;
+                        </button>
+                      </div>
+                    ))}
                 </div>
-              </div>
-              <div className="journal-panel__title">{selectedCampaign.name}</div>
+              </>
+            )}
+          </div>
+        )}
 
-              <div className="journal-panel__body">
-                {entriesLoading && <p className="journal-panel__status">Loading&hellip;</p>}
-                {entriesError && <p className="journal-panel__status journal-panel__status--error">{entriesError}</p>}
-                {!entriesLoading && !entriesError && entries.length === 0 && (
-                  <p className="journal-panel__status">No notes yet &mdash; tap + above to add one.</p>
-                )}
-                {!entriesLoading &&
-                  !entriesError &&
-                  groups.map((group) => (
-                    <div className="journal-panel__group" key={group.key}>
-                      <span className="journal-panel__group-label">{group.label}</span>
-                      {group.items.map((entry) =>
-                        editingId === entry.id ? (
-                          <JournalEntryEditor
-                            key={entry.id}
-                            entry={entry}
-                            onSave={(patch) => saveEntry(entry.id, patch)}
-                            onDone={() => setEditingId(null)}
-                            onRemove={() => removeEntry(entry.id)}
-                          />
-                        ) : (
-                          <div className="journal-entry-row" key={entry.id}>
-                            <div className="journal-entry-row__body">
-                              <div className="journal-entry-row__label">{entry.label || 'Untitled'}</div>
-                              {entry.notes && <div className="journal-entry-row__notes">{entry.notes}</div>}
-                            </div>
-                            <div className="journal-entry-row__actions">
-                              <button
-                                type="button"
-                                className="journal-entry-row__edit"
-                                onClick={() => setEditingId(entry.id)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="journal-entry-row__remove"
-                                onClick={() => removeEntry(entry.id)}
-                                aria-label="Remove entry"
-                              >
-                                &times;
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="journal-panel__title">Journal</div>
-              <div className="journal-panel__body">
-                {campaignsLoading && <p className="journal-panel__status">Loading&hellip;</p>}
-                {campaignsError && <p className="journal-panel__status journal-panel__status--error">{campaignsError}</p>}
-                {!campaignsLoading && !campaignsError && campaigns.length === 0 && (
-                  <p className="journal-panel__status">No Campaigns yet &mdash; create one from the Campaigns tab.</p>
-                )}
-                {!campaignsLoading &&
-                  !campaignsError &&
-                  campaigns.map((campaign) => (
-                    <div className="journal-campaign-row" key={campaign.id}>
-                      <button
-                        type="button"
-                        className="journal-campaign-row__name"
-                        onClick={() => selectCampaign(campaign.id)}
-                      >
-                        {campaign.name}
-                      </button>
-                      <button
-                        type="button"
-                        className="journal-campaign-row__open"
-                        onClick={() => onOpenCampaign(campaign.id)}
-                      >
-                        Open &rarr;
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+        {detailOpen && detailEntry && (
+          <JournalDetailPane
+            entry={detailEntry}
+            kindLabel={kindLabelOf(detailEntry.kind)}
+            onSave={(patch) => saveEntry(detailEntry.id, patch)}
+            onClose={() => setDetailEntryId(null)}
+            onRemove={() => removeEntry(detailEntry.id)}
+          />
+        )}
+      </div>
 
       <button
         type="button"
@@ -297,19 +324,80 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   );
 }
 
-function JournalEntryEditor({
+function JournalCategoryGroup({
+  label,
+  items,
+  activeEntryId,
+  onReorder,
+  onEdit,
+  onRemove,
+}: {
+  label: string;
+  items: JournalEntry[];
+  activeEntryId: string | null;
+  onReorder: (orderedIds: string[]) => void;
+  onEdit: (id: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  const { getHandleProps, getRowClassName } = useDragReorder(items, (reordered) =>
+    onReorder(reordered.map((e) => e.id))
+  );
+
+  return (
+    <div className="journal-panel__group">
+      <span className="journal-panel__group-label">{label}</span>
+      {items.map((entry, index) => (
+        <div
+          className={`journal-entry-row${entry.id === activeEntryId ? ' journal-entry-row--active' : ''}${getRowClassName(index)}`}
+          key={entry.id}
+        >
+          <span {...getHandleProps(index)}>⠿</span>
+          <div className="journal-entry-row__body">
+            <div className="journal-entry-row__label">{entry.label || 'Untitled'}</div>
+            {entry.notes && <div className="journal-entry-row__notes">{entry.notes}</div>}
+          </div>
+          <div className="journal-entry-row__actions">
+            <button type="button" className="journal-entry-row__edit" onClick={() => onEdit(entry.id)}>
+              Edit
+            </button>
+            <button
+              type="button"
+              className="journal-entry-row__remove"
+              onClick={() => onRemove(entry.id)}
+              aria-label="Remove entry"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function JournalDetailPane({
   entry,
+  kindLabel,
   onSave,
-  onDone,
+  onClose,
   onRemove,
 }: {
   entry: JournalEntry;
+  kindLabel: string;
   onSave: (patch: { label?: string; notes?: string }) => void;
-  onDone: () => void;
+  onClose: () => void;
   onRemove: () => void;
 }) {
   const [label, setLabel] = useState(entry.label);
   const [notes, setNotes] = useState(entry.notes);
+
+  // The pane can be reopened on a different entry without remounting (same
+  // component instance, new `entry` prop) — resync local drafts when that
+  // happens.
+  useEffect(() => {
+    setLabel(entry.label);
+    setNotes(entry.notes);
+  }, [entry.id, entry.label, entry.notes]);
 
   function commitLabel() {
     if (label !== entry.label) onSave({ label });
@@ -320,38 +408,31 @@ function JournalEntryEditor({
   }
 
   return (
-    <div className="journal-entry-editor">
-      <input
-        type="text"
-        className="journal-entry-editor__label"
-        placeholder="Label"
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        onBlur={commitLabel}
-        autoFocus
-      />
-      <textarea
-        className="journal-entry-editor__notes"
-        placeholder="Notes"
-        rows={3}
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        onBlur={commitNotes}
-      />
-      <div className="journal-entry-editor__actions">
-        <button type="button" className="journal-entry-editor__remove" onClick={onRemove}>
-          Remove
+    <div className="journal-detail">
+      <div className="journal-detail__header">
+        <span className="journal-detail__title">{kindLabel}</span>
+        <button type="button" className="journal-detail__close" onClick={onClose} aria-label="Close">
+          &times;
         </button>
-        <button
-          type="button"
-          className="journal-entry-editor__done"
-          onClick={() => {
-            commitLabel();
-            commitNotes();
-            onDone();
-          }}
-        >
-          Done
+      </div>
+      <div className="journal-detail__body">
+        <input
+          type="text"
+          className="journal-detail__label"
+          placeholder="Label"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onBlur={commitLabel}
+        />
+        <textarea
+          className="journal-detail__notes"
+          placeholder="Notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={commitNotes}
+        />
+        <button type="button" className="journal-detail__remove" onClick={onRemove}>
+          Remove entry
         </button>
       </div>
     </div>

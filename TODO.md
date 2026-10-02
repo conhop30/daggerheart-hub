@@ -312,10 +312,10 @@ scratch list for planning the next pass of work.
       same `items.length > 0` guard pattern as Tier's own filter) adds a
       second "All Types" dropdown next to Tier's, wired up for Adversary
       only.
-- [ ] Journal bubble — mockup rounds done (canvas:
+- [x] Journal bubble — mockup rounds done (canvas:
       https://claude.ai/artifact/RpoXM9e5xgjzRMU8QJh4vs), plan written and
-      approved (`~/.claude/plans/abundant-puzzling-emerson.md`), Phase 1
-      landed:
+      approved (`~/.claude/plans/abundant-puzzling-emerson.md`), both
+      phases landed:
       - **Data layer**: new `journalEntries` collection in
         `electron/store.js` (hand-written, not `makeCollection` — label
         isn't unique and starts blank, which that generic shape doesn't
@@ -336,17 +336,30 @@ scratch list for planning the next pass of work.
         convention, now `jumpToCampaign`). "+" menu uses plain text
         buttons for the 7 kinds (no icons — matches Equipment's own
         plain-text section headers for these same entity names).
-      - Verified: `npx tsc --noEmit -p .` clean, `npm test` (233 tests,
-        was 227 — 6 new `JournalEntry` backend tests) green, new
-        `e2e/journal.spec.ts` (4 tests) green, plus `app.spec.ts` +
-        `campaigns.spec.ts` (19 tests, shared-chrome rule since this adds
-        a new always-mounted component) green.
-      - **Still open — Phase 2** (see the plan file): drag-reorder within
-        a category, the "expand" slide-out detail pane (aligned to the
-        Journal panel's full height, flattened touching corners — from
-        the mockup's validated design) replacing Phase 1's plain inline
-        edit, and outside-click-closes-the-Journal. Full e2e suite once
-        Phase 2 lands, not after each phase individually. Explicitly
-        **not** building the mockup's rounds 2–3 tear-off/floating-dock
-        system — cut once the feature's actual purpose (quick notes while
-        browsing elsewhere, not a heavy multi-window tool) was clarified.
+      - **Phase 2**: drag-reorder within a category (reuses the existing
+        `useDragReorder` hook — a small `JournalCategoryGroup` subcomponent
+        owns one call per rendered group, since the hook can't be called
+        conditionally/in a loop); the "expand" detail pane, aligned to the
+        Journal panel's full fixed height with flattened touching corners
+        so the two read as one split window (replaces Phase 1's plain
+        inline edit); outside-click-anywhere-but-Journal/detail/bubble
+        closes the Journal, bubble reopens it exactly as it was
+        (`detailEntryId` is never cleared on close, only hidden).
+        Explicitly **not** built: the mockup's rounds 2–3 tear-off/
+        floating-dock system — cut once the feature's actual purpose
+        (quick notes while browsing elsewhere, not a heavy multi-window
+        tool) was clarified.
+      - One real bug hit and fixed along the way: the outside-click
+        handler first used a `click` listener on `document`, which fired
+        *after* React's own click handler during bubbling — so selecting
+        a Campaign (which swaps the panel's whole DOM subtree
+        synchronously) detached the clicked button from the tree before
+        the listener ran, making `target.closest()` fail to find its own
+        ancestor and misfire as an outside click, instantly closing the
+        panel it had just opened. Fixed by listening on `mousedown`
+        instead, which fires before React's handler.
+      - Verified: `npx tsc --noEmit -p .` clean, `npm test` (233 tests)
+        green, `e2e/journal.spec.ts` (6 tests, up from 4 — added outside-
+        click/reopen-restores-detail-pane and drag-reorder-persists)
+        green, plus the full e2e suite (74 tests) green, per the plan's
+        "full suite once after Phase 2" rule.

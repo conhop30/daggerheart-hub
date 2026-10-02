@@ -67,6 +67,17 @@ test.describe('Journal bubble', () => {
     await expect(win.locator('h1', { hasText: 'Embers of House Virel' })).toBeVisible();
   });
 
+  // Filling the detail pane's fields relies on their onBlur commit — moving
+  // focus to the next field (or clicking Close) is what actually saves, same
+  // as a real user tabbing/clicking away.
+  async function addEntry(kind: string, label: string, notes: string) {
+    await win.click('.journal-panel__plus');
+    await win.click(`.journal-panel__menu-item:has-text("+ ${kind}")`);
+    await win.fill('.journal-detail__label', label);
+    await win.fill('.journal-detail__notes', notes);
+    await win.click('.journal-detail__close');
+  }
+
   test('create one entry per kind, edit it, and it persists across reload', async () => {
     await createCampaign('The Wildwood');
     await win.click('.journal-bubble');
@@ -74,19 +85,15 @@ test.describe('Journal bubble', () => {
 
     const kinds = ['Adversaries', 'Loot', 'Consumables', 'Armor', 'Weapons', 'Worldbuilding', 'Other'];
     for (const kind of kinds) {
-      await win.click('.journal-panel__plus');
-      await win.click(`.journal-panel__menu-item:has-text("+ ${kind}")`);
-      await win.fill('.journal-entry-editor__label', `${kind} note`);
-      await win.fill('.journal-entry-editor__notes', `Some ${kind.toLowerCase()} detail.`);
-      await win.click('.journal-entry-editor__done');
+      await addEntry(kind, `${kind} note`, `Some ${kind.toLowerCase()} detail.`);
       await expect(win.locator('.journal-panel__group-label', { hasText: kind })).toBeVisible();
       await expect(win.locator('.journal-entry-row__label', { hasText: `${kind} note` })).toBeVisible();
     }
 
-    // Edit the Weapons entry.
+    // Edit the Weapons entry via its detail pane.
     await win.locator('.journal-entry-row', { hasText: 'Weapons note' }).locator('.journal-entry-row__edit').click();
-    await win.fill('.journal-entry-editor__label', 'Weapons note (renamed)');
-    await win.click('.journal-entry-editor__done');
+    await win.fill('.journal-detail__label', 'Weapons note (renamed)');
+    await win.click('.journal-detail__close');
     await expect(win.locator('.journal-entry-row__label', { hasText: 'Weapons note (renamed)' })).toBeVisible();
 
     await win.reload();
@@ -106,15 +113,65 @@ test.describe('Journal bubble', () => {
     await win.click('.journal-bubble');
     await win.click('.journal-campaign-row__name:has-text("Deletion Test")');
 
-    await win.click('.journal-panel__plus');
-    await win.click('.journal-panel__menu-item:has-text("+ Loot")');
-    await win.fill('.journal-entry-editor__label', 'A trinket');
-    await win.click('.journal-entry-editor__done');
+    await addEntry('Loot', 'A trinket', '');
     await expect(win.locator('.journal-panel__group-label', { hasText: 'Loot' })).toBeVisible();
 
     await win.click('.journal-entry-row__remove');
     await expect(win.locator('.journal-entry-row__label', { hasText: 'A trinket' })).toHaveCount(0);
     await expect(win.locator('.journal-panel__group-label', { hasText: 'Loot' })).toHaveCount(0);
     await expect(win.locator('.journal-panel__status', { hasText: 'No notes yet' })).toBeVisible();
+  });
+
+  test('closing the Journal (outside click) and reopening it restores the open detail pane', async () => {
+    await createCampaign('Persistence Test');
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("Persistence Test")');
+    await addEntry('Other', 'A quick note', 'Some detail.');
+
+    await win.locator('.journal-entry-row', { hasText: 'A quick note' }).locator('.journal-entry-row__edit').click();
+    await expect(win.locator('.journal-detail')).toBeVisible();
+
+    // Click somewhere outside the Journal entirely — the whole thing closes.
+    await win.click('.campaigns-page__title');
+    await expect(win.locator('.journal-panel')).toHaveCount(0);
+    await expect(win.locator('.journal-detail')).toHaveCount(0);
+
+    // Reopening via the bubble brings back the same campaign AND the same
+    // entry's detail pane, exactly as it was.
+    await win.click('.journal-bubble');
+    await expect(win.locator('.journal-panel__title')).toHaveText('Persistence Test');
+    await expect(win.locator('.journal-detail__label')).toHaveValue('A quick note');
+  });
+
+  test('drag-reordering entries within a category persists the new order', async () => {
+    await createCampaign('Reorder Test');
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("Reorder Test")');
+    await addEntry('Other', 'First', '');
+    await addEntry('Other', 'Second', '');
+
+    const labels = win.locator('.journal-entry-row__label');
+    await expect(labels.nth(0)).toHaveText('First');
+    await expect(labels.nth(1)).toHaveText('Second');
+
+    const handles = win.locator('.journal-panel__group .drag-handle');
+    const firstBox = await handles.nth(0).boundingBox();
+    const secondBox = await handles.nth(1).boundingBox();
+    if (!firstBox || !secondBox) throw new Error('drag handle not visible');
+    await win.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
+    await win.mouse.down();
+    await win.mouse.move(secondBox.x + secondBox.width / 2, secondBox.y + secondBox.height / 2, { steps: 10 });
+    await win.dispatchEvent('.journal-panel__group .drag-handle >> nth=1', 'dragenter');
+    await win.mouse.up();
+
+    await expect(labels.nth(0)).toHaveText('Second');
+    await expect(labels.nth(1)).toHaveText('First');
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("Reorder Test")');
+    await expect(labels.nth(0)).toHaveText('Second');
+    await expect(labels.nth(1)).toHaveText('First');
   });
 });
