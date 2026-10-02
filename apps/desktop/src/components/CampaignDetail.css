@@ -1,5 +1,21 @@
-.campaign-detail {
-  animation: fadeInUp 280ms var(--ease);
+/* Opening a Campaign reads as pushing further into the same space rather
+   than a hard page swap: the hero settles into place first, then the
+   Party/Sessions/sidebar below follow a beat later on the same motion,
+   staggered rather than simultaneous. A bigger translateY than the shared
+   fadeInUp keyframe (tokens.css) uses on purpose — fadeInUp's 4px is tuned
+   for routine content-replaces-content swaps (a tab body, a form step);
+   this one specific entrance is meant to read as a deliberate slide, so it
+   gets its own keyframe instead of cranking fadeInUp's amplitude up for
+   every other place that reuses it. */
+@keyframes campaignDetailSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .campaign-detail__back {
@@ -26,6 +42,7 @@
   padding: var(--space-4);
   margin-bottom: var(--space-4);
   box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.6);
+  animation: campaignDetailSlideIn 420ms var(--ease);
 }
 
 /* Carries the Campaign's cover image (set on CampaignBanner's row) into
@@ -124,6 +141,11 @@
   grid-template-columns: 1fr 260px;
   align-items: start;
   gap: var(--space-4);
+  /* `both` (not the default `none`) so this stays invisible for the delay
+     instead of flashing fully visible, then jumping back to the "from"
+     state only once the animation actually starts. */
+  animation: campaignDetailSlideIn 420ms var(--ease) both;
+  animation-delay: 140ms;
 }
 
 .campaign-detail__sidebar {

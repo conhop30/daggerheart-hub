@@ -76,15 +76,19 @@ scratch list for planning the next pass of work.
           tall, matching a portrait) instead of a fixed square, and the
           hint text dropped its redundant leading "Optional —" (the field
           already reads as optional from having no `required` marker).
-        - Open question, not yet built: "the Campaign image should
-          translate into the selected Campaign" — read as "the image
-          should carry over" and implemented that (CampaignDetail's hero
-          shows it too), but if a literal animated handoff (the image
-          visually moving from the gallery row into the hero as it opens)
-          is what's wanted, that's a bigger feature worth its own
-          scoping/mockup pass rather than guessing at, given what a real
-          shared-element transition costs to build correctly across
-          CampaignsPage's list/detail swap.
+- [x] Campaign open animation: selecting a Campaign reads as pushing
+      further into the same space now, not a hard page swap — two
+      staggered CSS entrance animations (`campaignDetailSlideIn` in
+      CampaignDetail.css) on CampaignDetail's existing mount: the hero
+      slides up + fades in first (420ms), the body layout (Party/Sessions/
+      sidebar) follows on a 140ms delay with `animation-fill-mode: both`
+      so it stays invisible during the delay instead of flashing visible
+      first. Not a true shared-element transition (no pixel-tracking the
+      image's position from the gallery row into the hero) — deliberately
+      the cheaper version of this idea. Verified: the 8 campaign-opening
+      e2e tests across campaignRow.spec.ts/campaigns.spec.ts still pass
+      with no added flakiness (Playwright's actionability auto-wait
+      absorbs the ~560ms entrance with no retry logic needed).
 
       e2e debt — DONE, all 36 affected tests passing (`campaignRow.spec.ts`
       — renamed from `campaignBanner.spec.ts` —, `campaigns.spec.ts`,
