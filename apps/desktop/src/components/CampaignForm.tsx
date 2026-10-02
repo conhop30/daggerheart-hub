@@ -53,9 +53,10 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
       </label>
       <ImageUploadField
         label="Cover image"
-        hint="Optional — shows right-aligned on the Campaign row. Falls back to the color above when unset."
+        hint="Fades into the Campaign row behind the title. Falls back to the color above when unset."
         value={coverImage}
         onChange={setCoverImage}
+        aspectRatio="2.4"
       />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">

@@ -95,6 +95,17 @@
   overflow: hidden;
 }
 
+/* Name/HP/Stress were sitting flush against the tile's left/right edge
+   (.content-card itself has no horizontal padding, by design, for the
+   plain hairline-separated lists it's usually in) — nudged in a bit here
+   so they read as inset content rather than touching the border, which
+   matters more on a Party tile than elsewhere since the border doubles as
+   the edge of the photo behind it. */
+.party-roster__member .content-card {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
 .party-roster__member--photo .content-card {
   position: relative;
   z-index: 1;
@@ -112,40 +123,21 @@
   color: #ffffff;
 }
 
-/* A very soft legibility aid behind HP/Stress — a ::before, not the
-   element's own backdrop-filter, since mask-image is what lets the blur
-   fade in gradually from nothing instead of starting/stopping at a hard
-   rectangular edge (a flat backdrop-filter box read as "very blatant" and
-   a visible seam against the image). Bleeds slightly above its own box
-   (inset's negative top) so even that fade-in has room to happen instead
-   of starting abruptly at the border. z-index: -1 keeps it behind the
-   stepper rows themselves, which stay sharp and readable. */
+/* No blur here — legibility behind HP/Stress comes from MemberBackdrop's
+   own scrim gradient darkening toward the tile's bottom edge (see
+   MemberBackdrop.css), not from a filter layered on top of the trackables
+   themselves. Just the border tint stays, to read against the photo. */
 .party-roster__member--photo .party-roster__trackables {
-  position: relative;
   border-top-color: rgba(255, 255, 255, 0.2);
 }
 
-.party-roster__member--photo .party-roster__trackables::before {
-  content: '';
-  position: absolute;
-  inset: -14px 0 0 0;
-  z-index: -1;
-  background: rgba(20, 18, 27, 0.16);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  mask-image: linear-gradient(to bottom, transparent, black 45%, black 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, black 45%, black 100%);
-  pointer-events: none;
-}
-
-/* A light frosted chip behind Edit/Delete so they stay legible over
-   whatever's in the photo, without putting a border back on the buttons
-   themselves. Pill-shaped to match the header row it sits in (see
-   ContentCard.css — actions fill that row's own height, not the card's). */
+/* A plain translucent tint behind Edit/Delete so they stay legible over
+   whatever's in the photo, without blurring anything behind them and
+   without a border on the buttons themselves. Pill-shaped to match the
+   header row it sits in (see ContentCard.css — actions fill that row's own
+   height, not the card's). */
 .party-roster__member--photo .content-card__actions {
   background: rgba(20, 18, 27, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border-radius: 999px;
 }
 

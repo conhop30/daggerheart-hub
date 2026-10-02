@@ -15,12 +15,16 @@ scratch list for planning the next pass of work.
 - [x] Standardize styling for side-by-side button pairs (e.g. a party
       member's Edit/Delete, a Session row's Open/Delete) — ethereal pair
       style landed in ContentCard.css: no border on the buttons
-      themselves, a single hairline between the two, the hover fill spans
-      the header/Name row's own top-to-bottom edges (not the whole card —
-      tried full-card-height first, reverted: it swallowed HP/Stress into
-      the same visual block as the button, which wasn't the ask). Labels
-      padded further from the hairline/row edge. Mockup:
-      https://claude.ai/artifact/WxqaGQRTAHoLQHA9HHVhbF (board 1).
+      themselves, a single hairline between the two, labels padded further
+      from the hairline/row edge. The hover fill's height is a per-caller
+      choice (`actionsLayout`, default `'inline'`): Party's Edit/Delete
+      span just the header/Name row's own top-to-bottom edges (tried
+      full-card-height there first, reverted — it swallowed HP/Stress into
+      the same visual block as the button), while Sessions' Open/Delete
+      use `'full-height'` and span the whole tile, centered, since a
+      Session row has nothing below the header worth keeping visually
+      separate. Mockup: https://claude.ai/artifact/WxqaGQRTAHoLQHA9HHVhbF
+      (board 1).
 
       Campaign launch redesign — landed, UX still settling before a
       release (see "e2e debt" below):
@@ -31,33 +35,47 @@ scratch list for planning the next pass of work.
           image is full-bleed behind the row (not a width-constrained
           strip) so there's no hard rectangular edge for the hover slide
           to expose — only the gradient's own soft edge is ever visible.
-          Hover: the art itself blurs slightly as SELECT (large,
-          capitalized) fades in — reads as the image softening out of
-          focus behind the label, not just text appearing on top of it.
-          The fade also slides left (never fully clears) and the shadow
-          lifts, no translateY. Description no longer truncates to 2
-          lines — wraps, up to ~2/3 of the row's width. Edit/Delete are
-          gone from the row; CampaignDetail covers both once open, and its
-          hero now also shows `coverImage` the same way.
+          Hover: a flat `.campaign-row__shade` darkens the whole row (not
+          a blur on the art — tried that first, but blur softens the image
+          without adding contrast, so SELECT and the description still
+          fought it) while SELECT (large, capitalized) fades in. The fade
+          also slides left (never fully clears) and the shadow lifts, no
+          translateY. Description no longer truncates to 2 lines — wraps,
+          up to ~2/3 of the row's width. Edit/Delete are gone from the
+          row; CampaignDetail covers both once open, and its hero now also
+          shows `coverImage` the same way.
         - Party tab is collapsible (PartyRoster, defaults open). Tile SHAPE
           is unchanged from today — a member's optional `portraitImage`
           adds MemberBackdrop behind that unchanged content: a tall image
-          centers and fades both sides toward the page background via
-          `color-mix()` (edges stay partly see-through, not a flat wall);
-          a wide one fills the tile. A very soft, feathered blur (a
-          `::before` with `mask-image`, not the element's own
-          `backdrop-filter` directly — that had a hard rectangular
-          on/off edge and read as "very blatant") fades in gradually
-          behind HP/Stress specifically, leaving the Name row/Edit-Delete
-          pill visually separate above it. Edit/Delete stay header-row
-          height (see above), on a frosted pill chip for legibility over
-          art. No image = pixel-identical to before.
+          centers, a wide one fills the tile. Legibility for both the Name
+          row and HP/Stress comes entirely from MemberBackdrop's own scrim
+          gradient — a vertical vignette (darker top and bottom edges,
+          clear through the middle) layered with the existing left/right
+          fade on portrait images — never from a blur sitting on top of the
+          content; an earlier masked-`backdrop-filter` version behind
+          HP/Stress read as "dreadful"/"very blatant" and was dropped
+          entirely, not just softened. Edit/Delete stay header-row height,
+          on a flat (non-blurred) frosted-looking tint chip for legibility
+          over art. Name/HP/Stress also got a bit of horizontal padding on
+          the tile (`.party-roster__member .content-card`) — they were
+          flush against the card's edge, `.content-card` has no horizontal
+          padding by design elsewhere. No image = pixel-identical to
+          before.
+        - Sessions' Open/Delete use `ContentCard`'s `actionsLayout="full-
+          height"` (Party stays on the default `'inline'`, scoped to just
+          the Name row — that's deliberate, see below) — the background
+          fill and label centering span the Session tile's real top/bottom
+          border, not just the title line.
         - ImageUploadField restyled to match the rest of the app: the
           native `<input type="file">` is visually hidden and triggered by
           a bordered "Choose Image" button (same idiom as
           `.party-roster__add`), with a dashed placeholder box (matching
           `.campaign-row--hollow`'s "empty slot" look) before anything's
-          chosen.
+          chosen. Preview/placeholder size via a per-field `aspectRatio`
+          prop (CampaignForm: wide, matching the row; PartyMemberForm:
+          tall, matching a portrait) instead of a fixed square, and the
+          hint text dropped its redundant leading "Optional —" (the field
+          already reads as optional from having no `required` marker).
         - Open question, not yet built: "the Campaign image should
           translate into the selected Campaign" — read as "the image
           should carry over" and implemented that (CampaignDetail's hero

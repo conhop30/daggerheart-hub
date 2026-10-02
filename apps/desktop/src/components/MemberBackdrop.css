@@ -29,25 +29,45 @@
   inset: 0;
 }
 
+/* The darkening itself IS a gradient on the image's own overlay — no
+   backdrop-filter blur anywhere here. Darker at the top (Name/Edit-Delete)
+   and bottom (HP/Stress) edges, clear in the middle, so both text rows get
+   contrast without ever blurring or flattening the photo. background-color
+   is a uniform base tint *under* that gradient — without it, the portrait
+   image (only 44%-wide / min 160px, centered) left raw page background
+   showing through anywhere the gradient's own transparent stretch reached
+   past the image's actual edge, a pale untinted patch next to the photo. */
 .member-backdrop--landscape .member-backdrop__scrim {
-  background: rgba(20, 18, 27, 0.45);
+  background-image: linear-gradient(
+    to bottom,
+    rgba(20, 18, 27, 0.6) 0%,
+    rgba(20, 18, 27, 0) 26%,
+    rgba(20, 18, 27, 0) 64%,
+    rgba(20, 18, 27, 0.62) 100%
+  );
+  background-color: rgba(20, 18, 27, 0.45);
 }
 
-/* The transparent middle lets the portrait show through; a mostly-(not
-   fully-)opaque var(--void) on both sides fades it back into the page
-   rather than ending in a hard edge — color-mix keeps it reactive to
-   theme (unlike a literal rgba, var(--void) itself differs light vs
-   dark) while still letting a hint of the image bleed through at the
-   very edge instead of a flat wall. background-color (not a 3rd gradient
-   stop) is what tints the transparent middle, since a plain color can't
-   be one layer in a multi-stop background-image list. */
+/* Portrait stacks the same top/bottom vignette with the existing left/right
+   fade that lets the image show through dead center — color-mix keeps the
+   side fade reactive to theme (var(--void) differs light vs dark), while
+   the top/bottom pair stays a literal dark value like CampaignBanner's
+   scrim, since it's darkening a photo rather than blending into the page. */
 .member-backdrop--portrait .member-backdrop__scrim {
-  background-image: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--void) 72%, transparent) 0%,
-    rgba(20, 18, 27, 0) 32%,
-    rgba(20, 18, 27, 0) 68%,
-    color-mix(in srgb, var(--void) 72%, transparent) 100%
-  );
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgba(20, 18, 27, 0.6) 0%,
+      rgba(20, 18, 27, 0) 26%,
+      rgba(20, 18, 27, 0) 64%,
+      rgba(20, 18, 27, 0.62) 100%
+    ),
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--void) 72%, transparent) 0%,
+      rgba(20, 18, 27, 0) 32%,
+      rgba(20, 18, 27, 0) 68%,
+      color-mix(in srgb, var(--void) 72%, transparent) 100%
+    );
   background-color: rgba(20, 18, 27, 0.45);
 }

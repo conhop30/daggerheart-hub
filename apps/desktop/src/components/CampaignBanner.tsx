@@ -36,6 +36,7 @@ export const CampaignBanner = memo(function CampaignBanner({ campaign, partyName
         <div className="campaign-row__art" style={{ backgroundImage: `url(${campaign.coverImage})` }} />
       )}
       <div className="campaign-row__scrim" />
+      <div className="campaign-row__shade" />
       <div className="campaign-row__body">
         <span className="campaign-row__level">Level {campaign.level}</span>
         <h3 className="campaign-row__title">{campaign.name}</h3>

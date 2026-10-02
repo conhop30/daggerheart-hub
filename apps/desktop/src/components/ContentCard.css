@@ -48,6 +48,29 @@
   flex: 1;
 }
 
+/* Full-height actions mode (Sessions): the outer row's own padding moves
+   onto .content-card__body so .content-card__actions — now a direct flex
+   child of the row instead of nested in the header — stretches (the row's
+   default align-items) to the row's true top/bottom edges instead of just
+   the header line's height, and each button centers its label within that
+   full height (see .content-card__action below). */
+.content-card--actions-full {
+  padding: 0;
+}
+
+.content-card--actions-full .content-card__body {
+  padding: var(--space-3) 0;
+}
+
+.content-card--actions-full .content-card__header {
+  align-items: baseline;
+  min-height: 0;
+}
+
+.content-card--actions-full > .content-card__actions {
+  flex-shrink: 0;
+}
+
 .content-card__header {
   display: flex;
   justify-content: space-between;

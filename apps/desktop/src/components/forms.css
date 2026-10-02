@@ -129,10 +129,16 @@
   gap: var(--space-2);
 }
 
+/* A fixed height with the width left to `aspect-ratio` (set inline per
+   field — see ImageUploadField.tsx) so the preview is a smaller version of
+   the same shape it'll actually be shown in, not a generic square
+   thumbnail regardless of context. */
 .image-upload-field__preview,
 .image-upload-field__placeholder {
-  width: 54px;
-  height: 54px;
+  display: block;
+  height: 56px;
+  width: auto;
+  max-width: 140px;
   flex-shrink: 0;
 }
 

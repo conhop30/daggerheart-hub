@@ -28,16 +28,27 @@
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: blur(0px);
-  transition: filter 420ms var(--ease);
 }
 
-/* Softens the art behind SELECT as it fades in, so the label reads as
-   coming into focus in front of the image rather than just appearing
-   over it. overflow: hidden on .campaign-row keeps the blur's own edge
-   bleed from ever showing past the row's rounded corners. */
-.campaign-row:hover .campaign-row__art {
-  filter: blur(3px);
+/* A plain darkening wash over the entire row on hover — tried blurring the
+   art itself here first, but that didn't actually help SELECT read against
+   the description text (blur softens the image, it doesn't darken it). A
+   flat shadow across the whole row does: everything underneath loses
+   contrast together, so SELECT (and the description, wherever the gradient
+   below hasn't already covered it) stays legible regardless of what the
+   art looks like at that point. Sits above __art/__scrim but below
+   __body/__select (both z-index: 1) by simply having no z-index of its own
+   — auto-stacked elements paint in DOM order beneath anything with an
+   explicit z-index. */
+.campaign-row__shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 320ms var(--ease);
+}
+
+.campaign-row:hover .campaign-row__shade {
+  background: rgba(0, 0, 0, 0.55);
 }
 
 /* Oversized (wider than the row on both sides) so the hover slide never

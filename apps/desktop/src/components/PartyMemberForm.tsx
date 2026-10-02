@@ -53,9 +53,10 @@ export default function PartyMemberForm({ campaignId, sessionId, initial, onSave
       <TrackableEditor trackables={trackables} onChange={setTrackables} />
       <ImageUploadField
         label="Portrait"
-        hint="Optional — a tall image centers and fades on both sides; a wide one fills the tile."
+        hint="A tall image centers and fades on both sides; a wide one fills the tile."
         value={portraitImage}
         onChange={setPortraitImage}
+        aspectRatio="0.75"
       />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">

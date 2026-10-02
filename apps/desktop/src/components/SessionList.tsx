@@ -135,6 +135,7 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
               onEdit={() => onOpenSession(session)}
               editLabel="Open"
               onDelete={() => handleDelete(session)}
+              actionsLayout="full-height"
               meta={
                 <>
                   <MetaChip label="Fear" value={`${session.fear} / 12`} />
