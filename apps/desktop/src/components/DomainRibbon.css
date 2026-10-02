@@ -27,21 +27,21 @@
   background-color: currentColor;
 }
 
+/* Centered within the pennant's rectangular body (0-103px, where the
+   clip-path's zigzag tail starts at 78% of the 132px height) rather than
+   the ribbon's full height, so it doesn't creep down toward the pointed
+   tail. Sized up now that there's no divider bar underneath eating into
+   this space. */
 .domain-ribbon__icon {
   position: absolute;
-  top: 16px;
+  top: 24px;
   left: 50%;
   transform: translateX(-50%);
-  width: 38px;
-  height: 38px;
+  width: 54px;
+  height: 54px;
   color: #ffffff;
 }
 
-.domain-ribbon__divider {
-  position: absolute;
-  top: 64px;
-  left: 14%;
-  right: 14%;
-  height: 2px;
-  background: #d9b64a;
+.domain-ribbon--bone .domain-ribbon__icon {
+  color: #000000;
 }

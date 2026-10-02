@@ -137,14 +137,28 @@ scratch list for planning the next pass of work.
       collapsed. Also add a layout option that packs multiple Heritage
       tiles per row (more on screen at once), like Equipment/Adversary
       grids already allow.
-- [ ] Domain cards: drop the gold line under the symbol so the symbol can
-      be bigger/centered with the extra space. The Blade domain's image is
-      broken (renders as a plain square, not its symbol). Recolor the Bone
-      domain's icon black — it doesn't read against the silver background.
-      Dread domain's official card art is in the Hope and Fear pdf (ask
-      again if that's needed). Cards should never scroll — they should
-      read as an actual printed card, sized proportionally to a real 2.5"
-      x 3.5" card.
+- [x] Domain ribbon icon (DomainRibbon.tsx/.css — this is the Domain's own
+      symbol on its gallery row/hero, not an individual Domain Card): gold
+      divider bar under the icon dropped, icon enlarged (38px -> 54px) and
+      centered within the ribbon's rectangular body (its top 78%, above
+      where the clip-path's pointed tail starts) instead of a fixed offset
+      that assumed the divider's space was spoken for. Bone's icon (its
+      domain color is a near-white silver, #D4E4E7) flips to black via a
+      `.domain-ribbon--bone` modifier class — every other Domain keeps the
+      white icon. Verified visually against all 9 seeded SRD Domains —
+      confirmed Blade's *ribbon* icon renders fine (an axe), so the "Blade
+      domain's image is broken" report below is specifically about its
+      Domain Cards' illustrations, not this ribbon.
+- [ ] Domain Cards (DomainCardTile.tsx/.css — the individual 2.5"x3.5" card
+      tiles, Spell/Grimoire/Ability, not the Domain's own ribbon above):
+      the Blade domain's cards render a plain square instead of their
+      illustration/symbol — needs root-causing (likely `imagePath`-related
+      or a Blade-specific data issue, not yet investigated). Cards should
+      never scroll — they should read as an actual printed card, sized
+      proportionally to a real 2.5" x 3.5" card (may mean reworking how
+      card text fits rather than just a CSS size tweak, if long rules text
+      doesn't fit without it today). Dread domain's official card art is
+      in the Hope and Fear pdf (ask again if that's needed).
 - [ ] Adversary picker: "Recently Viewed" should stay alphabetically
       sorted (not most-recent-first). Add filters by Tier and by Type.
 - [ ] (For further pondering — discuss with mockups before building.) A
