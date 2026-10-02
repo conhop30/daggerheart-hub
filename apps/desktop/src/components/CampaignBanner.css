@@ -18,12 +18,14 @@
   box-shadow: 0 22px 48px -16px rgba(0, 0, 0, 0.7);
 }
 
+/* Full-bleed, not just a right-aligned 62%-wide strip — a width-constrained
+   div had a hard rectangular left edge that the hover slide could expose
+   past the scrim's own soft edge (a real seam, not a gradient). Edge to
+   edge, there's nothing hard left for the scrim to uncover; the gradient
+   alone decides what's visible. */
 .campaign-row__art {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  width: 62%;
+  inset: 0;
   background-size: cover;
   background-position: center;
 }
@@ -59,7 +61,7 @@
   z-index: 1;
   padding: var(--space-3);
   pointer-events: none;
-  max-width: 440px;
+  max-width: 66%;
 }
 
 .campaign-row__title {
@@ -74,10 +76,6 @@
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.88);
   margin-bottom: 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .campaign-row__level {

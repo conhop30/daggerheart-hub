@@ -15,33 +15,62 @@ scratch list for planning the next pass of work.
 - [x] Standardize styling for side-by-side button pairs (e.g. a party
       member's Edit/Delete, a Session row's Open/Delete) — ethereal pair
       style landed in ContentCard.css: no border on the buttons
-      themselves, a single hairline between the two, the hover gradient
-      fills the full height of the row it's attached to, label grows
-      slightly via a transform (not a reflow). Mockup:
+      themselves, a single hairline between the two, labels padded further
+      from that hairline/the row's edge. Mockup:
       https://claude.ai/artifact/WxqaGQRTAHoLQHA9HHVhbF (board 1).
+
+      ContentCard also gained `actionsLayout?: 'inline' | 'full-height'`
+      (default 'inline', unchanged behavior/DOM for every existing
+      consumer). 'full-height' moves the actions out of the header to a
+      sibling of the body, spanning the row's true top-to-bottom edges —
+      used by PartyRoster, since its tiles are short and uniform; left as
+      'inline' everywhere else (Sessions, Adversaries, Equipment, ...)
+      since a button stretched the full height of a long card with lots
+      of meta/features below would look stretched/odd there, not
+      intentional.
 
       Campaign launch redesign — landed, UX still settling before a
       release (see "e2e debt" below):
-        - Campaigns tab: each Campaign is now a full-row card (CampaignBanner
-          rebuilt), with an optional uploaded image (CampaignForm, stored as
-          a data: URL on `coverImage` — no managed file directory yet, see
-          note below), right-aligned, fading into the row so text stays
-          readable. Hover: the fade slides left (a real transform, never
-          fully clears), SELECT fades in large/capitalized, shadow lifts —
-          no translateY. Edit/Delete are gone from the row entirely;
-          CampaignDetail already had its own Edit/Delete, so that's still
-          the only way in, now the sole one.
+        - Campaigns tab: each Campaign is a full-row card (CampaignBanner),
+          with an optional uploaded image (CampaignForm, stored as a
+          data: URL on `coverImage` — no managed file directory yet, see
+          note below), fading into the row so text stays readable. The
+          image itself is full-bleed behind the row (not a width-
+          constrained strip) so there's no hard rectangular image edge for
+          the hover slide to expose — only the gradient's own soft edge is
+          ever visible. Hover: the fade slides left (never fully clears),
+          SELECT fades in large/capitalized, shadow lifts, no translateY.
+          The description no longer truncates to 2 lines — it wraps, with
+          up to ~2/3 of the row's width to do it in. Edit/Delete are gone
+          from the row; CampaignDetail covers both once a Campaign is open,
+          and its hero now also shows `coverImage` the same way (full-bleed
+          art + a literal-dark scrim, same reasoning as the row's).
         - Party tab is collapsible (PartyRoster, defaults open). Tile SHAPE
-          is unchanged from today (no box, no radius, same header/notes/
-          trackables layout) — a member's optional `portraitImage` only
+          is unchanged from today — a member's optional `portraitImage`
           adds MemberBackdrop behind that unchanged content: a tall image
-          centers and fades both sides into the page background, a wide
-          one fills the tile. Edit/Delete use the ethereal pair style on a
-          frosted chip for legibility over art. No image = pixel-identical
-          to before.
-        - Known gap: CampaignDetail's own hero banner (once you've opened a
-          Campaign) still only uses the colorHex gradient, not coverImage —
-          out of scope for this pass, not yet asked for.
+          centers and fades both sides toward the page background (now
+          via `color-mix()` so the edges stay partly see-through instead
+          of a flat wall), a wide one fills the tile. A subtle blurred
+          strip sits behind HP/Stress specifically (not the name/notes)
+          for readability. Edit/Delete use the ethereal pair style, now
+          full tile height via `actionsLayout="full-height"`, on a frosted
+          chip for legibility over art. No image = pixel-identical to
+          before.
+        - ImageUploadField restyled to match the rest of the app: the
+          native `<input type="file">` is visually hidden and triggered by
+          a bordered "Choose Image" button (same idiom as
+          `.party-roster__add`), with a dashed placeholder box (matching
+          `.campaign-row--hollow`'s "empty slot" look) before anything's
+          chosen.
+        - Open question, not yet built: "the Campaign image should
+          translate into the selected Campaign" — I read this as "the
+          image should carry over" and implemented that (CampaignDetail's
+          hero now shows it too), but if a literal animated handoff (the
+          image visually moving from the gallery row into the hero as you
+          open it) is what's wanted, that's a bigger feature — worth its
+          own scoping/mockup pass rather than guessing at, given what a
+          real shared-element transition costs to build correctly across
+          CampaignsPage's list/detail swap.
 
       e2e debt from this pass (not yet done — fast-iteration UX pass, come
       back before cutting a release):
@@ -53,13 +82,26 @@ scratch list for planning the next pass of work.
           e2e/sessions.spec.ts, e2e/carryForward.spec.ts, e2e/music.spec.ts —
           mostly their shared "create a Campaign" setup helpers.
           `.campaign-grid` → `.campaign-list` (CampaignsPage.css) too.
+          (Checked: CampaignDetail's own hero selectors — `.campaign-detail__level`,
+          `.campaign-detail__title`, `.campaign-detail__hero-action--danger`,
+          `.campaign-detail__back` — are untouched by the new art/scrim/content
+          wrapper, all class-based, no direct-child assumptions. Those are fine.)
         - campaignBanner.spec.ts specifically will need rework beyond
           selectors: it likely asserts Edit/Delete behavior straight from
           the gallery, which no longer exists there.
-        - New coverage worth adding, not just fixing: PartyRoster's
-          collapse (open by default, toggle hides/unmounts the list),
-          CampaignForm/PartyMemberForm's new image upload field round-
-          tripping through the store, MemberBackdrop's orientation pick.
+        - New coverage worth adding, not just fixing:
+            - PartyRoster's collapse (open by default, toggle hides/unmounts).
+            - CampaignForm/PartyMemberForm's image upload round-tripping
+              through the store (pick a file -> preview -> save -> reload
+              shows it; Remove clears it).
+            - MemberBackdrop's orientation pick (tall vs wide image).
+            - ContentCard's `actionsLayout="full-height"` rendering actions
+              outside the header — checked, not actually a risk: every
+              existing e2e use of Edit/Delete goes through
+              `getByRole('button', { name: 'Edit' | 'Delete' })` (accessible
+              name, unaffected by moving the button in the DOM or wrapping
+              its label in a `<span>`), never the `.content-card__action`
+              class directly or a header-scoped selector.
         - `coverImage`/`portraitImage` are raw data: URLs saved straight
           into store.json (no size cap, no managed directory like Music's
           imports) — fine for iterating on the UX, but worth hardening

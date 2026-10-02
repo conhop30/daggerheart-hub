@@ -116,6 +116,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+.image-upload-field__label {
   font-size: 0.85rem;
   color: var(--muted);
 }
@@ -126,12 +129,22 @@
   gap: var(--space-2);
 }
 
-.image-upload-field__preview {
+.image-upload-field__preview,
+.image-upload-field__placeholder {
   width: 54px;
   height: 54px;
+  flex-shrink: 0;
+}
+
+.image-upload-field__preview {
   object-fit: cover;
   border: 1px solid var(--hairline);
-  flex-shrink: 0;
+}
+
+/* Matches campaign-row--hollow's "empty slot" idiom — a dashed box reads
+   as "nothing uploaded yet" without needing its own icon or copy. */
+.image-upload-field__placeholder {
+  border: 2px dashed var(--hairline);
 }
 
 .image-upload-field__controls {
@@ -141,11 +154,32 @@
   flex-wrap: wrap;
 }
 
-.image-upload-field input[type='file'] {
-  border: none;
-  padding: 0;
-  color: var(--ink-dim, var(--muted));
-  font-size: 0.82rem;
+/* The native input is never shown directly — .image-upload-field__choose
+   triggers it via a ref click, same as every other control here being
+   custom-styled rather than left as OS chrome. */
+.image-upload-field__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.image-upload-field__choose {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--hope);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+  white-space: nowrap;
+  transition: border-color 200ms var(--ease);
+}
+
+.image-upload-field__choose:hover {
+  border-color: var(--hope);
 }
 
 .image-upload-field__clear {

@@ -112,18 +112,26 @@
   color: #ffffff;
 }
 
+/* A subtle frosted strip behind HP/Stress specifically — the steppers'
+   numbers are the thing most worth protecting from a busy image, without
+   blurring the name/notes above them too. */
 .party-roster__member--photo .party-roster__trackables {
   border-top-color: rgba(255, 255, 255, 0.25);
+  background: rgba(20, 18, 27, 0.22);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 /* A light frosted chip behind Edit/Delete so they stay legible over
    whatever's in the photo, without putting a border back on the buttons
-   themselves. */
+   themselves. Full-height now (ContentCard's actionsLayout="full-height"),
+   so a modest rounded-rect radius reads better than the old pill shape
+   would stretched this tall. */
 .party-roster__member--photo .content-card__actions {
   background: rgba(20, 18, 27, 0.4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
 }
 
 .party-roster__member--photo .content-card__action {

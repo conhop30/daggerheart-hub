@@ -156,7 +156,12 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
                     className={`party-roster__member${member.portraitImage ? ' party-roster__member--photo' : ''}`}
                   >
                     {member.portraitImage && <MemberBackdrop image={member.portraitImage} />}
-                    <ContentCard title={member.name} onEdit={() => setEditingId(member.id)} onDelete={() => handleDelete(member)}>
+                    <ContentCard
+                      title={member.name}
+                      onEdit={() => setEditingId(member.id)}
+                      onDelete={() => handleDelete(member)}
+                      actionsLayout="full-height"
+                    >
                       {member.notes && <p className="party-roster__notes">{member.notes}</p>}
                       {member.trackables.length > 0 && (
                         <div className="party-roster__trackables">

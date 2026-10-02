@@ -18,6 +18,16 @@ interface ContentCardProps {
   onDelete?: () => void;
   /** Overrides the onDelete button's label — e.g. "Remove" for a session tile where nothing is actually destroyed. Defaults to "Delete". */
   deleteLabel?: string;
+  /**
+   * 'inline' (default): Edit/Delete sit in the title row, sized to it — right
+   * for most lists (Sessions, Adversaries, Equipment, ...) where a card can
+   * run long with meta/features/etc. below the header.
+   * 'full-height': Edit/Delete instead form a column spanning the card's
+   * entire height, edge to edge — for short, uniform tiles (PartyRoster)
+   * where that reads as intentional instead of a button stretched past
+   * unrelated content.
+   */
+  actionsLayout?: 'inline' | 'full-height';
   children?: ReactNode;
 }
 
@@ -26,33 +36,40 @@ interface ContentCardProps {
 // this pass is closing the write-only gap, not building the fully designed
 // galleries the spec describes for later.
 export const ContentCard = forwardRef<HTMLDivElement, ContentCardProps>(function ContentCard(
-  { title, className, titleNode, accent, meta, onEdit, editLabel, onDelete, deleteLabel, children },
+  { title, className, titleNode, accent, meta, onEdit, editLabel, onDelete, deleteLabel, actionsLayout = 'inline', children },
   ref
 ) {
+  const actions = (onEdit || onDelete) && (
+    <div className="content-card__actions">
+      {onEdit && (
+        <button type="button" className="content-card__action" onClick={onEdit}>
+          <span>{editLabel ?? 'Edit'}</span>
+        </button>
+      )}
+      {onDelete && (
+        <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
+          <span>{deleteLabel ?? 'Delete'}</span>
+        </button>
+      )}
+    </div>
+  );
+  const fullHeight = actionsLayout === 'full-height';
+
   return (
-    <div ref={ref} className={className ? `content-card ${className}` : 'content-card'}>
+    <div
+      ref={ref}
+      className={`content-card${fullHeight ? ' content-card--actions-full' : ''}${className ? ` ${className}` : ''}`}
+    >
       {accent && <span className="content-card__swatch" style={{ background: accent }} aria-hidden="true" />}
       <div className="content-card__body">
         <div className="content-card__header">
           {titleNode ?? <h3 className="content-card__title">{title}</h3>}
-          {(onEdit || onDelete) && (
-            <div className="content-card__actions">
-              {onEdit && (
-                <button type="button" className="content-card__action" onClick={onEdit}>
-                  <span>{editLabel ?? 'Edit'}</span>
-                </button>
-              )}
-              {onDelete && (
-                <button type="button" className="content-card__action content-card__action--danger" onClick={onDelete}>
-                  <span>{deleteLabel ?? 'Delete'}</span>
-                </button>
-              )}
-            </div>
-          )}
+          {!fullHeight && actions}
         </div>
         {meta && <div className="content-card__meta">{meta}</div>}
         {children}
       </div>
+      {fullHeight && actions}
     </div>
   );
 });

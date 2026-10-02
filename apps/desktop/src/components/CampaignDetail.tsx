@@ -69,22 +69,31 @@ export default function CampaignDetail({
           />
         </div>
       ) : (
-        <div className="campaign-detail__hero" style={{ background: gradientForColor(campaign.colorHex) }}>
-          <div className="campaign-detail__hero-actions">
-            <button type="button" className="campaign-detail__hero-action" onClick={() => setEditing(true)}>
-              Edit Campaign
-            </button>
-            <button
-              type="button"
-              className="campaign-detail__hero-action campaign-detail__hero-action--danger"
-              onClick={handleDelete}
-            >
-              Delete Campaign
-            </button>
+        <div
+          className="campaign-detail__hero"
+          style={!campaign.coverImage ? { background: gradientForColor(campaign.colorHex) } : undefined}
+        >
+          {campaign.coverImage && (
+            <div className="campaign-detail__art" style={{ backgroundImage: `url(${campaign.coverImage})` }} />
+          )}
+          <div className="campaign-detail__scrim" />
+          <div className="campaign-detail__content">
+            <div className="campaign-detail__hero-actions">
+              <button type="button" className="campaign-detail__hero-action" onClick={() => setEditing(true)}>
+                Edit Campaign
+              </button>
+              <button
+                type="button"
+                className="campaign-detail__hero-action campaign-detail__hero-action--danger"
+                onClick={handleDelete}
+              >
+                Delete Campaign
+              </button>
+            </div>
+            <span className="campaign-detail__level">Party Level {campaign.level}</span>
+            <h1 className="campaign-detail__title">{campaign.name}</h1>
+            {campaign.notes && <p className="campaign-detail__notes">{campaign.notes}</p>}
           </div>
-          <span className="campaign-detail__level">Party Level {campaign.level}</span>
-          <h1 className="campaign-detail__title">{campaign.name}</h1>
-          {campaign.notes && <p className="campaign-detail__notes">{campaign.notes}</p>}
         </div>
       )}
 

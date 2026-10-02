@@ -33,12 +33,21 @@
   background: rgba(20, 18, 27, 0.45);
 }
 
-/* The transparent middle lets the portrait show through; var(--void) on
-   both sides fades it back into the page rather than ending in a hard
-   edge. background-color (not a 3rd gradient stop) is what tints that
-   transparent middle, since a plain color can't be one layer in a
-   multi-stop background-image list. */
+/* The transparent middle lets the portrait show through; a mostly-(not
+   fully-)opaque var(--void) on both sides fades it back into the page
+   rather than ending in a hard edge — color-mix keeps it reactive to
+   theme (unlike a literal rgba, var(--void) itself differs light vs
+   dark) while still letting a hint of the image bleed through at the
+   very edge instead of a flat wall. background-color (not a 3rd gradient
+   stop) is what tints the transparent middle, since a plain color can't
+   be one layer in a multi-stop background-image list. */
 .member-backdrop--portrait .member-backdrop__scrim {
-  background-image: linear-gradient(to right, var(--void) 0%, rgba(20, 18, 27, 0) 32%, rgba(20, 18, 27, 0) 68%, var(--void) 100%);
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--void) 72%, transparent) 0%,
+    rgba(20, 18, 27, 0) 32%,
+    rgba(20, 18, 27, 0) 68%,
+    color-mix(in srgb, var(--void) 72%, transparent) 100%
+  );
   background-color: rgba(20, 18, 27, 0.45);
 }

@@ -21,10 +21,35 @@
 
 .campaign-detail__hero {
   position: relative;
+  overflow: hidden;
   border-radius: var(--radius-card);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
   box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* Carries the Campaign's cover image (set on CampaignBanner's row) into
+   its detail view — same art/scrim idea as the gallery row, full-bleed so
+   there's no hard image edge for the gradient to expose. */
+.campaign-detail__art {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Literal dark color, not var(--panel)/var(--void) — this hero always
+   carries white text over its own gradient/photo, in both themes, same
+   reasoning as CampaignBanner's scrim. */
+.campaign-detail__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(30, 26, 40, 0.88) 0%, rgba(30, 26, 40, 0.5) 55%, rgba(30, 26, 40, 0.3) 100%);
+}
+
+.campaign-detail__content {
+  position: relative;
+  z-index: 1;
 }
 
 .campaign-detail__level {
