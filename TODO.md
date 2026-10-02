@@ -4,9 +4,23 @@ Working backlog of feedback and small fixes not yet acted on. Not
 interviewer-facing (see README's Feature Roadmap for that) — this is a
 scratch list for planning the next pass of work.
 
-- [ ] Add a set of selectable themes beyond the current Light/Dark/System
-      choice — each theme should be able to change things like the Fear
-      tracker's token colors and backgrounds, not just light-vs-dark.
+- [x] Add a set of selectable themes beyond the current Light/Dark/System
+      choice — landed as Settings > Color Theme (PaletteContext,
+      [data-palette] on <html>), a second axis independent of Light/Dark:
+      Ember (default, zero-config), Abyss, Verdant, Frost, plus two
+      colorblind-safe themes built on the Okabe-Ito palette (red-green for
+      deuteranopia/protanopia, blue-yellow for tritanopia — different CVD
+      axes need different safe pairs, not one "colorblind mode"). Swaps
+      only the Hope/Fear accent pair (and -dim/-on-dark text-role
+      variants) everywhere that already reads off those tokens — Fear
+      Track, Hope/Fear buttons, etc. — never --void/--panel/--ink, so every
+      surface still reads as "this app." Each non-Ember role color is WCAG
+      contrast-verified (>=4.5:1 for text roles) against both dark and
+      light surfaces, same discipline as Ember's own existing tokens.css
+      comment. Domain colors are untouched — those are per-Domain user
+      data (`colorHex`), not part of the app chrome theme. Picked via
+      mockup round: https://claude.ai/artifact/HPufwdLh7ZyVBajTVH2EcM
+      (board 2) — all 6 approved as-is.
 - [x] Redesign the Campaign launch process (creating/opening a Campaign for
       the first time) — this is the Campaign/Party remodel entry below
       (full-row CampaignBanner with cover images, the ethereal button-pair
