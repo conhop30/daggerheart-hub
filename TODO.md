@@ -38,10 +38,30 @@ scratch list for planning the next pass of work.
          expected shape), AdversariesEnvironmentsPage.tsx, HeritagePage.tsx,
          OptionalMechanicsPage.tsx. `npx tsc --noEmit -p .` and `npm test`
          (227 tests) both clean.
-      3. **Split `EquipmentPage.tsx`** (6 entity types in one component —
-         "Weak" cohesion) into one sub-component per entity type. Now that
-         #2 landed and removed most of the duplicated state/handlers, this
-         should be a much smaller job.
+      3. [x] **Split `EquipmentPage.tsx`** — 627 lines down to a 118-line
+         composer; each entity type now owns its own file
+         (`components/WeaponsSection.tsx`, `ArmorSection.tsx`,
+         `LootSection.tsx`, `ConsumablesSection.tsx`,
+         `LootTablesSection.tsx`, `ConsumableTablesSection.tsx`), plus a
+         small `EquipmentCards.tsx` for the two memoized card shapes shared
+         across two entity types each (`NameDescriptionCard`, `TableCard`).
+         Weapons/Armor are fully self-contained (own `useApiList`/
+         `useEntityActions`/filters/creating-state — nothing else on the
+         page reads their data). Loot/Consumables take their `useApiList`
+         result as a prop because the matching Table type's drill-in
+         (still page-level — see below) needs `loot.items`/
+         `consumables.items` as its rollable-entry picker list.
+         LootTables/ConsumableTables take both their list and
+         `useEntityActions` result as props because EquipmentPage itself
+         needs `actions.editingItem` to decide the full-page swap to
+         TableDetail — deliberately NOT changed to a per-section swap, to
+         keep this a pure structural refactor with zero behavior change.
+         Verified: `npx tsc --noEmit -p .` clean, `npm test` (227 tests)
+         green, and e2e `equipmentTables.spec.ts` (3 tests) +
+         `app.spec.ts` + `sessions.spec.ts` (25 tests, cover the other two
+         paths that touch this page) all green — not the full suite, since
+         the TODO's own note below says to hold that for once all four
+         findings land.
       4. **Unify the four list-editor components** — `FeatureListEditor`,
          `StringListEditor`, `FoundationFeatureListEditor`, and
          `ExperienceListEditor` each independently reimplement identical
