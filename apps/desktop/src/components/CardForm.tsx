@@ -3,6 +3,8 @@ import type { FormEvent } from 'react';
 import { cardsApi, type Card, type CardType } from '../api/cards';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
+import SelectField from './SelectField';
 import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
@@ -65,23 +67,17 @@ export default function CardForm({ domainId, defaultGameSetId, initial, onSaved,
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Card'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <div className="create-form__row">
-        <label>
-          Type
-          <select value={type} onChange={(e) => setType(e.target.value as CardType)}>
-            {CARD_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {titleCaseEnum(t)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField label="Type" value={type} onChange={(v) => setType(v as CardType)}>
+          {CARD_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {titleCaseEnum(t)}
+            </option>
+          ))}
+        </SelectField>
         <TextField label="Level" type="number" value={level} onChange={setLevel} min={1} />
       </div>
       <TextField label="Recall Cost" type="number" value={recallCost} onChange={setRecallCost} min={0} />
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-      </label>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <TextField label="Image URL" value={imagePath} onChange={setImagePath} placeholder="Optional card art" />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}

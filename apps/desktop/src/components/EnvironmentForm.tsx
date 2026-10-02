@@ -6,6 +6,8 @@ import type { FeatureSections } from '../lib/featureKinds';
 import StringListEditor from './StringListEditor';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
+import SelectField from './SelectField';
 import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
@@ -68,21 +70,15 @@ export default function EnvironmentForm({ initial, onSaved, onCancel }: Environm
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Environment'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Category
-        <select value={category} onChange={(e) => setCategory(e.target.value as EnvironmentCategory | '')}>
-          <option value="">Not yet chosen</option>
-          {ENVIRONMENT_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {titleCaseEnum(c)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
+      <SelectField label="Category" value={category} onChange={(v) => setCategory(v as EnvironmentCategory | '')}>
+        <option value="">Not yet chosen</option>
+        {ENVIRONMENT_CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {titleCaseEnum(c)}
+          </option>
+        ))}
+      </SelectField>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <div className="create-form__row">
         <TextField label="Tier" type="number" value={tier} onChange={setTier} min={1} />
         <TextField label="Difficulty" type="number" value={difficulty} onChange={setDifficulty} min={0} />

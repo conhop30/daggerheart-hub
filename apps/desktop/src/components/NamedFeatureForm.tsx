@@ -4,6 +4,7 @@ import type { Feature } from '../api/heroClasses';
 import FeatureListEditor from './FeatureListEditor';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
 import './forms.css';
 
 interface NamedFeatureRecord {
@@ -72,10 +73,7 @@ export default function NamedFeatureForm<T extends NamedFeatureRecord>({
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : `New ${title}`}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <FeatureListEditor label="Features" features={features} onChange={setFeatures} />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}

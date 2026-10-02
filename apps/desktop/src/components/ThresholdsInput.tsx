@@ -1,3 +1,5 @@
+import NumberInput from './NumberInput';
+
 export interface Thresholds {
   major: number | null;
   severe: number | null;
@@ -14,18 +16,18 @@ export default function ThresholdsInput({ value, onChange }: ThresholdsInputProp
     <div className="create-form__row">
       <label>
         Major Threshold
-        <input
-          type="number"
+        <NumberInput
           value={value.major ?? ''}
-          onChange={(e) => onChange({ ...value, major: e.target.value === '' ? null : Number(e.target.value) })}
+          min={0}
+          onChange={(raw) => onChange({ ...value, major: raw === '' ? null : Number(raw) })}
         />
       </label>
       <label>
         Severe Threshold
-        <input
-          type="number"
+        <NumberInput
           value={value.severe ?? ''}
-          onChange={(e) => onChange({ ...value, severe: e.target.value === '' ? null : Number(e.target.value) })}
+          min={0}
+          onChange={(raw) => onChange({ ...value, severe: raw === '' ? null : Number(raw) })}
         />
       </label>
     </div>

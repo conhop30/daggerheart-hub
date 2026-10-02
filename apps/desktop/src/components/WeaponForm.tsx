@@ -3,6 +3,8 @@ import type { FormEvent } from 'react';
 import { weaponsApi, type Burden, type DamageType, type Weapon, type WeaponSlot, type WeaponTrait } from '../api/weapons';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
+import SelectField from './SelectField';
 import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
@@ -74,46 +76,35 @@ export default function WeaponForm({ weaponSlot, initial, onSaved, onCancel }: W
         <TextField label="Tier" type="number" value={tier} onChange={setTier} min={1} />
         <TextField label="Damage" value={damage} onChange={setDamage} placeholder="e.g. d8+3" />
       </div>
-      <label>
-        Feature
-        <textarea value={feature} onChange={(e) => setFeature(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Feature" value={feature} onChange={setFeature} />
       <div className="create-form__row">
-        <label>
-          Burden
-          <select
-            value={isSecondary ? 'ONE_HANDED' : burden}
-            onChange={(e) => setBurden(e.target.value as Burden)}
-            disabled={isSecondary}
-            title={isSecondary ? 'Secondary weapons are always One-Handed' : undefined}
-          >
-            <option value="ONE_HANDED">One-Handed</option>
-            <option value="TWO_HANDED">Two-Handed</option>
-          </select>
-        </label>
-        <label>
-          Trait
-          <select value={trait} onChange={(e) => setTrait(e.target.value as WeaponTrait | '')}>
-            <option value="">Not yet chosen</option>
-            {TRAITS.map((t) => (
-              <option key={t} value={t}>
-                {titleCaseEnum(t)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <label>
-        Damage Type
-        <select value={damageType} onChange={(e) => setDamageType(e.target.value as DamageType | '')}>
+        <SelectField
+          label="Burden"
+          value={isSecondary ? 'ONE_HANDED' : burden}
+          onChange={(v) => setBurden(v as Burden)}
+          disabled={isSecondary}
+          title={isSecondary ? 'Secondary weapons are always One-Handed' : undefined}
+        >
+          <option value="ONE_HANDED">One-Handed</option>
+          <option value="TWO_HANDED">Two-Handed</option>
+        </SelectField>
+        <SelectField label="Trait" value={trait} onChange={(v) => setTrait(v as WeaponTrait | '')}>
           <option value="">Not yet chosen</option>
-          {DAMAGE_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {titleCaseEnum(type)}
+          {TRAITS.map((t) => (
+            <option key={t} value={t}>
+              {titleCaseEnum(t)}
             </option>
           ))}
-        </select>
-      </label>
+        </SelectField>
+      </div>
+      <SelectField label="Damage Type" value={damageType} onChange={(v) => setDamageType(v as DamageType | '')}>
+        <option value="">Not yet chosen</option>
+        {DAMAGE_TYPES.map((type) => (
+          <option key={type} value={type}>
+            {titleCaseEnum(type)}
+          </option>
+        ))}
+      </SelectField>
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">

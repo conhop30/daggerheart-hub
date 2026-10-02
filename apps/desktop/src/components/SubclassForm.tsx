@@ -11,6 +11,7 @@ import FeatureListEditor from './FeatureListEditor';
 import FoundationFeatureListEditor from './FoundationFeatureListEditor';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import SelectField from './SelectField';
 import './forms.css';
 
 interface SubclassFormProps {
@@ -92,17 +93,18 @@ export default function SubclassForm({
       </h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <TextField label="One-liner" value={oneliner} onChange={setOneliner} />
-      <label>
-        Spellcast Trait
-        <select value={spellcastTrait} onChange={(e) => setSpellcastTrait(e.target.value as SpellcastTrait | '')}>
-          <option value="">Not yet chosen</option>
-          {SPELLCAST_TRAITS.map((trait) => (
-            <option key={trait} value={trait}>
-              {trait === 'NONE' ? 'None (actually has no spellcast trait)' : trait}
-            </option>
-          ))}
-        </select>
-      </label>
+      <SelectField
+        label="Spellcast Trait"
+        value={spellcastTrait}
+        onChange={(v) => setSpellcastTrait(v as SpellcastTrait | '')}
+      >
+        <option value="">Not yet chosen</option>
+        {SPELLCAST_TRAITS.map((trait) => (
+          <option key={trait} value={trait}>
+            {trait === 'NONE' ? 'None (actually has no spellcast trait)' : trait}
+          </option>
+        ))}
+      </SelectField>
       <FoundationFeatureListEditor features={foundationFeatures} onChange={setFoundationFeatures} />
       <FeatureListEditor
         label="Specialization Features"

@@ -5,6 +5,8 @@ import { heroClassesApi, type Feature, type HeroClass } from '../api/heroClasses
 import FeatureListEditor from './FeatureListEditor';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
+import SelectField from './SelectField';
 import './forms.css';
 
 interface ClassFormProps {
@@ -84,31 +86,22 @@ export default function ClassForm({ domains, initial, onSaved, onCancel }: Class
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Class'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <div className="create-form__row">
-        <label>
-          Primary Domain
-          <select value={primaryDomainId} onChange={(e) => setPrimaryDomainId(e.target.value)}>
-            {domains.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Secondary Domain
-          <select value={secondaryDomainId} onChange={(e) => setSecondaryDomainId(e.target.value)}>
-            {domains.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField label="Primary Domain" value={primaryDomainId} onChange={setPrimaryDomainId}>
+          {domains.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField label="Secondary Domain" value={secondaryDomainId} onChange={setSecondaryDomainId}>
+          {domains.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </SelectField>
       </div>
       <div className="create-form__row">
         <TextField
@@ -120,14 +113,8 @@ export default function ClassForm({ domains, initial, onSaved, onCancel }: Class
         />
         <TextField label="Starting HP" type="number" value={startingHp} onChange={setStartingHp} min={0} />
       </div>
-      <label>
-        Class Items
-        <textarea value={classItems} onChange={(e) => setClassItems(e.target.value)} rows={2} />
-      </label>
-      <label>
-        Hope Feature
-        <textarea value={hopeFeature} onChange={(e) => setHopeFeature(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Class Items" value={classItems} onChange={setClassItems} />
+      <TextAreaField label="Hope Feature" value={hopeFeature} onChange={setHopeFeature} />
       <FeatureListEditor label="Class Features" features={classFeatures} onChange={setClassFeatures} />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}

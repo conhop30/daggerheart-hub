@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
 import ImageUploadField from './ImageUploadField';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
 import './forms.css';
 
 interface CampaignFormProps {
@@ -42,10 +43,7 @@ export default function CampaignForm({ initial, onSaved, onCancel }: CampaignFor
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Campaign'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Notes
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Notes" value={notes} onChange={setNotes} />
       <TextField label="Party Level" type="number" value={level} onChange={setLevel} min={1} />
       <label className="create-form__color">
         Color

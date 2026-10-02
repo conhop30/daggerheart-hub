@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { domainsApi, type Domain } from '../api/domains';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
 import './forms.css';
 
 interface DomainFormProps {
@@ -45,10 +46,7 @@ export default function DomainForm({ initial, onSaved, onCancel }: DomainFormPro
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Domain'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <label className="create-form__color">
         Color
         <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)} />

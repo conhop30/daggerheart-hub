@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
 import './forms.css';
 
 interface NameDescriptionRecord {
@@ -67,10 +68,7 @@ export default function SimpleNameDescriptionForm<T extends NameDescriptionRecor
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : `New ${title}`}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">

@@ -1,5 +1,6 @@
 import type { ChangeEvent, InputHTMLAttributes } from 'react';
-import './TextField.css';
+import TextFieldFrame from './TextFieldFrame';
+import NumberInput from './NumberInput';
 
 interface TextFieldProps {
   label: string;
@@ -11,12 +12,6 @@ interface TextFieldProps {
   min?: InputHTMLAttributes<HTMLInputElement>['min'];
 }
 
-// The reference text-input pattern for the whole app: a neutral uppercase
-// label above a field whose only resting border is the curved bevel on the
-// left. Focusing the field grows a Hope-gold line along the top and a
-// Fear-violet line along the bottom out from that bevel; blurring retracts
-// them the same way. All of the actual animation lives in TextField.css —
-// this component just renders the markup and wires the label to the input.
 export default function TextField({
   label,
   value,
@@ -31,19 +26,26 @@ export default function TextField({
   }
 
   return (
-    <label className="text-field">
-      <span className="text-field__label">{label}</span>
-      <span className="text-field__frame">
+    <TextFieldFrame label={label}>
+      {type === 'number' ? (
+        <NumberInput
+          className="text-field__input"
+          value={value}
+          onChange={onChange}
+          min={min}
+          placeholder={placeholder ?? label}
+          required={required}
+        />
+      ) : (
         <input
           className="text-field__input"
-          type={type}
+          type="text"
           value={value}
           onChange={handleChange}
-          placeholder={placeholder}
+          placeholder={placeholder ?? label}
           required={required}
-          min={min}
         />
-      </span>
-    </label>
+      )}
+    </TextFieldFrame>
   );
 }

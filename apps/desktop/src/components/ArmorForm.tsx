@@ -4,6 +4,7 @@ import { armorsApi, type Armor } from '../api/armors';
 import ThresholdsInput, { type Thresholds } from './ThresholdsInput';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
 import './forms.css';
 
 interface ArmorFormProps {
@@ -60,10 +61,7 @@ export default function ArmorForm({ initial, onSaved, onCancel }: ArmorFormProps
         <TextField label="Base Score" type="number" value={baseScore} onChange={setBaseScore} min={0} />
       </div>
       <ThresholdsInput value={thresholds} onChange={setThresholds} />
-      <label>
-        Feature
-        <textarea value={feature} onChange={(e) => setFeature(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Feature" value={feature} onChange={setFeature} />
       <GameSetSelect value={gameSetId} onChange={setGameSetId} />
       {error && <p className="create-form__error">{error}</p>}
       <div className="create-form__actions">

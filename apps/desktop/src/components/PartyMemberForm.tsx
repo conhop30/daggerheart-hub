@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { partyMembersApi, type PartyMember, type Trackable } from '../api/partyMembers';
 import ImageUploadField from './ImageUploadField';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
 import TrackableEditor from './TrackableEditor';
 import './forms.css';
 
@@ -46,10 +47,7 @@ export default function PartyMemberForm({ campaignId, sessionId, initial, onSave
     <form className="create-form" onSubmit={submit}>
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Party Member'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
-      <label>
-        Notes
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Notes" value={notes} onChange={setNotes} />
       <TrackableEditor trackables={trackables} onChange={setTrackables} />
       <ImageUploadField
         label="Portrait"

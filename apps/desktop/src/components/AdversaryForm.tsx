@@ -8,6 +8,8 @@ import ExperienceListEditor, { type Experience } from './ExperienceListEditor';
 import ThresholdsInput, { type Thresholds } from './ThresholdsInput';
 import GameSetSelect from './GameSetSelect';
 import TextField from './TextField';
+import TextAreaField from './TextAreaField';
+import SelectField from './SelectField';
 import { titleCaseEnum } from '../lib/format';
 import './forms.css';
 
@@ -98,17 +100,14 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Adversary'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <div className="create-form__row">
-        <label>
-          Type
-          <select value={type} onChange={(e) => setType(e.target.value as AdversaryType | '')}>
-            <option value="">Not yet chosen</option>
-            {ADVERSARY_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {titleCaseEnum(t)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField label="Type" value={type} onChange={(v) => setType(v as AdversaryType | '')}>
+          <option value="">Not yet chosen</option>
+          {ADVERSARY_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {titleCaseEnum(t)}
+            </option>
+          ))}
+        </SelectField>
         <TextField
           label="Type Note"
           value={typeNote}
@@ -116,10 +115,7 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
           placeholder="e.g. (5/HP) for Horde"
         />
       </div>
-      <label>
-        Description
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </label>
+      <TextAreaField label="Description" value={description} onChange={setDescription} />
       <div className="create-form__row">
         <TextField label="Tier" type="number" value={tier} onChange={setTier} min={1} />
         <TextField label="Difficulty" type="number" value={difficulty} onChange={setDifficulty} min={0} />
@@ -137,38 +133,29 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
       </div>
       <div className="create-form__row">
         <TextField label="Attack Modifier" type="number" value={attackModifier} onChange={setAttackModifier} />
-        <label>
-          Attack Range
-          <select value={attackRange} onChange={(e) => setAttackRange(e.target.value as AttackRange | '')}>
-            <option value="">Not yet chosen</option>
-            {ATTACK_RANGES.map((range) => (
-              <option key={range} value={range}>
-                {titleCaseEnum(range)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <label>
-        Attack Type
-        <select value={attackType} onChange={(e) => setAttackType(e.target.value as AttackType | '')}>
+        <SelectField label="Attack Range" value={attackRange} onChange={(v) => setAttackRange(v as AttackRange | '')}>
           <option value="">Not yet chosen</option>
-          {ATTACK_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {titleCaseEnum(type)}
+          {ATTACK_RANGES.map((range) => (
+            <option key={range} value={range}>
+              {titleCaseEnum(range)}
             </option>
           ))}
-        </select>
-      </label>
-      <label>
-        Attack Description
-        <textarea
-          value={attackDescription}
-          onChange={(e) => setAttackDescription(e.target.value)}
-          rows={2}
-          placeholder="e.g. Cinder Blade: 1d10+2 phy"
-        />
-      </label>
+        </SelectField>
+      </div>
+      <SelectField label="Attack Type" value={attackType} onChange={(v) => setAttackType(v as AttackType | '')}>
+        <option value="">Not yet chosen</option>
+        {ATTACK_TYPES.map((type) => (
+          <option key={type} value={type}>
+            {titleCaseEnum(type)}
+          </option>
+        ))}
+      </SelectField>
+      <TextAreaField
+        label="Attack Description"
+        value={attackDescription}
+        onChange={setAttackDescription}
+        placeholder="e.g. Cinder Blade: 1d10+2 phy"
+      />
       <p className="create-form__hint">
         Just the weapon/attack line and its damage — Experience bonuses and other reminders belong in the
         Experiences list below, not here, so they show up correctly once this Adversary is pulled into a Session.

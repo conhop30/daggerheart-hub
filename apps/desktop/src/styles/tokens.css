@@ -264,11 +264,6 @@ button {
   cursor: pointer;
 }
 
-:focus-visible {
-  outline: 2px solid var(--hope);
-  outline-offset: 2px;
-}
-
 /* Shared entrance animation for content that swaps in place (a new form
    step, a newly-active tab body, etc.) — one motion signature reused
    anywhere content replaces content, instead of each component inventing

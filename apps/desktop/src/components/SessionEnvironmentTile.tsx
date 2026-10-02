@@ -3,6 +3,7 @@ import type { SessionEnvironment, UpdateSessionEnvironmentRequest } from '../api
 import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
 import { ContentCard, EditableMetaField, FeatureRowLines, MetaChip, StringLines } from './ContentCard';
+import TextAreaField from './TextAreaField';
 import './SessionTile.css';
 
 interface SessionEnvironmentTileProps {
@@ -38,14 +39,7 @@ export default function SessionEnvironmentTile({ environment, masterFeatures, on
     >
       {environment.description && <p className="content-card__description">{environment.description}</p>}
       <StringLines label="Impulses" values={environment.impulses} />
-      <label className="session-tile__notes-label">
-        Notes
-        <textarea
-          value={environment.notes ?? ''}
-          onChange={(e) => onChange({ notes: e.target.value })}
-          rows={2}
-        />
-      </label>
+      <TextAreaField label="Notes" value={environment.notes ?? ''} onChange={(notes) => onChange({ notes })} rows={2} />
       {featureRows.length > 0 && (
         <div className="session-tile__features">
           <button

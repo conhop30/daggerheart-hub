@@ -4,6 +4,7 @@ import { RARITIES, RARITY_MAX } from '../lib/lootRarity';
 import { titleCaseEnum } from '../lib/format';
 import SimpleNameDescriptionForm from './SimpleNameDescriptionForm';
 import ItemPicker from './ItemPicker';
+import NumberInput from './NumberInput';
 import './TableDetail.css';
 
 interface PickableItem {
@@ -178,13 +179,12 @@ export default function TableDetail<E extends { position: number }>({
                 .sort((a, b) => a.entry.position - b.entry.position)
                 .map(({ entry, index }) => (
                   <div key={index} className="table-detail__entry-row">
-                    <input
-                      type="number"
+                    <NumberInput
                       className="table-detail__position-input"
                       min={1}
                       max={RARITY_MAX[rarity]}
                       value={entry.position}
-                      onChange={(e) => updateEntryPosition(rarity, index, Number(e.target.value))}
+                      onChange={(raw) => updateEntryPosition(rarity, index, Number(raw))}
                       aria-label="Position"
                     />
                     <ItemPicker items={items} value={getItemId(entry)} onChange={(id) => updateEntryItem(rarity, index, id)} />

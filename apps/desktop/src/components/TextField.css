@@ -1,65 +1,133 @@
+/* Step 2: app colors/fonts only — plain rectangular field, no radius
+   tricks, no focus animation. Native focus outline left alone. */
 .text-field {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
+/* Hidden for now — the placeholder is standing in as the label while we
+   test the invisible-field look. */
 .text-field__label {
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  /* Stays neutral always — never shifts toward Hope/Fear, even on focus.
-     It's a calm anchor while the field does the reacting. */
-  color: var(--muted);
+  display: none;
 }
 
 .text-field__frame {
   position: relative;
   display: block;
-  /* The only resting border: a curved half-pill bevel on the left, nothing
-     on the other three sides. Background is fully transparent — the field
-     sits directly on whatever surface it's placed on, no boxed-in feel. */
   background: transparent;
-  border-radius: 18px 0 0 18px;
-  border-left: 2px solid var(--hairline);
-  transition: border-left-color var(--dur-field) var(--ease-field);
 }
 
+/* A single border-left can't hold two colors, so the left edge is built
+   from two stacked absolutely-positioned boxes instead — top half Hope,
+   bottom half Fear. Each box is 18px WIDE (not a 2px sliver); border-
+   radius can never exceed half a box's own width/height, so a thin 2px
+   box clamps any radius down to ~1px (invisible) — 18px gives it real
+   room to curve.
+
+   The curve only stays a CONSTANT 2px thick if both sides meeting at the
+   rounded corner share the same border width. border-left alone (with
+   border-top/bottom left at 0 width) is what caused the taper down to a
+   knife-edge tip before — a rounded corner between a 2px side and a 0px
+   side necessarily thins to 0 right at the tip. Giving the top box a
+   matching border-top (and the bottom box a matching border-bottom), same
+   2px width and same color, turns it into an ordinary rounded-corner
+   border instead — uniform thickness all the way around, same as the
+   horizontal lines below it connects into on focus. */
 .text-field__frame::before,
 .text-field__frame::after {
   content: '';
   position: absolute;
-  left: 0;
-  height: 2px;
-  width: 0;
-  /* Rounded caps on both ends so the line reads as a soft stroke growing
-     outward, not a hard-edged bar being wiped in. */
-  border-radius: 999px;
-  transition: width var(--dur-field) var(--ease-field);
+  left: -1px;
+  width: 18px;
+  height: 50%;
 }
 
 .text-field__frame::before {
-  top: -1px;
-  background: var(--hope);
+  top: 0;
+  border-left: 2px solid var(--hope);
+  border-top: 2px solid var(--hope);
+  border-top-left-radius: 999px;
 }
 
 .text-field__frame::after {
-  bottom: -1px;
-  background: var(--fear);
+  bottom: 0;
+  border-left: 2px solid var(--fear);
+  border-bottom: 2px solid var(--fear);
+  border-bottom-left-radius: 999px;
 }
 
-.text-field__frame:focus-within {
-  border-left-color: var(--hope);
+/* A pentagon (a d12's actual face — the Dice Tray's own d12 icon in
+   diceShapes.ts uses the same point-up pentagon silhouette) sitting right
+   at the seam, in place of the gradient. Outline only, no fill — the two
+   polylines (in the markup) carry the Hope/Fear split, not any CSS
+   background/clip-path here. Needs a real element (not a third
+   pseudo-element — only two are available, and both are already the
+   curved halves), raised above them with z-index since ::after paints on
+   top of it otherwise. */
+.text-field__seam {
+  position: absolute;
+  z-index: 1;
+  left: -7px;
+  top: calc(50% - 7px);
+  height: 14px;
+  width: 14px;
+  pointer-events: none;
 }
 
-.text-field__frame:focus-within::before,
-.text-field__frame:focus-within::after {
-  width: 100%;
+/* On focus, a Hope line slides out along the top and a Fear line along
+   the bottom — stopping short of the right edge on purpose (65%, not
+   100%) so they never connect to each other or to anything on the right;
+   it should read as two lines reaching out, not a box closing. */
+.text-field__line {
+  position: absolute;
+  left: 17px;
+  height: 2px;
+  width: 0;
+  pointer-events: none;
+  transition: width var(--dur-field) var(--ease-field);
+  /* Rounds the line's start (and tip) into a soft cap instead of a flat,
+     perpendicular cut — that flat cut meeting the curve's rounded arc is
+     what was reading as a hard edge/notch right where they connect. */
+  border-radius: 999px;
 }
 
-.text-field__input {
+.text-field__line--top {
+  /* The curve box's border-top is drawn inward from its own top edge
+     (top: 0 on that box), occupying y ∈ [0, 2] — this needs to match
+     exactly, not sit a px above/below it. */
+  top: 0;
+  /* The curve reads slightly darker than a flat solid fill because its
+     anti-aliased edge pixels blend with the (transparent, so effectively
+     page-background) color behind them. Rather than reshaping the curve,
+     mix a bit of that same background into the straight line's color so
+     the two match instead. */
+  background: color-mix(in srgb, var(--hope) 85%, var(--void) 15%);
+}
+
+.text-field__line--bottom {
+  bottom: 0;
+  background: color-mix(in srgb, var(--fear) 85%, var(--void) 15%);
+}
+
+/* Same transition duration on both (set once, on .text-field__line above)
+   — only the target width differs, so Top covers half the distance in
+   that same time and necessarily moves slower, resolving askew from
+   Bottom rather than in lockstep with it. */
+.text-field__frame:focus-within .text-field__line--top {
+  width: 32.5%;
+}
+
+.text-field__frame:focus-within .text-field__line--bottom {
+  width: 65%;
+}
+
+/* Scoped under .text-field (not just .text-field__input alone) so this
+   outranks forms.css's generic ".create-form input" rule, which is one
+   class + one element type — more specific than a single class, so it was
+   winning over a plain ".text-field__input { border: none }" regardless
+   of file order. Two classes beats one class + one type. */
+.text-field .text-field__input {
   display: block;
   width: 100%;
   box-sizing: border-box;
@@ -70,6 +138,53 @@
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 0.95rem;
+  /* Only applies to <textarea> — a no-op on <input>/<select>. */
+  resize: vertical;
+}
+
+/* 3 lines at this line-height, plus the field's own top/bottom padding
+   (0.7rem each) — a floor a drag-resize can't go under, so the field
+   can't be shrunk back down to "just one line," which is the whole point
+   of defaulting it bigger in the first place (see TextAreaField's own
+   rows={3} default). resize: vertical (set above, shared with input/
+   select as a no-op there) stays on — dragging from the corner still
+   works, only its look changes below. */
+.text-field textarea.text-field__input {
+  line-height: 1.4;
+  min-height: calc(3 * 1.4em + 1.4rem);
+}
+
+/* Swapped the native grey resize-grip glyph for a small muted chevron of
+   our own — background-image: none drops the browser's default icon
+   while the corner stays a real, draggable resize hotspot (resize:
+   vertical never changes), so dragging still works exactly as before,
+   just without a boxed-looking native icon sitting on bare transparency.
+   -webkit-resizer/-webkit-scrollbar* are non-standard but fine here —
+   Electron is Chromium-only, no other engine to support. */
+.text-field textarea.text-field__input::-webkit-resizer {
+  background-image: none;
+  background-color: transparent;
+  background: linear-gradient(135deg, transparent 0 45%, var(--muted) 45% 55%, transparent 55% 100%);
+}
+
+/* Stylized scrollbar instead of the OS default — a thin, borderless
+   thumb that only reads as "there's more below" rather than a chunky
+   grey channel running down the side. */
+.text-field textarea.text-field__input::-webkit-scrollbar {
+  width: 6px;
+}
+
+.text-field textarea.text-field__input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.text-field textarea.text-field__input::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 999px;
+}
+
+.text-field textarea.text-field__input::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .text-field__input::placeholder {

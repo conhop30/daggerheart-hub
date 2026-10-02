@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Trackable } from '../api/partyMembers';
+import NumberInput from './NumberInput';
 import './TrackableEditor.css';
 
 interface TrackableEditorProps {
@@ -57,13 +58,12 @@ export default function TrackableEditor({ trackables, onChange }: TrackableEdito
             value={t.label}
             onChange={(e) => updateRow(index, { label: e.target.value })}
           />
-          <input
+          <NumberInput
             className="trackable-editor__max-input"
-            type="number"
             min={0}
             value={t.max}
-            onChange={(e) => {
-              const max = Number(e.target.value);
+            onChange={(raw) => {
+              const max = Number(raw);
               updateRow(index, { max, current: Math.min(t.current, max) });
             }}
           />
@@ -94,12 +94,11 @@ export default function TrackableEditor({ trackables, onChange }: TrackableEdito
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
         />
-        <input
+        <NumberInput
           className="trackable-editor__max-input"
-          type="number"
           min={0}
           value={newMax}
-          onChange={(e) => setNewMax(Number(e.target.value))}
+          onChange={(raw) => setNewMax(Number(raw))}
         />
         <button type="button" className="trackable-editor__add" onClick={() => addRow(newLabel, newMax)}>
           Add

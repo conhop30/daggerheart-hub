@@ -1,5 +1,6 @@
 import { forwardRef, type ReactNode } from 'react';
 import { groupFeatureRows, type FeatureRow } from '../lib/featureKinds';
+import NumberInput from './NumberInput';
 import './ContentCard.css';
 
 interface ContentCardProps {
@@ -99,10 +100,9 @@ export function EditableMetaField({
   return (
     <span className="content-card__chip content-card__chip--editable">
       {label}:{' '}
-      <input
-        type="number"
+      <NumberInput
         value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+        onChange={(raw) => onChange(raw === '' ? null : Number(raw))}
         aria-label={label}
       />
     </span>
@@ -141,11 +141,10 @@ export function ModifierMetaField({
     <span className="content-card__chip content-card__chip--editable content-card__chip--modifier">
       <span>
         {label}:{' '}
-        <input
-          type="number"
+        <NumberInput
           value={modifier != null ? effective : ''}
           placeholder={String(defaultValue)}
-          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value) - defaultValue)}
+          onChange={(raw) => onChange(raw === '' ? null : Number(raw) - defaultValue)}
           aria-label={label}
         />
       </span>

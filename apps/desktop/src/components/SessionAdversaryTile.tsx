@@ -7,6 +7,7 @@ import { difficultyModifierFromConditions } from '../lib/conditions';
 import { ContentCard, FeatureRowLines, MetaChip, ModifierMetaField } from './ContentCard';
 import StatStepper from './StatStepper';
 import ConditionsEditor from './ConditionsEditor';
+import NumberInput from './NumberInput';
 import './SessionTile.css';
 
 interface SessionAdversaryTileProps {
@@ -131,19 +132,17 @@ export default function SessionAdversaryTile({
           <span className="content-card__chip content-card__chip--editable content-card__chip--modifier">
             <span>
               Thresholds:{' '}
-              <input
-                type="number"
+              <NumberInput
                 value={thresholdsModifier.major != null ? (adversary.thresholds.major ?? 0) + thresholdsModifier.major : ''}
                 placeholder={String(adversary.thresholds.major ?? '')}
-                onChange={(e) => handleThresholdChange('major', adversary.thresholds.major, e.target.value)}
+                onChange={(raw) => handleThresholdChange('major', adversary.thresholds.major, raw)}
                 aria-label="Major Threshold"
               />{' '}
               /{' '}
-              <input
-                type="number"
+              <NumberInput
                 value={thresholdsModifier.severe != null ? (adversary.thresholds.severe ?? 0) + thresholdsModifier.severe : ''}
                 placeholder={String(adversary.thresholds.severe ?? '')}
-                onChange={(e) => handleThresholdChange('severe', adversary.thresholds.severe, e.target.value)}
+                onChange={(raw) => handleThresholdChange('severe', adversary.thresholds.severe, raw)}
                 aria-label="Severe Threshold"
               />
             </span>

@@ -249,11 +249,30 @@ scratch list for planning the next pass of work.
       Foundation feature should auto-place into a foundation card" — no
       card-generation feature exists in this codebase yet (checked), so
       this has no dependency to act on.
-- [ ] Text field styling: give inputs the same curved, initially-invisible
-      border treatment Settings buttons already have, plus a focus
-      animation where color "grows" out along the top and bottom edges
-      (a responsive border extending in on focus, retracting back to just
-      the corner curve on blur).
+- [x] Text field styling: a from-scratch treatment, not a port of an
+      existing Settings-button style (the one the TODO item originally
+      pointed at didn't actually exist — see former `QUESTIONS.md` #1,
+      now resolved and removed). Resting state: a curved Hope/Fear bevel
+      on the left edge only, meeting at a pentagon badge (outline only,
+      echoing the Dice Tray's own d12 icon) where the two halves join.
+      On focus, a Hope line grows along the top and a Fear line along the
+      bottom, askew on purpose (Top covers half the distance Bottom does
+      in the same transition time). Built as one shared chrome
+      (`TextFieldFrame.tsx`) behind three typed field components —
+      `TextField` (text/number), `TextAreaField`, `SelectField` — plus a
+      standalone `NumberInput` (`lib/numberInput.ts`) that drops a native
+      `type="number"`'s spinner buttons AND its scroll/arrow-key
+      stepping, not just hides the spinners cosmetically. Applied to
+      every create/edit `*Form.tsx` component, every inline numeric chip
+      (Thresholds, Trackables, stat chips, table positions), and
+      single-field Notes cards (`SessionEnvironmentTile`). Deliberately
+      NOT applied to: the dense list-editor rows (`FoundationFeatureListEditor`
+      and siblings — already raw-styled for table-row density, predating
+      this pass), `GameSetSelect`/`StatGallery`/the music-panel selects
+      (standalone pickers, not form fields), or `AdventuringPanel`'s notes
+      grid (multiple adjacent fields plus one per party member — needs a
+      visible, not placeholder-only, label per field, which the shared
+      chrome doesn't support yet).
 - [x] Heritage tab (EntryCard.tsx — also used by Optional Mechanics'
       Transformation, which gets both fixes for free): Features now render
       unconditionally, right after the tagline — only the long-form
