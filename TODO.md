@@ -112,12 +112,16 @@ scratch list for planning the next pass of work.
           `store.test.js`. Still a raw data: URL in store.json either way
           (no managed file directory like Music's imports) — fine for now,
           a bigger lift if it ever needs to be.
-        - Still not done, lower priority (nothing's broken, just missing):
-          PartyRoster's collapse toggle has no e2e coverage; CampaignForm/
-          PartyMemberForm's image upload has no round-trip e2e coverage
-          (pick a file -> preview -> save -> reload shows it -> Remove
-          clears it); MemberBackdrop's orientation pick (tall vs wide) has
-          no e2e coverage either.
+        - [x] The three gaps above are now covered too, in
+          campaigns.spec.ts: PartyRoster's collapse toggle (unmounts the
+          roster, header stays); a Campaign cover image round-tripping
+          through create -> reload -> Edit -> Remove; a Party member's
+          portrait round-tripping the same way plus MemberBackdrop
+          re-reading orientation correctly when the image is swapped
+          (portrait -> landscape via Edit, not just read once on create).
+          A small hand-rolled PNG encoder (same technique the manual
+          verification scripts used earlier) writes flat-color fixture
+          images at test time — no binary fixture files committed.
 
 - [ ] Subclass creation doesn't accept input for an official/core class
       (reproduced with Ranger) but does work fine inside a custom class —
