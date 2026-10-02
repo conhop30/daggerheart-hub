@@ -28,6 +28,16 @@
   inset: 0;
   background-size: cover;
   background-position: center;
+  filter: blur(0px);
+  transition: filter 420ms var(--ease);
+}
+
+/* Softens the art behind SELECT as it fades in, so the label reads as
+   coming into focus in front of the image rather than just appearing
+   over it. overflow: hidden on .campaign-row keeps the blur's own edge
+   bleed from ever showing past the row's rounded corners. */
+.campaign-row:hover .campaign-row__art {
+  filter: blur(3px);
 }
 
 /* Oversized (wider than the row on both sides) so the hover slide never

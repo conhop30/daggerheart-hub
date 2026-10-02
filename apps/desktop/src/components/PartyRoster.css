@@ -112,26 +112,41 @@
   color: #ffffff;
 }
 
-/* A subtle frosted strip behind HP/Stress specifically — the steppers'
-   numbers are the thing most worth protecting from a busy image, without
-   blurring the name/notes above them too. */
+/* A very soft legibility aid behind HP/Stress — a ::before, not the
+   element's own backdrop-filter, since mask-image is what lets the blur
+   fade in gradually from nothing instead of starting/stopping at a hard
+   rectangular edge (a flat backdrop-filter box read as "very blatant" and
+   a visible seam against the image). Bleeds slightly above its own box
+   (inset's negative top) so even that fade-in has room to happen instead
+   of starting abruptly at the border. z-index: -1 keeps it behind the
+   stepper rows themselves, which stay sharp and readable. */
 .party-roster__member--photo .party-roster__trackables {
-  border-top-color: rgba(255, 255, 255, 0.25);
-  background: rgba(20, 18, 27, 0.22);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  position: relative;
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.party-roster__member--photo .party-roster__trackables::before {
+  content: '';
+  position: absolute;
+  inset: -14px 0 0 0;
+  z-index: -1;
+  background: rgba(20, 18, 27, 0.16);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  mask-image: linear-gradient(to bottom, transparent, black 45%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 45%, black 100%);
+  pointer-events: none;
 }
 
 /* A light frosted chip behind Edit/Delete so they stay legible over
    whatever's in the photo, without putting a border back on the buttons
-   themselves. Full-height now (ContentCard's actionsLayout="full-height"),
-   so a modest rounded-rect radius reads better than the old pill shape
-   would stretched this tall. */
+   themselves. Pill-shaped to match the header row it sits in (see
+   ContentCard.css — actions fill that row's own height, not the card's). */
 .party-roster__member--photo .content-card__actions {
   background: rgba(20, 18, 27, 0.4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
 }
 
 .party-roster__member--photo .content-card__action {
