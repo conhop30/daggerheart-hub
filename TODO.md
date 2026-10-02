@@ -7,11 +7,15 @@ scratch list for planning the next pass of work.
 - [ ] Add a set of selectable themes beyond the current Light/Dark/System
       choice — each theme should be able to change things like the Fear
       tracker's token colors and backgrounds, not just light-vs-dark.
-- [ ] Redesign the Campaign launch process (creating/opening a Campaign for
-      the first time) — current flow isn't good enough; needs a proper
-      pass, not just a tweak. Fold the adjacent-button styling pass (below)
-      into this discussion, since Campaigns/Sessions is where it shows up
-      most.
+- [x] Redesign the Campaign launch process (creating/opening a Campaign for
+      the first time) — this is the Campaign/Party remodel entry below
+      (full-row CampaignBanner with cover images, the ethereal button-pair
+      styling it asked to fold in, PartyRoster collapse/portraits, and now
+      the staggered open animation) — that whole pass **is** this item,
+      landed across several commits this session. Marking done rather than
+      leaving it open after the fact actually happened; flag if there's a
+      specific piece of "the flow isn't good enough" that still feels
+      unaddressed and this should reopen.
 - [x] Standardize styling for side-by-side button pairs (e.g. a party
       member's Edit/Delete, a Session row's Open/Delete) — ethereal pair
       style landed in ContentCard.css: no border on the buttons
