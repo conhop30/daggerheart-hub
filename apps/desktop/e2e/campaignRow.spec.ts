@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-test.describe('Campaign banner and carrying a session forward', () => {
+test.describe('Campaign row and carrying a session forward', () => {
   let tempDir: string;
   let app: ElectronApplication;
   let win: Page;
@@ -28,14 +28,14 @@ test.describe('Campaign banner and carrying a session forward', () => {
   });
 
   async function createCampaign(name: string, level?: string) {
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', name);
     if (level) await win.fill('.text-field:has-text("Party Level") input', level);
     await win.click('button:has-text("Create Campaign")');
   }
 
   async function openCampaign(name: string) {
-    await win.locator('.campaign-banner', { hasText: name }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: name }).click();
   }
 
   test('the banner shows the party level and the player names', async () => {
@@ -51,16 +51,16 @@ test.describe('Campaign banner and carrying a session forward', () => {
     }
 
     await win.click('.campaign-detail__back');
-    const banner = win.locator('.campaign-banner:not(.campaign-banner--hollow)', { hasText: 'The Wildwood' });
-    await expect(banner.locator('.campaign-banner__level')).toHaveText('Level 5');
-    await expect(banner.locator('.campaign-banner__party')).toHaveText('Fenn, Mira');
+    const banner = win.locator('.campaign-row:not(.campaign-row--hollow)', { hasText: 'The Wildwood' });
+    await expect(banner.locator('.campaign-row__level')).toHaveText('Level 5');
+    await expect(banner.locator('.campaign-row__party')).toHaveText('Fenn, Mira');
   });
 
   test('a campaign with no party says so, and a new one defaults to level 1', async () => {
     await createCampaign('Fresh Start');
-    const banner = win.locator('.campaign-banner:not(.campaign-banner--hollow)', { hasText: 'Fresh Start' });
-    await expect(banner.locator('.campaign-banner__level')).toHaveText('Level 1');
-    await expect(banner.locator('.campaign-banner__party')).toHaveText('No party yet');
+    const banner = win.locator('.campaign-row:not(.campaign-row--hollow)', { hasText: 'Fresh Start' });
+    await expect(banner.locator('.campaign-row__level')).toHaveText('Level 1');
+    await expect(banner.locator('.campaign-row__party')).toHaveText('No party yet');
   });
 
   test('session rows no longer show a Mode chip', async () => {

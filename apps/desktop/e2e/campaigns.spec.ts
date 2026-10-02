@@ -28,28 +28,35 @@ test.describe('Campaigns & Party', () => {
   });
 
   test('create -> view -> edit -> delete round trip for a Campaign', async () => {
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'E2E Campaign');
     await win.click('button:has-text("Create Campaign")');
 
-    const banner = win.locator('.campaign-banner:not(.campaign-banner--hollow)', { hasText: 'E2E Campaign' });
+    const banner = win.locator('.campaign-row:not(.campaign-row--hollow)', { hasText: 'E2E Campaign' });
     await expect(banner).toBeVisible();
 
-    await banner.getByRole('button', { name: 'Edit' }).click();
+    // Edit/Delete live on CampaignDetail now, not the gallery row itself —
+    // the row's whole job is opening it (see CampaignBanner.tsx).
+    await banner.click();
+    await win.getByRole('button', { name: 'Edit Campaign' }).click();
     await win.fill('.create-form input[type="text"]', 'E2E Campaign Renamed');
     await win.click('button:has-text("Save Changes")');
-    const renamed = win.locator('.campaign-banner:not(.campaign-banner--hollow)', { hasText: 'E2E Campaign Renamed' });
+    await expect(win.locator('.campaign-detail__title')).toHaveText('E2E Campaign Renamed');
+
+    await win.click('.campaign-detail__back');
+    const renamed = win.locator('.campaign-row:not(.campaign-row--hollow)', { hasText: 'E2E Campaign Renamed' });
     await expect(renamed).toBeVisible();
 
-    await renamed.getByRole('button', { name: 'Delete' }).click();
-    await expect(renamed).toHaveCount(0);
+    await renamed.click();
+    await win.getByRole('button', { name: 'Delete Campaign' }).click();
+    await expect(win.locator('.campaign-row', { hasText: 'E2E Campaign Renamed' })).toHaveCount(0);
   });
 
   test('open a Campaign, add a Party member with a trackable, adjust it, then edit and delete the member', async () => {
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await expect(win.locator('.campaign-detail__title')).toHaveText('The Wildwood');
 
     await win.click('.party-roster__add');
@@ -67,7 +74,7 @@ test.describe('Campaigns & Party', () => {
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await expect(win.locator('.content-card', { hasText: 'Fenn' }).locator('.stat-stepper__value')).toHaveText('5 / 6');
 
     const reloadedCard = win.locator('.content-card', { hasText: 'Fenn' });
@@ -81,10 +88,10 @@ test.describe('Campaigns & Party', () => {
   });
 
   test('deleting a Campaign cascades to remove its Party members', async () => {
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'Doomed Campaign');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'Doomed Campaign' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'Doomed Campaign' }).click();
 
     await win.click('.party-roster__add');
     await win.fill('.create-form input[type="text"]', 'Toth');
@@ -92,6 +99,6 @@ test.describe('Campaigns & Party', () => {
     await expect(win.locator('.content-card', { hasText: 'Toth' })).toBeVisible();
 
     await win.click('.campaign-detail__hero-action--danger');
-    await expect(win.locator('.campaign-banner', { hasText: 'Doomed Campaign' })).toHaveCount(0);
+    await expect(win.locator('.campaign-row', { hasText: 'Doomed Campaign' })).toHaveCount(0);
   });
 });

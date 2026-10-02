@@ -59,10 +59,10 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
 
   async function createCampaignAndOpenSession(campaignName: string, sessionName: string) {
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', campaignName);
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: campaignName }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: campaignName }).click();
 
     await win.click('.session-list__add');
     await win.fill('.create-form input[type="text"]', sessionName);
@@ -100,7 +100,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
 
     await expect(win.locator('.fear-track__value')).toHaveText('5 / 12');
@@ -140,7 +140,7 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
     await expect(win.locator('.adventuring-panel__note-field:has-text("Session Notes") textarea')).toHaveValue(
       'The party enters the cave.'
@@ -502,13 +502,12 @@ test.describe('Sessions (Fear, combat/adventuring, loot rolling)', () => {
   test('deleting a Campaign cascades to remove its Sessions', async () => {
     await createCampaignAndOpenSession('Doomed Campaign', 'Session 1');
     await win.click('.session-view__back');
-    await win.click('.campaign-detail__back');
-
-    await win.locator('.campaign-banner', { hasText: 'Doomed Campaign' }).locator('.campaign-banner__hit').click();
     await expect(win.locator('.content-card', { hasText: 'Session 1' })).toBeVisible();
 
-    await win.click('.campaign-detail__back');
-    await win.locator('.campaign-banner', { hasText: 'Doomed Campaign' }).getByRole('button', { name: 'Delete' }).click();
-    await expect(win.locator('.campaign-banner', { hasText: 'Doomed Campaign' })).toHaveCount(0);
+    // Edit/Delete moved off the gallery row and onto CampaignDetail's own
+    // hero once the Campaign is open — there's no Delete directly on the
+    // row anymore (see CampaignBanner.tsx/CampaignDetail.tsx).
+    await win.getByRole('button', { name: 'Delete Campaign' }).click();
+    await expect(win.locator('.campaign-row', { hasText: 'Doomed Campaign' })).toHaveCount(0);
   });
 });

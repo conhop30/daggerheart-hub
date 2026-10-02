@@ -322,6 +322,30 @@ describe('Campaign', () => {
   it('remove throws for an unknown id', async () => {
     await expect(store.removeCampaign('missing')).rejects.toThrow('No campaign with id');
   });
+
+  // coverImage/portraitImage are raw data: URLs with no managed file
+  // directory behind them — store.js rejects a too-large or malformed one
+  // outright rather than clamping, since there's no sensible way to shrink
+  // an oversized image automatically.
+  const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+  it('accepts a small image data URL for coverImage', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood', coverImage: TINY_PNG });
+    expect(c.coverImage).toBe(TINY_PNG);
+  });
+
+  it('rejects a coverImage that is not an image data URL', async () => {
+    await expect(store.createCampaign({ name: 'The Wildwood', coverImage: 'not-a-data-url' })).rejects.toThrow(
+      'coverImage must be an image data URL'
+    );
+  });
+
+  it('rejects a coverImage over the size cap', async () => {
+    const oversized = `data:image/png;base64,${'A'.repeat(6_000_000)}`;
+    await expect(store.createCampaign({ name: 'The Wildwood', coverImage: oversized })).rejects.toThrow(
+      'coverImage is too large'
+    );
+  });
 });
 
 describe('PartyMember', () => {
@@ -365,6 +389,14 @@ describe('PartyMember', () => {
     expect(updated.notes).toBe('Ranger');
     await store.removePartyMember(member.id);
     expect(store.listPartyMembers()).toHaveLength(0);
+  });
+
+  it('rejects a portraitImage over the size cap', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const oversized = `data:image/png;base64,${'A'.repeat(6_000_000)}`;
+    await expect(store.createPartyMember({ campaignId: c.id, name: 'Fenn', portraitImage: oversized })).rejects.toThrow(
+      'portraitImage is too large'
+    );
   });
 
   it('clamps a trackable\'s current/max to non-negative whole numbers', async () => {

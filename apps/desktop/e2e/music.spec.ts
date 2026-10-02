@@ -185,10 +185,10 @@ test.describe('Music library and session playback', () => {
 
     // Into a session (we are still on the Music tab, so switch back to Campaigns).
     await win.click('.campaigns-page__tab:has-text("Campaigns")');
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.click('.session-list__add');
     await win.click('button:has-text("Start Session")');
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
@@ -224,7 +224,7 @@ test.describe('Music library and session playback', () => {
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
     await expect(win.locator('select[aria-label="Music region"] option:checked')).toHaveText('The Sunken Coast');
   });
@@ -309,10 +309,10 @@ test.describe('Music library and session playback', () => {
 
   test('a session with no music set says so, and Play is disabled', async () => {
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'Quiet Campaign');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'Quiet Campaign' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'Quiet Campaign' }).click();
     await win.click('.session-list__add');
     await win.click('button:has-text("Start Session")');
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
@@ -324,10 +324,10 @@ test.describe('Music library and session playback', () => {
 
   async function openQuietSession() {
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.click('.session-list__add');
     await win.click('button:has-text("Start Session")');
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();

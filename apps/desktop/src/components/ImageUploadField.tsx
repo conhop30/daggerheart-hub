@@ -27,6 +27,12 @@ interface ImageUploadFieldProps {
 // form (TextField, the Cancel/Submit buttons, ...) is custom-styled, and a
 // raw file input's OS-chrome "Choose File" button was the one thing here
 // that still looked unstyled.
+
+// Matches electron/store.js's MAX_IMAGE_BYTES — checked here too so a too-
+// large file gets an immediate error instead of a round trip to the IPC
+// bridge just to be rejected there.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
 export default function ImageUploadField({ label, hint, value, onChange, aspectRatio = '1' }: ImageUploadFieldProps) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +42,10 @@ export default function ImageUploadField({ label, hint, value, onChange, aspectR
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setError('Choose an image file.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(`That image is too large (max ${Math.floor(MAX_IMAGE_BYTES / (1024 * 1024))}MB).`);
       return;
     }
     const reader = new FileReader();

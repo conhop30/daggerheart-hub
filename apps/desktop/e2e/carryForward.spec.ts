@@ -57,10 +57,10 @@ test.describe('Carrying a Campaign forward across sessions', () => {
 
     // A Campaign whose party exists before any session does.
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.click('.party-roster__add');
     await win.fill('.create-form input[type="text"]', 'Mira');
     await win.click('.trackable-editor__chip:has-text("HP")');
@@ -139,10 +139,10 @@ test.describe('Carrying a Campaign forward across sessions', () => {
 
   test('removing a party member in a later session leaves the earlier session’s party alone', async () => {
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-banner--hollow');
+    await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-banner', { hasText: 'The Wildwood' }).locator('.campaign-banner__hit').click();
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.click('.party-roster__add');
     await win.fill('.create-form input[type="text"]', 'Mira');
     await win.click('button:has-text("Add Party Member")');

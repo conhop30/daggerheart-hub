@@ -947,6 +947,7 @@ function validateCampaign(_store, data) {
   if (data.level !== undefined) {
     data.level = Math.max(1, Math.min(10, Math.round(Number(data.level)) || 1));
   }
+  validateImageDataUrl(data, 'coverImage');
 }
 
 // ---- Shared data-sanitization helpers ----
@@ -979,6 +980,31 @@ function clampNumber(data, field, { min = -Infinity, max = Infinity, allowNull =
 function requireEnum(data, field, allowed) {
   if (data[field] != null && !allowed.includes(data[field])) {
     throw new Error(`${field} must be one of ${allowed.join(', ')}`);
+  }
+}
+
+// coverImage/portraitImage (Campaign/PartyMember) are raw data: URLs with no
+// managed file directory behind them yet (see ImageUploadField.tsx) — stored
+// straight in store.json, which gets rewritten whole on every mutation (see
+// scheduleWrite above), so an unbounded image would bloat every single save
+// from then on. Rejects outright rather than clamping — there's no sensible
+// way to "clamp" an oversized image down. ImageUploadField already enforces
+// the same cap client-side before even reading the file; this is the
+// defense-in-depth backstop for any other caller of the IPC bridge.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+function validateImageDataUrl(data, field, { maxBytes = MAX_IMAGE_BYTES } = {}) {
+  if (data[field] === undefined || data[field] === null) return;
+  const value = data[field];
+  if (typeof value !== 'string' || !/^data:image\//.test(value)) {
+    throw new Error(`${field} must be an image data URL`);
+  }
+  // Decoded byte size from the base64 payload length, not the data: URL's
+  // own string length (which overcounts by ~33% thanks to base64 overhead).
+  const base64 = value.slice(value.indexOf(',') + 1);
+  const approxBytes = Math.floor((base64.length * 3) / 4);
+  if (approxBytes > maxBytes) {
+    throw new Error(`${field} is too large (max ${Math.floor(maxBytes / (1024 * 1024))}MB)`);
   }
 }
 
@@ -1056,7 +1082,10 @@ function removeCampaign(id) {
 
 const partyMembers = makeVersionedCollection('partyMembers', {
   uniqueByName: true,
-  validate: (_store, data) => clampTrackables(data),
+  validate: (_store, data) => {
+    clampTrackables(data);
+    validateImageDataUrl(data, 'portraitImage');
+  },
   context(store, data) {
     if (!store.campaigns.some((c) => c.id === data.campaignId)) {
       throw new Error(`No campaign with id ${data.campaignId}`);

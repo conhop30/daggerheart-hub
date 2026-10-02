@@ -86,37 +86,34 @@ scratch list for planning the next pass of work.
           shared-element transition costs to build correctly across
           CampaignsPage's list/detail swap.
 
-      e2e debt from this pass (not yet done — fast-iteration UX pass, come
-      back before cutting a release):
-        - CampaignBanner's whole DOM shape changed:
-          `.campaign-banner`/`.campaign-banner__hit`/`.campaign-banner__action`
-          → `.campaign-row` (the row IS the button now, no separate `__hit`;
-          no `__action` at all, onEdit/onDelete removed). Hits 35 selector
-          occurrences across e2e/campaigns.spec.ts, e2e/campaignBanner.spec.ts,
-          e2e/sessions.spec.ts, e2e/carryForward.spec.ts, e2e/music.spec.ts —
-          mostly their shared "create a Campaign" setup helpers.
-          `.campaign-grid` → `.campaign-list` (CampaignsPage.css) too.
-          (Checked: CampaignDetail's own hero selectors — `.campaign-detail__level`,
-          `.campaign-detail__title`, `.campaign-detail__hero-action--danger`,
-          `.campaign-detail__back` — are untouched by the new art/scrim/content
-          wrapper, all class-based, no direct-child assumptions. Those are fine.
-          Also checked: every existing e2e use of a ContentCard's Edit/Delete goes
-          through `getByRole('button', { name: 'Edit' | 'Delete' })`, not the
-          `.content-card__action` class — safe regardless of how that button's
-          markup shifts around.)
-        - campaignBanner.spec.ts specifically will need rework beyond
-          selectors: it likely asserts Edit/Delete behavior straight from
-          the gallery, which no longer exists there.
-        - New coverage worth adding, not just fixing: PartyRoster's
-          collapse (open by default, toggle hides/unmounts); CampaignForm/
-          PartyMemberForm's image upload round-tripping through the store
-          (pick a file -> preview -> save -> reload shows it; Remove
-          clears it); MemberBackdrop's orientation pick (tall vs wide
-          image).
-        - `coverImage`/`portraitImage` are raw data: URLs saved straight
-          into store.json (no size cap, no managed directory like Music's
-          imports) — fine for iterating on the UX, but worth hardening
-          before this ships in a release if people upload large photos.
+      e2e debt — DONE, all 36 affected tests passing (`campaignRow.spec.ts`
+      — renamed from `campaignBanner.spec.ts` —, `campaigns.spec.ts`,
+      `carryForward.spec.ts`, `sessions.spec.ts`, `music.spec.ts`):
+        - Every stale `.campaign-banner`/`.campaign-banner__hit` selector
+          renamed to `.campaign-row` (the row IS the button now, no
+          separate `__hit`); the now-redundant `.locator('.campaign-row__hit')`
+          hop dropped from each click chain. `.campaign-grid` never
+          actually had any e2e references, so nothing to do there.
+        - Two tests specifically asserted Edit/Delete straight off the
+          gallery row, which is gone now (CampaignDetail owns both once a
+          Campaign's open) — `campaigns.spec.ts`'s full create→edit→delete
+          round trip, and `sessions.spec.ts`'s cascade-delete test. Both
+          rewritten to open the Campaign first, then use CampaignDetail's
+          "Edit Campaign"/"Delete Campaign" buttons.
+        - `coverImage`/`portraitImage` are no longer unbounded: both
+          `ImageUploadField.tsx` (immediate client-side error, no round
+          trip) and `electron/store.js` (`validateImageDataUrl` — rejects
+          outright, not a clamp, since there's no sensible way to shrink an
+          oversized image) now cap uploads at 4MB, with unit coverage in
+          `store.test.js`. Still a raw data: URL in store.json either way
+          (no managed file directory like Music's imports) — fine for now,
+          a bigger lift if it ever needs to be.
+        - Still not done, lower priority (nothing's broken, just missing):
+          PartyRoster's collapse toggle has no e2e coverage; CampaignForm/
+          PartyMemberForm's image upload has no round-trip e2e coverage
+          (pick a file -> preview -> save -> reload shows it -> Remove
+          clears it); MemberBackdrop's orientation pick (tall vs wide) has
+          no e2e coverage either.
 
 - [ ] Subclass creation doesn't accept input for an official/core class
       (reproduced with Ranger) but does work fine inside a custom class —
