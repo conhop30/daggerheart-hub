@@ -556,3 +556,36 @@ scratch list for planning the next pass of work.
         flaky "starts at the wrong corner" failure across repeated runs.
       - Verified: `npx tsc --noEmit -p .` clean, `npm test` (242 tests)
         green, full `playwright test` suite (84 tests) green.
+      - **Follow-up (same day, live-play again)**: two more real bugs, this
+        time found by Connor rather than tests. (1) Typing into Session
+        Notes and clicking away could permanently stop accepting input —
+        `DiceTray` is `position: fixed`, bottom-center of the *viewport*
+        (not the main column), and on a short Session it visually lands
+        right on top of Notes (the default last section); its own
+        padding/background had no `pointer-events: none`, so
+        `document.elementFromPoint` resolved to `.dice-tray` there and ate
+        the click before it ever reached the textarea. Fixed in
+        `DiceTray.css`: the container goes `pointer-events: none`, with
+        `pointer-events: auto` re-enabled only on the actual die/roll/
+        dismiss buttons — clicks on its dead space now pass through to
+        whatever's underneath (this is the general fix; it also covers the
+        Journal panel, which overlaps `DiceTray` at its default position
+        too, not just a dragged one). A first attempt instead raised
+        `SessionNotesPanel`/`JournalBubble`'s own z-index above DiceTray's
+        — wrong fix, since it also raised their *non-interactive*
+        background above DiceTray's own die buttons wherever they
+        overlapped, breaking two existing dice-tray e2e tests; reverted in
+        favor of the pointer-events approach. (2) "Notes don't show up on
+        the other side" — `JournalBubble`'s entries fetch only ran once
+        per Campaign selection (`[selectedCampaignId]`), not every time
+        the panel reopened, so an edit made from `SessionNotesPanel` while
+        the bubble was closed stayed invisible until something else
+        happened to change `selectedCampaignId`. Added `open` to that
+        effect's dependency array, matching the Campaigns-list effect's
+        existing "refetch when it becomes visible" pattern.
+      - Added regression coverage for both in `e2e/sessions.spec.ts`
+        ("stays clickable even where it visually overlaps the fixed Dice
+        Tray") and `e2e/journal.spec.ts` ("closing and reopening the
+        Journal refetches, picking up an edit made elsewhere").
+      - Re-verified: `npx tsc --noEmit -p .` clean, `npm test` (242 tests)
+        green, full `playwright test` suite (86 tests) green.

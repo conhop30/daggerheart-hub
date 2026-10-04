@@ -137,9 +137,15 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     };
   }, [selectedCampaignId, notesScope]);
 
+  // Refetches every time the panel becomes visible (not just when the
+  // selected Campaign changes) — a Session's notes can now be edited from
+  // a completely different surface (SessionNotesPanel on the live Session
+  // page), so reopening the bubble on the *same* Campaign must still pick
+  // up whatever changed elsewhere while it was closed, the same reasoning
+  // as the Campaigns-list effect above.
   useEffect(() => {
-    if (!selectedCampaignId) {
-      setEntries([]);
+    if (!open || !selectedCampaignId) {
+      if (!selectedCampaignId) setEntries([]);
       return;
     }
     let cancelled = false;
@@ -161,7 +167,7 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     return () => {
       cancelled = true;
     };
-  }, [selectedCampaignId]);
+  }, [open, selectedCampaignId]);
 
   // Closes the Journal on a click anywhere outside the panel, the detail
   // pane, or the bubble itself — only attached while actually open.

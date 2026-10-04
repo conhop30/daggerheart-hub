@@ -574,6 +574,33 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(win.locator('.session-notes-panel__notes')).toHaveValue('Edited from the Journal.');
   });
 
+  test('the Notes textarea stays clickable even where it visually overlaps the fixed Dice Tray', async () => {
+    // DiceTray is position:fixed, bottom-center of the whole viewport, and
+    // on a short/empty Session it lands right on top of the Notes section
+    // (the default last main-column section) — document.elementFromPoint
+    // used to resolve to .dice-tray there, silently eating the click
+    // instead of focusing the textarea underneath it.
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    // Both the session page and DiceTray fade/slide in on mount — let that
+    // settle before measuring boxes, or the computed overlap point can be
+    // off by the time the click actually lands.
+    await win.waitForTimeout(300);
+
+    const notesBox = await win.locator('.session-notes-panel__notes').boundingBox();
+    const diceTrayBox = await win.locator('.dice-tray').boundingBox();
+    if (!notesBox || !diceTrayBox) throw new Error('notes or dice tray not visible');
+    const overlapX = (Math.max(notesBox.x, diceTrayBox.x) + Math.min(notesBox.x + notesBox.width, diceTrayBox.x + diceTrayBox.width)) / 2;
+    const overlapY = (Math.max(notesBox.y, diceTrayBox.y) + Math.min(notesBox.y + notesBox.height, diceTrayBox.y + diceTrayBox.height)) / 2;
+    // Confirms this test is actually exercising the overlap, not passing
+    // vacuously because the two boxes happened not to intersect.
+    expect(overlapX).toBeGreaterThan(Math.max(notesBox.x, diceTrayBox.x));
+    expect(overlapY).toBeGreaterThan(Math.max(notesBox.y, diceTrayBox.y));
+
+    await win.mouse.click(overlapX, overlapY);
+    await win.keyboard.type('Typed where Dice Tray overlaps', { delay: 10 });
+    await expect(win.locator('.session-notes-panel__notes')).toHaveValue('Typed where Dice Tray overlaps');
+  });
+
   test('renaming a Session keeps its linked Journal entry’s label in sync, rather than orphaning it', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
     await win.fill('.session-notes-panel__notes', 'Notes made before the rename.');

@@ -141,9 +141,13 @@ drag-reorderable the same way. Separately, an Adversary tile gained a
 second, independent collapse (`bodyOpen`, orthogonal to the existing
 Features toggle) and the Adversary picker gained a quantity stepper to
 pull in several copies in one click. Verified (`npx tsc --noEmit -p .`
-clean, `npm test` 242 tests green, full Playwright suite 84 tests green).
+clean, `npm test` 242 tests green, full Playwright suite 86 tests green).
 See `TODO.md`'s matching entry for the full file-by-file breakdown,
-including two real bugs the new e2e coverage itself caught and fixed.
+including four real bugs this round's e2e coverage (and, for the last
+two, Connor's own live-play) caught and fixed — notably `DiceTray.css`
+now needs `pointer-events: none` on its own container (re-enabled per
+button) since it's a `position: fixed` overlay that can visually land on
+top of real page content, which used to just eat the click.
 
 One architecture note worth keeping here specifically: `electron/main.js`
 now calls `app.setPath('userData', ...)` whenever `DAGGERHEART_STORE_DIR`

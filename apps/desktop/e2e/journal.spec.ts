@@ -273,4 +273,41 @@ test.describe('Journal bubble', () => {
     // The label mirrors the Session's own name and isn't a free-text field.
     await expect(win.locator('.journal-detail__label--readonly')).toHaveText('Session 1');
   });
+
+  test('closing and reopening the Journal refetches, picking up an edit made elsewhere while it was closed', async () => {
+    // The entries fetch used to only run once per Campaign selection — an
+    // edit made from SessionNotesPanel (a completely different surface)
+    // while the panel was closed stayed invisible on reopen, since
+    // selectedCampaignId never changed to re-trigger it.
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.click('.campaign-row--hollow');
+    await win.fill('.create-form input[type="text"]', 'Refetch Test');
+    await win.click('button:has-text("Create Campaign")');
+    await win.locator('.campaign-row', { hasText: 'Refetch Test' }).click();
+    await win.click('.session-list__add');
+    await win.fill('.create-form input[type="text"]', 'Session 1');
+    await win.click('button:has-text("Start Session")');
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+
+    await win.fill('.session-notes-panel__notes', 'First pass.');
+    await win.click('.session-view__title');
+    await win.waitForTimeout(100);
+
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("Refetch Test")');
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await win.click('.journal-session-row:has-text("Session 1")');
+    await expect(win.locator('.journal-detail__notes')).toHaveValue('First pass.');
+    await win.click('.journal-detail__close');
+    await win.click('.journal-bubble'); // close the whole panel — selectedCampaignId stays set
+
+    await win.fill('.session-notes-panel__notes', 'Second pass.');
+    await win.click('.session-view__title');
+    await win.waitForTimeout(100);
+
+    await win.click('.journal-bubble'); // reopen on the same, already-selected Campaign
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await win.click('.journal-session-row:has-text("Session 1")');
+    await expect(win.locator('.journal-detail__notes')).toHaveValue('Second pass.');
+  });
 });

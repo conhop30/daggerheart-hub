@@ -14,6 +14,18 @@
   border-radius: 14px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   animation: fadeInUp 240ms var(--ease);
+  /* Fixed to the viewport, so it can visually land on top of real page
+     content below it (e.g. a Session's Notes textarea on a short page) —
+     its own padding/gaps/background shouldn't swallow clicks meant for
+     whatever's underneath. Re-enabled per actual control below, so the
+     dice/roll/dismiss buttons stay clickable. */
+  pointer-events: none;
+}
+
+.dice-tray__die,
+.dice-tray__roll,
+.dice-tray__dismiss {
+  pointer-events: auto;
 }
 
 .dice-tray__row {
