@@ -1,7 +1,16 @@
 import { apiClient } from './client';
 import { createCrudApi } from './createCrudApi';
 
-export type JournalEntryKind = 'ADVERSARIES' | 'LOOT' | 'CONSUMABLES' | 'ARMOR' | 'WEAPONS' | 'WORLDBUILDING' | 'OTHER';
+export type JournalEntryKind =
+  | 'ADVERSARIES'
+  | 'LOOT'
+  | 'CONSUMABLES'
+  | 'ARMOR'
+  | 'WEAPONS'
+  | 'WORLDBUILDING'
+  | 'OTHER'
+  /** Auto-created from a live Session's Notes panel, never from the "+" menu — see SessionNotesPanel. */
+  | 'SESSION';
 
 export interface JournalEntry {
   id: string;

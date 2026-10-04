@@ -9,6 +9,9 @@ import SessionAdversaryTile from './SessionAdversaryTile';
 import SessionEnvironmentTile from './SessionEnvironmentTile';
 import './CombatPanel.css';
 
+/** No natural game-data upper bound on "how many to add at once" — just a sane ceiling for the stepper. */
+const MAX_ADD_QUANTITY = 20;
+
 /** A SessionCombatSidebar click (see SessionView, which owns this) — `key` changes on every click, even re-clicking the same Adversary, so CombatPanel's effect below can tell "clicked again" apart from "nothing changed." */
 export interface CombatSpotlightSignal {
   id: string;
@@ -26,7 +29,7 @@ interface CombatPanelProps {
   adversariesError: string | null;
   /** Set by SessionView when a SessionCombatSidebar row is clicked — see the spotlight effect below. */
   spotlightSignal: CombatSpotlightSignal | null;
-  onPullInAdversary: (adversaryId: string) => void;
+  onPullInAdversary: (adversaryId: string, quantity: number) => void;
   onAdversaryChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   onAdversaryRemove: (adversary: SessionAdversary) => void;
   onRoll: (label: string, total: number) => void;
@@ -82,6 +85,10 @@ export default function CombatPanel({
   // so a spotlight click can close every tile but one — a missing entry
   // defaults to open, matching that original per-tile default.
   const [tileFeaturesOpen, setTileFeaturesOpen] = useState<Record<string, boolean>>({});
+  // A second, independent per-tile collapse — see SessionAdversaryTile's
+  // bodyOpen prop comment for why it's orthogonal to tileFeaturesOpen above.
+  const [tileBodyOpen, setTileBodyOpen] = useState<Record<string, boolean>>({});
+  const [addQuantity, setAddQuantity] = useState(1);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   // Read inside the spotlight effect without needing sessionAdversaries in
   // its dependency array — that array gets a new reference on every HP/
@@ -91,6 +98,10 @@ export default function CombatPanel({
 
   function toggleFeatures(id: string) {
     setTileFeaturesOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
+  }
+
+  function toggleBody(id: string) {
+    setTileBodyOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
   }
 
   // Closes every other pulled-in Adversary's Features and opens just the
@@ -143,7 +154,9 @@ export default function CombatPanel({
 
   function pullInAdversary(adversaryId: string) {
     setPickerOpen(null);
-    onPullInAdversary(adversaryId);
+    const quantity = addQuantity;
+    setAddQuantity(1);
+    onPullInAdversary(adversaryId, quantity);
   }
 
   async function pullInEnvironment(environmentId: string) {
@@ -197,7 +210,12 @@ export default function CombatPanel({
 
       {pickerOpen === 'adversary' && (
         <div className="combat-panel__picker">
-          <ItemPicker items={adversaries.items} value={null} onChange={pullInAdversary} />
+          <ItemPicker
+            items={adversaries.items}
+            value={null}
+            onChange={pullInAdversary}
+            quantity={{ value: addQuantity, onChange: setAddQuantity, max: MAX_ADD_QUANTITY }}
+          />
         </div>
       )}
       {pickerOpen === 'environment' && (
@@ -228,6 +246,8 @@ export default function CombatPanel({
             duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
             featuresOpen={tileFeaturesOpen[adversary.id] ?? true}
             onToggleFeatures={() => toggleFeatures(adversary.id)}
+            bodyOpen={tileBodyOpen[adversary.id] ?? true}
+            onToggleBody={() => toggleBody(adversary.id)}
             spotlighted={highlightedId === adversary.id}
             onChange={(patch) => onAdversaryChange(adversary, patch)}
             onRemove={() => onAdversaryRemove(adversary)}

@@ -1,31 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { DragEvent } from 'react';
 import { campaignsApi, type Campaign } from '../api/campaigns';
 import { journalApi, type JournalEntry, type JournalEntryKind } from '../api/journal';
+import { sessionsApi, type Session } from '../api/sessions';
 import { useDragReorder } from '../lib/useDragReorder';
+import { usePointerDrag } from '../lib/usePointerDrag';
+import { clampOffset, loadBubblePosition, saveBubblePosition, snapToNearestEdge, type BubblePosition } from '../lib/bubblePosition';
+import { findNonOverlappingSpot, type Point } from '../lib/floatingLayout';
+import { KIND_DEFS, kindLabelOf } from '../lib/journalKinds';
+import { JournalEntryFields } from './JournalEntryFields';
+import JournalFloatingNote from './JournalFloatingNote';
 import './JournalBubble.css';
+
+const NOTE_SIZE = { width: 260, height: 320 };
+const BUBBLE_HALF = 26;
 
 interface JournalBubbleProps {
   /** The campaign row's "Open →" action — navigates the whole app there. See App.tsx. */
   onOpenCampaign: (campaignId: string) => void;
-}
-
-interface KindDef {
-  key: JournalEntryKind;
-  label: string;
-}
-
-const KIND_DEFS: KindDef[] = [
-  { key: 'ADVERSARIES', label: 'Adversaries' },
-  { key: 'LOOT', label: 'Loot' },
-  { key: 'CONSUMABLES', label: 'Consumables' },
-  { key: 'ARMOR', label: 'Armor' },
-  { key: 'WEAPONS', label: 'Weapons' },
-  { key: 'WORLDBUILDING', label: 'Worldbuilding' },
-  { key: 'OTHER', label: 'Other' },
-];
-
-function kindLabelOf(kind: JournalEntryKind): string {
-  return KIND_DEFS.find((d) => d.key === kind)?.label ?? kind;
 }
 
 // App-wide and always visible (like FloatingMusicPlayer), so a GM can browse
@@ -36,6 +28,40 @@ function kindLabelOf(kind: JournalEntryKind): string {
 export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  // Where the bubble is snapped on the window's edge — null until the user
+  // actually drags it, meaning "use the default bottom-left corner" (see
+  // wrapStyle below). Persisted; a resting layout preference, not data.
+  const [bubblePosition, setBubblePosition] = useState<BubblePosition | null>(loadBubblePosition());
+  // Entries dragged out of the list into their own floating note — a
+  // transient "what I'm working on right now" arrangement, reset every
+  // launch (same category as selectedCampaignId below), never persisted.
+  const [detached, setDetached] = useState<Record<string, Point>>({});
+
+  const bubbleDrag = usePointerDrag({
+    onDragStart() {
+      // Mirrors a mobile chat-head bubble: you can't drag while its panel
+      // is open, so the panel's anchor only ever needs computing once, when
+      // it next opens (bubble stationary) — never live mid-drag.
+      setOpen(false);
+    },
+    onDrag(x, y) {
+      const wrap = wrapRef.current;
+      if (!wrap) return;
+      // Direct DOM mutation for 1:1 tracking during the drag itself —
+      // cheaper than funneling every pointermove through React state.
+      // React takes back over once onDragEnd commits the snapped position.
+      wrap.style.left = `${x - BUBBLE_HALF}px`;
+      wrap.style.top = `${y - BUBBLE_HALF}px`;
+      wrap.style.right = 'auto';
+      wrap.style.bottom = 'auto';
+    },
+    onDragEnd(x, y) {
+      const snapped = snapToNearestEdge(x, y);
+      setBubblePosition(snapped);
+      saveBubblePosition(snapped);
+    },
+  });
   // Which Campaign the Journal is currently showing — a quick "what am I
   // working on right now" pick, not data: resets to the global list on
   // every launch, entirely decoupled from app navigation/current page.
@@ -81,6 +107,36 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesError, setEntriesError] = useState<string | null>(null);
 
+  // "Campaign" is today's kind-grouped notes; "Session" lists that
+  // Campaign's own Sessions, one note per Session kept in sync by name
+  // (see SessionNotesPanel + updateSessionAndSyncNotes). Resets to
+  // Campaign whenever a different Campaign is selected.
+  const [notesScope, setNotesScope] = useState<'CAMPAIGN' | 'SESSION'>('CAMPAIGN');
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedCampaignId || notesScope !== 'SESSION') return;
+    let cancelled = false;
+    setSessionsLoading(true);
+    setSessionsError(null);
+    sessionsApi
+      .listByCampaign(selectedCampaignId)
+      .then((list) => {
+        if (!cancelled) setSessions(list);
+      })
+      .catch((err) => {
+        if (!cancelled) setSessionsError(err instanceof Error ? err.message : 'Could not load Sessions.');
+      })
+      .finally(() => {
+        if (!cancelled) setSessionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCampaignId, notesScope]);
+
   useEffect(() => {
     if (!selectedCampaignId) {
       setEntries([]);
@@ -119,7 +175,11 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     if (!open) return;
     function handleDocumentMouseDown(event: MouseEvent) {
       const target = event.target as HTMLElement;
-      if (target.closest('.journal-panel, .journal-detail, .journal-bubble')) return;
+      // Floating notes render outside the panel/detail/bubble DOM subtree
+      // (position: fixed, siblings of the stack) but are still part of the
+      // Journal's own surface — clicking Reattach, or just editing one,
+      // must never count as "outside" and close the whole panel.
+      if (target.closest('.journal-panel, .journal-detail, .journal-bubble, .journal-floating-note')) return;
       setOpen(false);
     }
     document.addEventListener('mousedown', handleDocumentMouseDown);
@@ -134,12 +194,34 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   function selectCampaign(id: string) {
     setSelectedCampaignId(id);
     setDetailEntryId(null);
+    setNotesScope('CAMPAIGN');
   }
 
   function backToList() {
     setSelectedCampaignId(null);
     setDetailEntryId(null);
     setMenuOpen(false);
+    setNotesScope('CAMPAIGN');
+  }
+
+  // Explicit click, not a keystroke — same "create now, fill in after"
+  // convention the "+" add-entry menu already uses (addEntry above), so
+  // this isn't a new pattern. Browsing the Session list itself creates
+  // nothing; only clicking one to actually open its notes does.
+  async function openSessionNotes(session: Session) {
+    const match = entries.find((e) => e.kind === 'SESSION' && e.label.trim() === session.name.trim());
+    if (match) {
+      setDetailEntryId(match.id);
+      return;
+    }
+    if (!selectedCampaignId) return;
+    try {
+      const created = await journalApi.create({ campaignId: selectedCampaignId, kind: 'SESSION', label: session.name });
+      setEntries((prev) => [...prev, created]);
+      setDetailEntryId(created.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not open that Session’s notes.');
+    }
   }
 
   async function addEntry(kind: JournalEntryKind) {
@@ -173,9 +255,43 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
       await journalApi.remove(id);
       setEntries((prev) => prev.filter((e) => e.id !== id));
       setDetailEntryId((current) => (current === id ? null : current));
+      setDetached((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not delete the entry.');
     }
+  }
+
+  // A row's drag handle fires this when it's dropped outside the panel's
+  // own body — see JournalCategoryGroup's wrapped onDragEnd. Detaching never
+  // touches the underlying record, only where it's displayed.
+  function detachEntry(entry: JournalEntry, point: Point) {
+    setDetailEntryId((current) => (current === entry.id ? null : current));
+    setDetached((prev) => {
+      const existingRects = Object.entries(prev)
+        .filter(([id]) => id !== entry.id)
+        .map(([, pos]) => ({ ...pos, ...NOTE_SIZE }));
+      const spot = findNonOverlappingSpot(
+        { x: point.x - NOTE_SIZE.width / 2, y: point.y - 16 },
+        NOTE_SIZE,
+        existingRects,
+        { width: window.innerWidth, height: window.innerHeight }
+      );
+      return { ...prev, [entry.id]: spot };
+    });
+  }
+
+  function reattachEntry(id: string) {
+    setDetached((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   // Reordering within one category only ever touches that category's own
@@ -195,15 +311,45 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? null;
   const groups = KIND_DEFS.map((def) => ({
     ...def,
-    items: entries.filter((e) => e.kind === def.key).sort((a, b) => a.order - b.order),
+    items: entries.filter((e) => e.kind === def.key && !(e.id in detached)).sort((a, b) => a.order - b.order),
   })).filter((g) => g.items.length > 0);
 
   const detailEntry = detailEntryId != null ? entries.find((e) => e.id === detailEntryId) ?? null : null;
   const detailOpen = Boolean(open && detailEntry);
 
+  // Anchors the panel/detail stack toward the middle of the screen rather
+  // than off it — which side depends on which edge the bubble is snapped to
+  // (direct for the edge it's pinned against) and, along that edge, which
+  // half of the screen it currently sits in (for the perpendicular axis).
+  const anchor = (() => {
+    if (!bubblePosition) return { horizontal: 'left' as const, vertical: 'bottom' as const };
+    const { edge, offset } = bubblePosition;
+    if (edge === 'left') return { horizontal: 'left' as const, vertical: offset < window.innerHeight / 2 ? ('top' as const) : ('bottom' as const) };
+    if (edge === 'right') return { horizontal: 'right' as const, vertical: offset < window.innerHeight / 2 ? ('top' as const) : ('bottom' as const) };
+    if (edge === 'top') return { horizontal: offset < window.innerWidth / 2 ? ('left' as const) : ('right' as const), vertical: 'top' as const };
+    return { horizontal: offset < window.innerWidth / 2 ? ('left' as const) : ('right' as const), vertical: 'bottom' as const };
+  })();
+  const stackClassName = `journal-stack${anchor.horizontal === 'right' ? ' journal-stack--anchor-right' : ''}${anchor.vertical === 'top' ? ' journal-stack--anchor-top' : ''}`;
+
+  const wrapStyle = (() => {
+    if (!bubblePosition) return undefined;
+    const offset = clampOffset(bubblePosition.edge, bubblePosition.offset);
+    switch (bubblePosition.edge) {
+      case 'left':
+        return { left: 'var(--space-3)', right: 'auto', top: offset, bottom: 'auto' };
+      case 'right':
+        return { right: 'var(--space-3)', left: 'auto', top: offset, bottom: 'auto' };
+      case 'top':
+        return { top: 'var(--space-3)', bottom: 'auto', left: offset, right: 'auto' };
+      case 'bottom':
+      default:
+        return { bottom: 'var(--space-3)', top: 'auto', left: offset, right: 'auto' };
+    }
+  })();
+
   return (
-    <div className="journal-bubble-wrap">
-      <div className="journal-stack">
+    <div className="journal-bubble-wrap" ref={wrapRef} style={wrapStyle}>
+      <div className={stackClassName}>
         {open && (
           <div className={`journal-panel${detailOpen ? ' journal-panel--attached' : ''}`}>
             {selectedCampaign ? (
@@ -212,55 +358,98 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
                   <button type="button" className="journal-panel__back" onClick={backToList}>
                     &larr; All Campaigns
                   </button>
-                  <div className="journal-panel__plus-wrap">
-                    <button
-                      type="button"
-                      className="journal-panel__plus"
-                      onClick={() => setMenuOpen((prev) => !prev)}
-                      aria-label="Add a journal entry"
-                    >
-                      +
-                    </button>
-                    {menuOpen && (
-                      <div className="journal-panel__menu">
-                        {KIND_DEFS.map((def) => (
-                          <button
-                            type="button"
-                            key={def.key}
-                            className="journal-panel__menu-item"
-                            onClick={() => addEntry(def.key)}
-                          >
-                            + {def.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {notesScope === 'CAMPAIGN' && (
+                    <div className="journal-panel__plus-wrap">
+                      <button
+                        type="button"
+                        className="journal-panel__plus"
+                        onClick={() => setMenuOpen((prev) => !prev)}
+                        aria-label="Add a journal entry"
+                      >
+                        +
+                      </button>
+                      {menuOpen && (
+                        <div className="journal-panel__menu">
+                          {KIND_DEFS.map((def) => (
+                            <button
+                              type="button"
+                              key={def.key}
+                              className="journal-panel__menu-item"
+                              onClick={() => addEntry(def.key)}
+                            >
+                              + {def.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="journal-panel__title">{selectedCampaign.name}</div>
 
-                <div className="journal-panel__body">
-                  {entriesLoading && <p className="journal-panel__status">Loading&hellip;</p>}
-                  {entriesError && (
-                    <p className="journal-panel__status journal-panel__status--error">{entriesError}</p>
-                  )}
-                  {!entriesLoading && !entriesError && entries.length === 0 && (
-                    <p className="journal-panel__status">No notes yet &mdash; tap + above to add one.</p>
-                  )}
-                  {!entriesLoading &&
-                    !entriesError &&
-                    groups.map((group) => (
-                      <JournalCategoryGroup
-                        key={group.key}
-                        label={group.label}
-                        items={group.items}
-                        activeEntryId={detailEntryId}
-                        onReorder={(ids) => reorderGroup(group.key, ids)}
-                        onEdit={setDetailEntryId}
-                        onRemove={removeEntry}
-                      />
-                    ))}
+                <div className="journal-panel__scope-toggle" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={notesScope === 'CAMPAIGN'}
+                    className={`journal-panel__scope-btn${notesScope === 'CAMPAIGN' ? ' journal-panel__scope-btn--active' : ''}`}
+                    onClick={() => setNotesScope('CAMPAIGN')}
+                  >
+                    Campaign
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={notesScope === 'SESSION'}
+                    className={`journal-panel__scope-btn${notesScope === 'SESSION' ? ' journal-panel__scope-btn--active' : ''}`}
+                    onClick={() => setNotesScope('SESSION')}
+                  >
+                    Session
+                  </button>
                 </div>
+
+                {notesScope === 'CAMPAIGN' ? (
+                  <div className="journal-panel__body">
+                    {entriesLoading && <p className="journal-panel__status">Loading&hellip;</p>}
+                    {entriesError && (
+                      <p className="journal-panel__status journal-panel__status--error">{entriesError}</p>
+                    )}
+                    {!entriesLoading && !entriesError && entries.length === 0 && (
+                      <p className="journal-panel__status">No notes yet &mdash; tap + above to add one.</p>
+                    )}
+                    {!entriesLoading &&
+                      !entriesError &&
+                      groups.map((group) => (
+                        <JournalCategoryGroup
+                          key={group.key}
+                          label={group.label}
+                          items={group.items}
+                          activeEntryId={detailEntryId}
+                          onReorder={(ids) => reorderGroup(group.key, ids)}
+                          onEdit={setDetailEntryId}
+                          onRemove={removeEntry}
+                          onDetach={detachEntry}
+                        />
+                      ))}
+                  </div>
+                ) : (
+                  <div className="journal-panel__body">
+                    {sessionsLoading && <p className="journal-panel__status">Loading&hellip;</p>}
+                    {sessionsError && (
+                      <p className="journal-panel__status journal-panel__status--error">{sessionsError}</p>
+                    )}
+                    {!sessionsLoading && !sessionsError && sessions.length === 0 && (
+                      <p className="journal-panel__status">No Sessions yet in this Campaign.</p>
+                    )}
+                    {!sessionsLoading &&
+                      !sessionsError &&
+                      sessions.map((s) => (
+                        <button type="button" key={s.id} className="journal-session-row" onClick={() => openSessionNotes(s)}>
+                          {s.name}
+                        </button>
+                      ))}
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -313,13 +502,36 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
       <button
         type="button"
         className="journal-bubble"
-        onClick={toggleOpen}
+        onClick={() => {
+          // A real drag shouldn't also register as a click — see
+          // usePointerDrag's wasDragged comment.
+          if (bubbleDrag.wasDragged()) return;
+          toggleOpen();
+        }}
+        onPointerDown={bubbleDrag.onPointerDown}
+        onPointerMove={bubbleDrag.onPointerMove}
+        onPointerUp={bubbleDrag.onPointerUp}
         aria-label={open ? 'Close Journal' : 'Open Journal'}
         title="Journal"
       >
         <JournalBookIcon />
-        {selectedCampaignId && entries.length > 0 && <span className="journal-bubble__badge">{entries.length}</span>}
       </button>
+
+      {Object.entries(detached).map(([id, position]) => {
+        const entry = entries.find((e) => e.id === id);
+        if (!entry) return null;
+        return (
+          <JournalFloatingNote
+            key={id}
+            entry={entry}
+            position={position}
+            onMove={(next) => setDetached((prev) => ({ ...prev, [id]: next }))}
+            onSave={(patch) => saveEntry(id, patch)}
+            onReattach={() => reattachEntry(id)}
+            onRemove={() => removeEntry(id)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -331,6 +543,7 @@ function JournalCategoryGroup({
   onReorder,
   onEdit,
   onRemove,
+  onDetach,
 }: {
   label: string;
   items: JournalEntry[];
@@ -338,10 +551,30 @@ function JournalCategoryGroup({
   onReorder: (orderedIds: string[]) => void;
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
+  onDetach: (entry: JournalEntry, point: Point) => void;
 }) {
   const { getHandleProps, getRowClassName } = useDragReorder(items, (reordered) =>
     onReorder(reordered.map((e) => e.id))
   );
+
+  // Dropped outside the panel's own body (with a little slop so an
+  // overshot in-list reorder doesn't misfire as a detach) → pop it out
+  // into its own floating note instead of treating it as a reorder.
+  // useDragReorder itself stays untouched — this just wraps the handle
+  // props it already returns, same pattern any other consumer could use.
+  function handleDragEnd(e: DragEvent<HTMLSpanElement>, index: number, entry: JournalEntry) {
+    const SLOP = 24;
+    const body = document.querySelector('.journal-panel__body');
+    const rect = body?.getBoundingClientRect();
+    const inside =
+      rect &&
+      e.clientX >= rect.left - SLOP &&
+      e.clientX <= rect.right + SLOP &&
+      e.clientY >= rect.top - SLOP &&
+      e.clientY <= rect.bottom + SLOP;
+    getHandleProps(index).onDragEnd();
+    if (!inside) onDetach(entry, { x: e.clientX, y: e.clientY });
+  }
 
   return (
     <div className="journal-panel__group">
@@ -351,7 +584,9 @@ function JournalCategoryGroup({
           className={`journal-entry-row${entry.id === activeEntryId ? ' journal-entry-row--active' : ''}${getRowClassName(index)}`}
           key={entry.id}
         >
-          <span {...getHandleProps(index)}>⠿</span>
+          <span {...getHandleProps(index)} onDragEnd={(e) => handleDragEnd(e, index, entry)}>
+            ⠿
+          </span>
           <div className="journal-entry-row__body">
             <div className="journal-entry-row__label">{entry.label || 'Untitled'}</div>
             {entry.notes && <div className="journal-entry-row__notes">{entry.notes}</div>}
@@ -388,25 +623,6 @@ function JournalDetailPane({
   onClose: () => void;
   onRemove: () => void;
 }) {
-  const [label, setLabel] = useState(entry.label);
-  const [notes, setNotes] = useState(entry.notes);
-
-  // The pane can be reopened on a different entry without remounting (same
-  // component instance, new `entry` prop) — resync local drafts when that
-  // happens.
-  useEffect(() => {
-    setLabel(entry.label);
-    setNotes(entry.notes);
-  }, [entry.id, entry.label, entry.notes]);
-
-  function commitLabel() {
-    if (label !== entry.label) onSave({ label });
-  }
-
-  function commitNotes() {
-    if (notes !== entry.notes) onSave({ notes });
-  }
-
   return (
     <div className="journal-detail">
       <div className="journal-detail__header">
@@ -416,21 +632,7 @@ function JournalDetailPane({
         </button>
       </div>
       <div className="journal-detail__body">
-        <input
-          type="text"
-          className="journal-detail__label"
-          placeholder="Label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={commitLabel}
-        />
-        <textarea
-          className="journal-detail__notes"
-          placeholder="Notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={commitNotes}
-        />
+        <JournalEntryFields entry={entry} onSave={onSave} />
         <button type="button" className="journal-detail__remove" onClick={onRemove}>
           Remove entry
         </button>

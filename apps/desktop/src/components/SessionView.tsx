@@ -8,11 +8,21 @@ import CombatPanel, { type CombatSpotlightSignal } from './CombatPanel';
 import SessionCombatSidebar from './SessionCombatSidebar';
 import LootRoller from './LootRoller';
 import PartyRoster from './PartyRoster';
+import SessionNotesPanel from './SessionNotesPanel';
+import SessionSectionShell from './SessionSectionShell';
 import DiceTray from './DiceTray';
 import RollLogPanel from './RollLogPanel';
 import { useRollLog } from '../context/RollLogContext';
 import { useMusicContext } from '../context/MusicContext';
+import { useDragReorder } from '../lib/useDragReorder';
+import { loadSectionOrder, saveSectionOrder, type SessionSectionId } from '../lib/sessionSectionOrder';
 import './SessionView.css';
+
+const SECTION_TITLES: Record<SessionSectionId, string> = {
+  PARTY: 'Party',
+  ADVERSARIES: 'Adversaries',
+  NOTES: 'Notes',
+};
 
 interface SessionViewProps {
   session: Session;
@@ -47,6 +57,16 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   // again" apart from a re-render that changed nothing.
   const [combatSpotlight, setCombatSpotlight] = useState<CombatSpotlightSignal | null>(null);
 
+  // Party/Adversaries/Notes are drag-reorderable, the same way Journal
+  // entries already are — a global GM layout preference (see
+  // sessionSectionOrder.ts), not per-session data. FearTrack stays pinned
+  // above all three, unaffected by this.
+  const [sectionOrder, setSectionOrder] = useState<SessionSectionId[]>(loadSectionOrder());
+  const { getHandleProps, getRowClassName } = useDragReorder(sectionOrder, (next) => {
+    setSectionOrder(next);
+    saveSectionOrder(next);
+  });
+
   // Table chatter, not campaign data (never persisted to disk, see
   // lib/rollLog) but kept alive for the life of the app run even while this
   // view unmounts — see RollLogContext. Shared between Roll Damage/Roll
@@ -76,10 +96,15 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
     };
   }, [session.id]);
 
-  async function pullInAdversary(adversaryId: string) {
+  // Sequential, not Promise.all — CombatPanel's duplicate-suffix numbering
+  // (#1, #2, ...) is derived purely from sessionAdversaries' list order, and
+  // Promise.all would let N creates settle in a nondeterministic order.
+  async function pullInAdversary(adversaryId: string, quantity: number = 1) {
     try {
-      const pulled = await sessionAdversariesApi.create({ sessionId: session.id, adversaryId });
-      setSessionAdversaries((prev) => [...prev, pulled]);
+      for (let i = 0; i < quantity; i++) {
+        const pulled = await sessionAdversariesApi.create({ sessionId: session.id, adversaryId });
+        setSessionAdversaries((prev) => [...prev, pulled]);
+      }
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not pull that Adversary in.');
     }
@@ -196,19 +221,27 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
         <div className="session-view__main">
           <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
 
-          <PartyRoster campaignId={campaignId} sessionId={session.id} layout="grid" />
-
-          <CombatPanel
-            sessionId={session.id}
-            sessionAdversaries={sessionAdversaries}
-            adversariesLoading={adversariesLoading}
-            adversariesError={adversariesError}
-            spotlightSignal={combatSpotlight}
-            onPullInAdversary={pullInAdversary}
-            onAdversaryChange={handleAdversaryChange}
-            onAdversaryRemove={handleAdversaryRemove}
-            onRoll={addRoll}
-          />
+          {sectionOrder.map((id, index) => (
+            <div key={id} className={`session-view__section${getRowClassName(index)}`}>
+              <SessionSectionShell title={SECTION_TITLES[id]} dragHandleProps={getHandleProps(index)}>
+                {id === 'PARTY' && <PartyRoster campaignId={campaignId} sessionId={session.id} layout="grid" />}
+                {id === 'ADVERSARIES' && (
+                  <CombatPanel
+                    sessionId={session.id}
+                    sessionAdversaries={sessionAdversaries}
+                    adversariesLoading={adversariesLoading}
+                    adversariesError={adversariesError}
+                    spotlightSignal={combatSpotlight}
+                    onPullInAdversary={pullInAdversary}
+                    onAdversaryChange={handleAdversaryChange}
+                    onAdversaryRemove={handleAdversaryRemove}
+                    onRoll={addRoll}
+                  />
+                )}
+                {id === 'NOTES' && <SessionNotesPanel campaignId={campaignId} session={session} />}
+              </SessionSectionShell>
+            </div>
+          ))}
         </div>
 
         <aside className="session-view__sidebar">

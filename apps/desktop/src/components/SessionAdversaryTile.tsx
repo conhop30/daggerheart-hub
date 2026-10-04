@@ -19,6 +19,9 @@ interface SessionAdversaryTileProps {
   /** Lifted up to CombatPanel so clicking this Adversary in SessionCombatSidebar can close every other tile's Features and open just this one — see CombatPanel's spotlight comment. */
   featuresOpen: boolean;
   onToggleFeatures: () => void;
+  /** A second, independent collapse: hides everything below the header/meta chips except the roll buttons themselves, for a GM who wants the grid to read as just name/tier/thresholds/rolls. Orthogonal to featuresOpen — collapsing the body hides Features too (nothing to show below unconditional roll buttons otherwise), but featuresOpen's own value is untouched and restores exactly as it was once the body reopens. */
+  bodyOpen: boolean;
+  onToggleBody: () => void;
   /** Briefly true right after a sidebar click targets this tile — drives a fading highlight and scrolls the tile into view. Never blocks onToggleFeatures from working normally once it's passed. */
   spotlighted: boolean;
   onChange: (patch: UpdateSessionAdversaryRequest) => void;
@@ -36,6 +39,8 @@ export default function SessionAdversaryTile({
   duplicateSuffix,
   featuresOpen,
   onToggleFeatures,
+  bodyOpen,
+  onToggleBody,
   spotlighted,
   onChange,
   onRemove,
@@ -102,6 +107,15 @@ export default function SessionAdversaryTile({
       title={adversary.label}
       titleNode={
         <h3 className="content-card__title session-tile__title">
+          <button
+            type="button"
+            className="session-tile__body-toggle"
+            onClick={onToggleBody}
+            aria-expanded={bodyOpen}
+            aria-label={bodyOpen ? 'Collapse details' : 'Expand details'}
+          >
+            {bodyOpen ? '▾' : '▸'}
+          </button>
           <input
             type="text"
             className="session-tile__name-input"
@@ -155,27 +169,29 @@ export default function SessionAdversaryTile({
         </>
       }
     >
-      <div className="session-tile__stats">
-        {adversary.hpMax != null && (
-          <StatStepper
-            label="HP"
-            current={adversary.hpMax - adversary.hpMarked}
-            max={adversary.hpMax}
-            onChange={(remaining) => onChange({ hpMarked: adversary.hpMax! - remaining })}
-          />
-        )}
-        {adversary.stressMax != null && (
-          <StatStepper
-            label="Stress"
-            current={adversary.stressMax - adversary.stressMarked}
-            max={adversary.stressMax}
-            onChange={(remaining) => onChange({ stressMarked: adversary.stressMax! - remaining })}
-          />
-        )}
-      </div>
+      {bodyOpen && (
+        <div className="session-tile__stats">
+          {adversary.hpMax != null && (
+            <StatStepper
+              label="HP"
+              current={adversary.hpMax - adversary.hpMarked}
+              max={adversary.hpMax}
+              onChange={(remaining) => onChange({ hpMarked: adversary.hpMax! - remaining })}
+            />
+          )}
+          {adversary.stressMax != null && (
+            <StatStepper
+              label="Stress"
+              current={adversary.stressMax - adversary.stressMarked}
+              max={adversary.stressMax}
+              onChange={(remaining) => onChange({ stressMarked: adversary.stressMax! - remaining })}
+            />
+          )}
+        </div>
+      )}
       {(adversary.attackDescription || adversary.attackModifier != null) && (
         <p className="session-tile__attack">
-          {adversary.attackDescription}
+          {bodyOpen && adversary.attackDescription}
           {adversary.attackModifier != null && (
             <button type="button" className="session-tile__roll-attack" onClick={handleRollAttack}>
               Roll Attack
@@ -188,17 +204,17 @@ export default function SessionAdversaryTile({
           )}
         </p>
       )}
-      {attackRoll && (
+      {bodyOpen && attackRoll && (
         <p className="session-tile__roll-result">
           {attackRoll.notation} = <strong>{attackRoll.total}</strong>
         </p>
       )}
-      {roll && (
+      {bodyOpen && roll && (
         <p className="session-tile__roll-result">
           {roll.notation} = <strong>{roll.result.total}</strong>
         </p>
       )}
-      {experiences.length > 0 && (
+      {bodyOpen && experiences.length > 0 && (
         <p className="session-tile__experiences">
           <strong>Experience:</strong>{' '}
           {experiences.map((e, i) => (
@@ -209,8 +225,10 @@ export default function SessionAdversaryTile({
           ))}
         </p>
       )}
-      <ConditionsEditor values={adversary.conditions ?? []} onChange={(conditions) => onChange({ conditions })} />
-      {featureRows.length > 0 && (
+      {bodyOpen && (
+        <ConditionsEditor values={adversary.conditions ?? []} onChange={(conditions) => onChange({ conditions })} />
+      )}
+      {bodyOpen && featureRows.length > 0 && (
         <div className="session-tile__features">
           <button
             type="button"

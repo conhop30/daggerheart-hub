@@ -116,9 +116,12 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await win.click('button:has-text("Add Party Member")');
     await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toBeVisible();
 
-    const mainChildren = win.locator('.session-view__main > *');
-    await expect(mainChildren.nth(1)).toHaveClass(/party-roster/);
-    await expect(mainChildren.nth(2)).toHaveClass(/combat-panel/);
+    // Party/Adversaries/Notes are drag-reorderable sections now (see
+    // SessionSectionShell) — Party defaults above Combat, each inside its
+    // own .session-view__section wrapper.
+    const sections = win.locator('.session-view__section');
+    await expect(sections.nth(0).locator('.party-roster')).toBeVisible();
+    await expect(sections.nth(1).locator('.combat-panel')).toBeVisible();
     await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
   });
 
@@ -483,5 +486,142 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     // row anymore (see CampaignBanner.tsx/CampaignDetail.tsx).
     await win.getByRole('button', { name: 'Delete Campaign' }).click();
     await expect(win.locator('.campaign-row', { hasText: 'Doomed Campaign' })).toHaveCount(0);
+  });
+
+  test('a quantity stepper on the Adversary picker adds several copies in one click, numbered in order', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await expect(win.locator('.quantity-stepper__value')).toHaveText('1');
+    await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
+    await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
+    await expect(win.locator('.quantity-stepper__value')).toHaveText('3');
+    await win.click('.item-picker__option:has-text("Goblin")');
+
+    const tiles = win.locator('.combat-panel .content-card');
+    await expect(tiles).toHaveCount(3);
+    await expect(tiles.nth(0).locator('.session-tile__name-suffix')).toHaveText('#1');
+    await expect(tiles.nth(1).locator('.session-tile__name-suffix')).toHaveText('#2');
+    await expect(tiles.nth(2).locator('.session-tile__name-suffix')).toHaveText('#3');
+
+    // The stepper resets to 1 for the next pull, not stuck at 3.
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await expect(win.locator('.quantity-stepper__value')).toHaveText('1');
+  });
+
+  test("the body toggle collapses an Adversary tile to name/tier/thresholds/roll buttons, independent of the Features toggle", async () => {
+    await createAdversaryWithAttackAndFeature(
+      'Wraith',
+      '6',
+      '2',
+      'Chill touch: 1d8 magic damage',
+      'Fear Aura',
+      'Allies nearby gain a Fear.'
+    );
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Wraith")');
+    const tile = win.locator('.combat-panel .content-card');
+
+    await expect(tile.locator('.session-tile__stats')).toBeVisible();
+    await expect(tile.locator('.session-tile__features-toggle')).toBeVisible();
+    await expect(tile.locator('.session-tile__roll-damage')).toBeVisible();
+
+    // Close Features first, independent of the body toggle below.
+    await tile.locator('.session-tile__features-toggle').click();
+    await expect(tile.locator('.session-tile__features-toggle')).toHaveText('▸ Features');
+
+    await tile.locator('.session-tile__body-toggle').click();
+    await expect(tile.locator('.session-tile__stats')).toHaveCount(0);
+    await expect(tile.locator('.session-tile__features-toggle')).toHaveCount(0);
+    // The roll button stays reachable even fully collapsed.
+    await expect(tile.locator('.session-tile__roll-damage')).toBeVisible();
+
+    // Reopening the body restores Features exactly as it was left — closed,
+    // not reset back open — proving the two toggles are independently
+    // tracked rather than one resetting the other.
+    await tile.locator('.session-tile__body-toggle').click();
+    await expect(tile.locator('.session-tile__stats')).toBeVisible();
+    await expect(tile.locator('.session-tile__features-toggle')).toHaveText('▸ Features');
+  });
+
+  test('Session Notes and the matching Journal entry are the same record, either side can edit it', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.fill('.session-notes-panel__notes', 'Remember the bridge toll.');
+    await win.click('.session-view__title');
+    await win.waitForTimeout(50);
+
+    // The Journal's Session view finds the same record by name — not a copy.
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("The Wildwood")');
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await win.click('.journal-session-row:has-text("Session 1")');
+    await expect(win.locator('.journal-detail__notes')).toHaveValue('Remember the bridge toll.');
+
+    // Editing from the Journal side edits that same record.
+    await win.fill('.journal-detail__notes', 'Edited from the Journal.');
+    await win.click('.journal-detail__close');
+    await win.click('.journal-bubble');
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.session-notes-panel__notes')).toHaveValue('Edited from the Journal.');
+  });
+
+  test('renaming a Session keeps its linked Journal entry’s label in sync, rather than orphaning it', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.fill('.session-notes-panel__notes', 'Notes made before the rename.');
+    await win.click('.session-view__title');
+    await win.waitForTimeout(50);
+
+    await win.click('.session-view__header-action:not(.session-view__header-action--danger)');
+    await win.fill('.create-form input[type="text"]', 'The Ambush at Dawn');
+    await win.click('button:has-text("Save Changes")');
+    await expect(win.locator('.session-view__title')).toHaveText('The Ambush at Dawn');
+
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("The Wildwood")');
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await expect(win.locator('.journal-session-row', { hasText: 'The Ambush at Dawn' })).toBeVisible();
+    await expect(win.locator('.journal-session-row', { hasText: 'Session 1' })).toHaveCount(0);
+    await win.click('.journal-session-row:has-text("The Ambush at Dawn")');
+    await expect(win.locator('.journal-detail__notes')).toHaveValue('Notes made before the rename.');
+  });
+
+  test('Party/Adversaries/Notes can be drag-reordered, and the order persists across reload as a global preference', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    const sectionLabels = win.locator('.session-section-shell__label');
+    await expect(sectionLabels.nth(0)).toHaveText('Party');
+    await expect(sectionLabels.nth(1)).toHaveText('Adversaries');
+    await expect(sectionLabels.nth(2)).toHaveText('Notes');
+
+    // Drag the Notes section's handle above Party.
+    const handles = win.locator('.session-section-shell .drag-handle');
+    const notesBox = await handles.nth(2).boundingBox();
+    const partyBox = await handles.nth(0).boundingBox();
+    if (!notesBox || !partyBox) throw new Error('section handle not visible');
+    await win.mouse.move(notesBox.x + notesBox.width / 2, notesBox.y + notesBox.height / 2);
+    await win.mouse.down();
+    await win.mouse.move(partyBox.x + partyBox.width / 2, partyBox.y + partyBox.height / 2, { steps: 10 });
+    await win.dispatchEvent('.session-section-shell .drag-handle >> nth=0', 'dragenter');
+    await win.mouse.up();
+
+    await expect(sectionLabels.nth(0)).toHaveText('Notes');
+    await expect(sectionLabels.nth(1)).toHaveText('Party');
+    await expect(sectionLabels.nth(2)).toHaveText('Adversaries');
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(sectionLabels.nth(0)).toHaveText('Notes');
   });
 });

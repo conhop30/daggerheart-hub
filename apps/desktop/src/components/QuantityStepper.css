@@ -1,0 +1,38 @@
+.quantity-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.quantity-stepper__button {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--ink);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.quantity-stepper__button:hover:not(:disabled) {
+  border-color: var(--hope);
+}
+
+.quantity-stepper__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quantity-stepper__value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  min-width: 1.4rem;
+  text-align: center;
+}

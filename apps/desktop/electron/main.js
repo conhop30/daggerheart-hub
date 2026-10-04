@@ -13,6 +13,17 @@ const store = require('./store.js');
 const updateCheck = require('./updateCheck.js');
 const { createUpdateManager } = require('./updater.js');
 
+// DAGGERHEART_STORE_DIR already isolates the JSON data store per e2e test
+// (see store.js), but Electron's userData directory — which backs a
+// renderer's localStorage (Theme/Palette/Text Size/Music Volume, the
+// Journal bubble's position, the Session section order) — otherwise
+// defaults to one fixed real path and leaks state between separate test
+// runs. Must run before app.whenReady(); mirroring the same env var keeps
+// both isolated together.
+if (process.env.DAGGERHEART_STORE_DIR) {
+  app.setPath('userData', path.join(process.env.DAGGERHEART_STORE_DIR, 'userData'));
+}
+
 // Whatever size/mode the window was last left at is what the next launch
 // should open with — kept in its own small JSON file (not data.json; this
 // is a per-machine UI preference, not campaign content) next to the store,

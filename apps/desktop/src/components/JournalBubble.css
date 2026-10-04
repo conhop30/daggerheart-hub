@@ -17,10 +17,16 @@
   justify-content: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   transition: border-color 160ms var(--ease);
+  cursor: grab;
+  touch-action: none;
 }
 
 .journal-bubble:hover {
   border-color: var(--hope);
+}
+
+.journal-bubble:active {
+  cursor: grabbing;
 }
 
 .journal-bubble__icon {
@@ -29,31 +35,28 @@
   color: var(--hope);
 }
 
-.journal-bubble__badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--hope);
-  color: var(--void);
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  box-sizing: border-box;
-}
-
 .journal-stack {
   position: absolute;
   left: 0;
   bottom: 64px;
   display: flex;
   align-items: stretch;
+}
+
+/* The bubble can now sit on any window edge (see usePointerDrag in
+   JournalBubble.tsx) — these keep the panel/detail stack growing toward
+   the middle of the screen instead of off it. Anchoring only moves the
+   whole stack; panel and detail pane keep the same left-to-right order
+   either way, so journal-panel--attached's corner-radius rule below needs
+   no mirrored variant. */
+.journal-stack--anchor-right {
+  left: auto;
+  right: 0;
+}
+
+.journal-stack--anchor-top {
+  bottom: auto;
+  top: 64px;
 }
 
 .journal-panel {
@@ -162,6 +165,60 @@
   color: var(--ink);
   padding: var(--space-1) var(--space-3) var(--space-2);
   flex-shrink: 0;
+}
+
+.journal-panel__scope-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 0 var(--space-3) var(--space-2);
+  flex-shrink: 0;
+}
+
+.journal-panel__scope-btn {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 0;
+  border-radius: 999px;
+  transition: border-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+.journal-panel__scope-btn:hover {
+  color: var(--ink);
+}
+
+.journal-panel__scope-btn--active {
+  border-color: var(--hope);
+  color: var(--hope);
+}
+
+.journal-session-row {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.86rem;
+  text-align: left;
+  padding: 8px 0;
+  transition: color 160ms var(--ease);
+}
+
+.journal-session-row:last-child {
+  border-bottom: none;
+}
+
+.journal-session-row:hover {
+  color: var(--hope);
 }
 
 .journal-panel__body {
@@ -404,6 +461,11 @@
 .journal-detail__label {
   font-weight: 600;
   flex-shrink: 0;
+}
+
+.journal-detail__label--readonly {
+  cursor: default;
+  color: var(--muted);
 }
 
 .journal-detail__notes {

@@ -3,8 +3,15 @@
   min-width: 220px;
 }
 
+.item-picker__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .item-picker__search {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: var(--void);
   border: 1px solid var(--hairline);
   color: var(--ink);

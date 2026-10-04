@@ -69,10 +69,21 @@
   margin-bottom: var(--space-3);
 }
 
-/* The Party sits above the Combat panel. */
-.session-view .party-roster {
-  margin-top: var(--space-4);
-  margin-bottom: var(--space-4);
+.session-view__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Party/Adversaries/Notes are drag-reorderable (see SessionSectionShell) —
+   this is the drop-target indicator for the section being dragged over,
+   same visual language as a Journal entry row's is-drag-over. */
+.session-view__section {
+  border-top: 2px solid transparent;
+}
+
+.session-view__section.is-drag-over {
+  border-top-color: var(--hope);
 }
 
 /* The right-hand "side window" the music panel lives in — collapses to a

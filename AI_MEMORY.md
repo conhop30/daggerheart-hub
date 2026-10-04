@@ -126,6 +126,33 @@ The Adventuring/Combat merge and Music Campaign-scoping work above is
 verified (`npx tsc --noEmit -p .` clean, `npm test` 238 tests green, full
 Playwright suite 75 tests green) and shipped as v1.7.0.
 
+A follow-up round of live-play feedback on that merge landed next: the
+Journal bubble is now freely draggable and snaps to the nearest window
+edge (`src/lib/usePointerDrag.ts`, Pointer Events — kept deliberately
+separate from `useDragReorder`'s HTML5 DnD, a different interaction);
+dragging an entry out of its list detaches it into its own floating note
+(`JournalFloatingNote.tsx`, same underlying record); Sessions now have
+real per-Session notes (`JournalEntryKind = 'SESSION'`, kept in sync with
+a Session's own `name` by `electron/store.js`'s
+`updateSessionAndSyncNotes`, surfaced both from the bubble's new
+Campaign/Session toggle and from a live Session's own `SessionNotesPanel`
+below Combat); and the Session page's Party/Adversaries/Notes blocks are
+drag-reorderable the same way. Separately, an Adversary tile gained a
+second, independent collapse (`bodyOpen`, orthogonal to the existing
+Features toggle) and the Adversary picker gained a quantity stepper to
+pull in several copies in one click. Verified (`npx tsc --noEmit -p .`
+clean, `npm test` 242 tests green, full Playwright suite 84 tests green).
+See `TODO.md`'s matching entry for the full file-by-file breakdown,
+including two real bugs the new e2e coverage itself caught and fixed.
+
+One architecture note worth keeping here specifically: `electron/main.js`
+now calls `app.setPath('userData', ...)` whenever `DAGGERHEART_STORE_DIR`
+is set, so a renderer's `localStorage` (Theme/Palette/Text Size/Music
+Volume, and now the Journal bubble's position + the Session section
+order) is test-isolated the same way the JSON store already was — it
+wasn't before, and a new e2e test asserting a specific default
+`localStorage`-backed state is what surfaced it.
+
 See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if
 it's not present, there's nothing currently blocked on Connor's input.)

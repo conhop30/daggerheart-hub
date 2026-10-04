@@ -471,3 +471,88 @@ scratch list for planning the next pass of work.
         dedicated back buttons clear it. Fixed by backing out through
         `.session-view__back`/`.campaign-detail__back` first when either
         is open.
+- [x] Journal bubble polish, Session Notes, and two Adversary-tile/picker
+      improvements, from live-play feedback on the merge above:
+      - **No more entry-count badge** on the bubble — removed outright
+        (`JournalBubble.tsx`/`.css`), nothing replaced it.
+      - **The bubble itself is now freely draggable**, snapping to
+        whichever window edge it's released nearest (new
+        `src/lib/usePointerDrag.ts`, Pointer Events rather than HTML5
+        DnD — a FAB drag should feel 1:1, with no browser ghost image).
+        Position persists via `src/lib/bubblePosition.ts`
+        (`daggerheart-journal-bubble-position`); the panel/detail stack's
+        anchor flips to whichever side keeps it on screen
+        (`.journal-stack--anchor-right`/`--anchor-top`). A drag always
+        closes the panel first (you can't drag it open, same as a mobile
+        chat bubble), and a real drag never also registers as a click.
+      - **An entry can be dragged out of its list to detach it** into its
+        own small floating note (new `JournalFloatingNote.tsx`, same
+        underlying record, not a copy — editing either place edits the
+        same data). Detected by wrapping the existing drag handle's
+        `onDragEnd` to check whether it landed outside
+        `.journal-panel__body`; `useDragReorder` itself is untouched.
+        Detached notes cascade-avoid overlapping each other
+        (`src/lib/floatingLayout.ts`) and reset on every launch (a
+        working arrangement, not data) — a new `JournalEntryFields`
+        component factors the shared label/notes editing body out of
+        `JournalDetailPane` so both it and the floating note edit
+        identically.
+      - **Session Notes**: a new `JournalEntryKind = 'SESSION'`
+        (deliberately excluded from the "+" add-entry menu — it's never
+        hand-created) whose label is kept equal to a real Session's own
+        `name`, found by that match rather than a stored link. The bubble
+        gets a Campaign/Session toggle (`notesScope`); picking a Session
+        there looks up or creates its entry on click, never on keystroke.
+        A new `SessionNotesPanel.tsx` is the same feature from inside a
+        live Session, below Combat. Renaming a Session now goes through
+        `electron/store.js`'s `updateSessionAndSyncNotes` instead of the
+        generic `sessions.update`, so the linked entry's label is
+        relabeled in the same atomic write — `makeCollection` gained an
+        unwrapped `applyUpdate(store, id, patch)` so this could happen
+        inside one `mutate` call (nesting a second `mutate` call from
+        inside the first would never resolve — see its own comment).
+      - **Party/Adversaries/Notes are now drag-reorderable** on the
+        Session page, the same `useDragReorder` hook applied at section
+        rather than row granularity (new `SessionSectionShell.tsx` gives
+        each a drag handle; `src/lib/sessionSectionOrder.ts` persists the
+        order as one global GM layout preference, not per-session).
+        `FearTrack` stays pinned above all three.
+      - **Adversary tiles gain a second, independent collapse** —
+        `bodyOpen` (owned in `CombatPanel.tsx` alongside the existing
+        `tileFeaturesOpen`) hides HP/Stress, roll results, Experience,
+        Conditions, and Features entirely, while the header/meta chips
+        and both roll buttons stay unconditional. Orthogonal to the
+        existing Features toggle, not a replacement for it.
+      - **A quantity stepper on the Adversary picker** (`ItemPicker`'s
+        new optional `quantity` prop, left unused by the Environment
+        picker it's shared with) adds several copies in one click — new
+        `QuantityStepper.tsx` (floors at 1, unlike `StatStepper`'s floor
+        of 0) rather than reusing `StatStepper` and risking its HP/
+        Stress/trackable callers. `SessionView.pullInAdversary` creates
+        sequentially, not via `Promise.all`, since `CombatPanel`'s
+        duplicate-suffix numbering (`#1`/`#2`/...) depends on
+        `sessionAdversaries`' actual list order.
+      - Updated: `electron/store.test.js` (SESSION kind, the rename-sync
+        wrapper, a reverted-collision-rename case), `e2e/journal.spec.ts`
+        (badge gone, bubble drag-and-snap, detach/reattach, the Campaign/
+        Session toggle), `e2e/sessions.spec.ts` (the quantity stepper,
+        the deeper tile collapse, Session Notes sync + rename-sync +
+        section drag-reorder, all end to end).
+      - Two real bugs caught by the new e2e coverage itself (not pre-existing,
+        both introduced by this round and fixed before landing): (1) a
+        floating note's own clicks (editing it, clicking Reattach) counted
+        as "outside the Journal" and silently closed the whole panel —
+        `.journal-floating-note` was missing from the outside-click
+        detector's `closest()` selector in `JournalBubble.tsx`; (2) the
+        Reattach button sat inside the header's drag-capture region, so
+        `setPointerCapture` retargeted its click away from the button —
+        fixed with `onPointerDown={(e) => e.stopPropagation()}` on the
+        button itself (`JournalFloatingNote.tsx`). Also added
+        `app.setPath('userData', ...)` in `electron/main.js`, gated on
+        `DAGGERHEART_STORE_DIR` — Electron's userData dir (which backs a
+        renderer's `localStorage`, now including the bubble's position and
+        the Session section order) wasn't test-isolated the way the JSON
+        store already is, which the bubble-position e2e test surfaced as a
+        flaky "starts at the wrong corner" failure across repeated runs.
+      - Verified: `npx tsc --noEmit -p .` clean, `npm test` (242 tests)
+        green, full `playwright test` suite (84 tests) green.

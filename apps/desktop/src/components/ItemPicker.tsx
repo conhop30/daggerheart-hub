@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGameSets } from '../context/GameSetsContext';
+import QuantityStepper from './QuantityStepper';
 import './ItemPicker.css';
 
 interface PickableItem {
@@ -12,6 +13,8 @@ interface ItemPickerProps {
   items: PickableItem[];
   value: string | null;
   onChange: (id: string) => void;
+  /** Adds a "- n +" stepper next to the search box when present — the Adversary picker uses this to pull in several copies at once; the Environment picker (which shares this component) omits it and renders unchanged. */
+  quantity?: { value: number; onChange: (value: number) => void; max?: number };
 }
 
 // A searchable list, not a native <select> — a Loot/Consumable Table can
@@ -20,7 +23,7 @@ interface ItemPickerProps {
 // options. Reused by the Loot/Consumable Table entry editor now; the
 // Session Builder's Adversary/Environment pull-in (Phase 3) will reuse it
 // too.
-export default function ItemPicker({ items, value, onChange }: ItemPickerProps) {
+export default function ItemPicker({ items, value, onChange, quantity }: ItemPickerProps) {
   const { gameSets } = useGameSets();
   const [query, setQuery] = useState('');
 
@@ -34,13 +37,16 @@ export default function ItemPicker({ items, value, onChange }: ItemPickerProps) 
 
   return (
     <div className="item-picker">
-      <input
-        type="text"
-        className="item-picker__search"
-        placeholder={selected ? selected.name : 'Search…'}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      <div className="item-picker__header">
+        <input
+          type="text"
+          className="item-picker__search"
+          placeholder={selected ? selected.name : 'Search…'}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {quantity && <QuantityStepper value={quantity.value} onChange={quantity.onChange} max={quantity.max} />}
+      </div>
       <div className="item-picker__list">
         {filtered.length === 0 && <p className="item-picker__empty">No matches.</p>}
         {filtered.map((item) => (

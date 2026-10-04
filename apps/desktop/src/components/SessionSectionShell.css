@@ -1,0 +1,41 @@
+.session-section-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.session-section-shell__handle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.session-section-shell__label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+/* .drag-handle's base rule lives in FeatureListEditor.css (shared across
+   every useDragReorder consumer) — repeated here so this section's handle
+   is styled even if that file's CSS chunk isn't otherwise loaded on this
+   page. */
+.session-section-shell .drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.2rem;
+  user-select: none;
+  touch-action: none;
+}
+
+.session-section-shell .drag-handle:hover {
+  color: var(--ink);
+}
+
+.session-section-shell .drag-handle--dragging {
+  opacity: 0.4;
+}

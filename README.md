@@ -476,7 +476,13 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
 - [x] Journal bubble: an app-wide floating panel for quick GM notes scoped
       per-Campaign, with categories mirroring the app's own content types
       (Adversaries/Loot/Consumables/Armor/Weapons/Worldbuilding/Other) —
-      superseded the old per-Session Campaign/NPC/PC/Session Notes fields
+      superseded the old per-Session Campaign/NPC/PC/Session Notes fields.
+      The bubble itself is freely draggable and snaps to the nearest window
+      edge; an entry can be dragged out of its list into its own small
+      floating note (same underlying record, not a copy). A Campaign/
+      Session toggle adds real per-Session notes, kept in sync by name with
+      a live Session's own Notes section — which, along with Party and
+      Adversaries, can be drag-reordered the same way
 - [x] In-app updates that ask first: a notice with Update now / Later,
       opt-in download with progress, Restart & install (Windows installer and
       Linux AppImage; falls back to a download link elsewhere)
@@ -526,6 +532,10 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       hand like switching a playlist, and a Music region can now be scoped
       to a single Campaign instead of always being application-wide, with
       a Campaign able to set its own default region
+- [x] A second, independent collapse on an Adversary tile (down to name/
+      tier/thresholds plus the roll buttons, everything else hidden) and a
+      "- n +" stepper on the Adversary picker to pull in several copies in
+      one click instead of one at a time
 
 **In progress / planned**
 - [ ] Same gallery/spotlight/`StatRail` treatment for the other

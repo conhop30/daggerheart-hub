@@ -174,4 +174,103 @@ test.describe('Journal bubble', () => {
     await expect(labels.nth(0)).toHaveText('Second');
     await expect(labels.nth(1)).toHaveText('First');
   });
+
+  test('the bubble has no entry-count badge even once a campaign has notes', async () => {
+    await createCampaign('No Badge');
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("No Badge")');
+    await addEntry('Other', 'A note', '');
+    await expect(win.locator('.journal-bubble__badge')).toHaveCount(0);
+  });
+
+  test('dragging the bubble snaps it to the nearest window edge, and the new position persists across reload', async () => {
+    const { width, height } = (await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })))!;
+
+    const startBox = await win.locator('.journal-bubble-wrap').boundingBox();
+    if (!startBox) throw new Error('bubble not visible');
+    // Starts at the default bottom-left corner.
+    expect(startBox.x).toBeLessThan(100);
+    expect(startBox.y).toBeGreaterThan(height - 150);
+
+    // Drag it to the middle of the right edge.
+    await win.mouse.move(startBox.x + startBox.width / 2, startBox.y + startBox.height / 2);
+    await win.mouse.down();
+    await win.mouse.move(width - 5, height / 2, { steps: 15 });
+    await win.mouse.up();
+
+    const droppedBox = await win.locator('.journal-bubble-wrap').boundingBox();
+    if (!droppedBox) throw new Error('bubble not visible after drag');
+    expect(droppedBox.x).toBeGreaterThan(width - 150);
+    expect(Math.abs(droppedBox.y + droppedBox.height / 2 - height / 2)).toBeLessThan(60);
+
+    // A plain click (no movement) still opens the panel, now anchored
+    // leftward from the bubble's new position on the right edge.
+    await win.mouse.click(droppedBox.x + droppedBox.width / 2, droppedBox.y + droppedBox.height / 2);
+    await expect(win.locator('.journal-panel')).toBeVisible();
+    await win.mouse.click(droppedBox.x + droppedBox.width / 2, droppedBox.y + droppedBox.height / 2);
+
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    const afterReloadBox = await win.locator('.journal-bubble-wrap').boundingBox();
+    if (!afterReloadBox) throw new Error('bubble not visible after reload');
+    expect(afterReloadBox.x).toBeGreaterThan(width - 150);
+  });
+
+  test('dragging an entry out of the list detaches it into its own floating note, and Reattach puts it back', async () => {
+    await createCampaign('Detach Test');
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("Detach Test")');
+    await addEntry('Other', 'Loose note', 'Pulled out of the list.');
+
+    const handle = win.locator('.journal-panel__group .drag-handle').first();
+    const handleBox = await handle.boundingBox();
+    if (!handleBox) throw new Error('drag handle not visible');
+
+    await win.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await win.mouse.down();
+    // Well outside the panel's own body, not onto another row — a detach,
+    // not a reorder.
+    await win.mouse.move(handleBox.x + 400, handleBox.y - 300, { steps: 10 });
+    await win.mouse.up();
+
+    await expect(win.locator('.journal-entry-row__label', { hasText: 'Loose note' })).toHaveCount(0);
+    const note = win.locator('.journal-floating-note');
+    await expect(note).toBeVisible();
+    await expect(note.locator('.journal-detail__label')).toHaveValue('Loose note');
+
+    // Still the same underlying record — editing it here saves like any
+    // other entry.
+    await note.locator('.journal-detail__notes').fill('Edited from the floating note.');
+    await note.locator('.journal-detail__label').click(); // move focus off notes, committing the blur
+    await win.waitForTimeout(50);
+
+    await note.locator('.journal-floating-note__reattach').click();
+    await expect(win.locator('.journal-floating-note')).toHaveCount(0);
+    await expect(win.locator('.journal-entry-row__label', { hasText: 'Loose note' })).toBeVisible();
+    await win.locator('.journal-entry-row', { hasText: 'Loose note' }).locator('.journal-entry-row__edit').click();
+    await expect(win.locator('.journal-detail__notes')).toHaveValue('Edited from the floating note.');
+  });
+
+  test('the Campaign/Session toggle lists Sessions, and opening one creates its notes entry on click, not on keystroke', async () => {
+    await createCampaign('Toggle Test');
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'Toggle Test' }).click();
+    await win.click('.session-list__add');
+    await win.fill('.create-form input[type="text"]', 'Session 1');
+    await win.click('button:has-text("Start Session")');
+
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("Toggle Test")');
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await expect(win.locator('.journal-session-row', { hasText: 'Session 1' })).toBeVisible();
+
+    await win.click('.journal-panel__scope-btn:has-text("Campaign")');
+    await expect(win.locator('.journal-panel__status', { hasText: 'No notes yet' })).toBeVisible();
+
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await win.click('.journal-session-row:has-text("Session 1")');
+    await expect(win.locator('.journal-detail')).toBeVisible();
+    // The label mirrors the Session's own name and isn't a free-text field.
+    await expect(win.locator('.journal-detail__label--readonly')).toHaveText('Session 1');
+  });
 });

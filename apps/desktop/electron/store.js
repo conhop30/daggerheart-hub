@@ -511,17 +511,25 @@ function makeCollection(key, { buildRecord, validate, scope, mergeExtra, present
     });
   }
 
+  // Unwrapped from `mutate` so a caller already inside its own `mutate`
+  // callback (e.g. Session's rename-sync wrapper below) can run this same
+  // merge/validate logic atomically alongside other store writes, instead
+  // of nesting a second `mutate` call — nesting would never resolve, since
+  // the inner call would chain onto the writeQueue position the outer
+  // call has already claimed but not yet settled.
+  function applyUpdate(store, id, patch) {
+    const existing = store[key].find((r) => r.id === id);
+    if (!existing) throw new Error(`No record with id ${id}`);
+    const merged = mergePatch(existing, patch);
+    if (mergeExtra) mergeExtra(existing, patch, merged);
+    if (validate) validate(store, merged);
+    if (patch.name !== undefined && findDuplicate(store, merged, id)) merged.name = existing.name;
+    Object.assign(existing, merged);
+    return show(store, existing);
+  }
+
   function update(id, patch) {
-    return mutate((store) => {
-      const existing = store[key].find((r) => r.id === id);
-      if (!existing) throw new Error(`No record with id ${id}`);
-      const merged = mergePatch(existing, patch);
-      if (mergeExtra) mergeExtra(existing, patch, merged);
-      if (validate) validate(store, merged);
-      if (patch.name !== undefined && findDuplicate(store, merged, id)) merged.name = existing.name;
-      Object.assign(existing, merged);
-      return show(store, existing);
-    });
+    return mutate((store) => applyUpdate(store, id, patch));
   }
 
   function remove(id) {
@@ -532,7 +540,7 @@ function makeCollection(key, { buildRecord, validate, scope, mergeExtra, present
     });
   }
 
-  return { list, create, update, remove };
+  return { list, create, update, remove, applyUpdate };
 }
 
 // ---- Cards ----
@@ -1123,7 +1131,11 @@ function removeCampaign(id) {
 // looking at the Equipment page's Weapons section lands in the category a
 // user would expect.
 
-const JOURNAL_ENTRY_KINDS = ['ADVERSARIES', 'LOOT', 'CONSUMABLES', 'ARMOR', 'WEAPONS', 'WORLDBUILDING', 'OTHER'];
+// SESSION is not a manually-pickable category (the renderer never offers it
+// in the "+" add-entry menu) — it's created automatically the first time a
+// GM types into a live Session's Notes panel, with its label kept in sync
+// with that Session's name (see updateSessionAndSyncNotes below).
+const JOURNAL_ENTRY_KINDS = ['ADVERSARIES', 'LOOT', 'CONSUMABLES', 'ARMOR', 'WEAPONS', 'WORLDBUILDING', 'OTHER', 'SESSION'];
 
 function listJournalEntries() {
   return getCache().journalEntries;
@@ -1292,6 +1304,32 @@ const sessions = makeCollection('sessions', {
     return record;
   },
 });
+
+// A renamed Session keeps its linked SESSION-kind Journal entry (if one
+// exists yet) in sync by label, so the two never drift into "same session,
+// two names" — one orphaned under the old label, a blank one created fresh
+// under the new one next time someone opens Notes. Uses sessions.applyUpdate
+// rather than sessions.update so the rename and the journal-entry relabel
+// happen inside one mutate call (see applyUpdate's own comment for why
+// nesting mutate calls doesn't work). Compares against the *saved* name,
+// not the raw patch — a rename that collides with another Session in the
+// same Campaign is silently reverted by applyUpdate's own dedupe check, and
+// a reverted rename must not relabel the journal entry either.
+function updateSessionAndSyncNotes(id, patch) {
+  return mutate((store) => {
+    const existing = store.sessions.find((s) => s.id === id);
+    if (!existing) throw new Error(`No session with id ${id}`);
+    const oldName = existing.name;
+    const saved = sessions.applyUpdate(store, id, patch);
+    if (saved.name !== oldName) {
+      const linked = store.journalEntries.find(
+        (j) => j.kind === 'SESSION' && j.campaignId === existing.campaignId && j.label.trim() === oldName.trim()
+      );
+      if (linked) linked.label = saved.name;
+    }
+    return saved;
+  });
+}
 
 function listSessionsByCampaign(campaignId) {
   const store = getCache();
@@ -1825,7 +1863,7 @@ module.exports = {
   removeConsumableTable: consumableTables.remove,
   listSessions: sessions.list,
   createSession: sessions.create,
-  updateSession: sessions.update,
+  updateSession: updateSessionAndSyncNotes,
   removeSession,
   listSessionsByCampaign,
   addSessionLoot,

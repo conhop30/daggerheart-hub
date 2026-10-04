@@ -1,0 +1,31 @@
+.session-notes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.session-notes-panel__title {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.session-notes-panel__notes {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 140px;
+  resize: vertical;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  color: var(--ink-dim, var(--muted));
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  transition: border-color 160ms var(--ease);
+}
+
+.session-notes-panel__notes:focus {
+  outline: none;
+  border-color: var(--hope);
+}

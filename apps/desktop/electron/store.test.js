@@ -639,6 +639,47 @@ describe('Session', () => {
   it('remove throws for an unknown id', async () => {
     await expect(store.removeSession('missing')).rejects.toThrow('No session with id');
   });
+
+  it('renaming a Session relabels its linked SESSION-kind Journal entry to match', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const linked = await store.createJournalEntry({ campaignId: c.id, kind: 'SESSION', label: 'Session 1' });
+    // An unrelated entry at a different kind, or in a different campaign,
+    // must never be touched by this.
+    const other = await store.createJournalEntry({ campaignId: c.id, kind: 'OTHER', label: 'Session 1' });
+
+    const renamed = await store.updateSession(session.id, { name: 'The Ambush at Dawn' });
+
+    expect(renamed.name).toBe('The Ambush at Dawn');
+    const linkedAfter = store.listJournalEntriesByCampaign(c.id).find((e) => e.id === linked.id);
+    expect(linkedAfter.label).toBe('The Ambush at Dawn');
+    const otherAfter = store.listJournalEntriesByCampaign(c.id).find((e) => e.id === other.id);
+    expect(otherAfter.label).toBe('Session 1');
+  });
+
+  it('a rename that collides with another Session in the same Campaign is silently reverted, and does not relabel the linked entry', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    await store.createSession({ campaignId: c.id, name: 'Session 2' });
+    const linked = await store.createJournalEntry({ campaignId: c.id, kind: 'SESSION', label: 'Session 1' });
+
+    const result = await store.updateSession(session.id, { name: 'Session 2' });
+
+    expect(result.name).toBe('Session 1');
+    const linkedAfter = store.listJournalEntriesByCampaign(c.id).find((e) => e.id === linked.id);
+    expect(linkedAfter.label).toBe('Session 1');
+  });
+
+  it('a non-rename update (e.g. fear) never touches a linked entry’s label', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const linked = await store.createJournalEntry({ campaignId: c.id, kind: 'SESSION', label: 'Session 1' });
+
+    await store.updateSession(session.id, { fear: 4 });
+
+    const linkedAfter = store.listJournalEntriesByCampaign(c.id).find((e) => e.id === linked.id);
+    expect(linkedAfter.label).toBe('Session 1');
+  });
 });
 
 describe('JournalEntry', () => {
@@ -693,6 +734,12 @@ describe('JournalEntry', () => {
 
   it('remove throws for an unknown id', async () => {
     await expect(store.removeJournalEntry('missing')).rejects.toThrow('No record with id');
+  });
+
+  it('accepts the SESSION kind — auto-created from a live Session’s Notes panel, see updateSessionAndSyncNotes', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const entry = await store.createJournalEntry({ campaignId: c.id, kind: 'SESSION', label: 'Session 1' });
+    expect(entry.kind).toBe('SESSION');
   });
 });
 
