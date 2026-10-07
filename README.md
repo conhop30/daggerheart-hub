@@ -212,7 +212,11 @@ content above, as opposed to authoring it. Delivered in three phases:
   combatant grid is always on screen, with a Loot Roller (wired directly
   to Phase 2's tables, appending every roll to a reverse-chronological
   session log) alongside the Music panel and a condensed Adversary
-  readout in the sidebar. Built as independent, self-contained panels on
+  readout in the sidebar. The board itself is split into **Combat tabs**
+  (drag to reorder, double-click to rename), each with its own Adversary/
+  Environment roster, so several encounters can be prepped ahead without
+  disturbing the one in play; tabs carry forward across a Campaign's
+  Sessions like everything else on the board. Built as independent, self-contained panels on
   purpose — `SessionView` itself is a thin shell that owns no combat
   state at all, so any one panel can be reworked without touching the
   others (see
@@ -483,6 +487,8 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       Session toggle adds real per-Session notes, kept in sync by name with
       a live Session's own Notes section — which, along with Party and
       Adversaries, can be drag-reordered the same way
+- [x] Combat tabs: several prepped encounters per Session, each tab with
+      its own Adversary/Environment roster, carried forward across Sessions
 - [x] In-app updates that ask first: a notice with Update now / Later,
       opt-in download with progress, Restart & install (Windows installer and
       Linux AppImage; falls back to a download link elsewhere)
