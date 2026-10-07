@@ -216,7 +216,14 @@ content above, as opposed to authoring it. Delivered in three phases:
   (drag to reorder, double-click to rename), each with its own Adversary/
   Environment roster, so several encounters can be prepped ahead without
   disturbing the one in play; tabs carry forward across a Campaign's
-  Sessions like everything else on the board. Built as independent, self-contained panels on
+  Sessions like everything else on the board. Each tab shows its
+  **Battle Points** (the corebook's `(3 x PCs) + 2` budget against what the
+  roster costs by Adversary type, with the rulebook's adjustments), and
+  Minions are tracked as **stacks**: one tile with a count, where defeating
+  one just lowers the count, and single Minions or whole stacks can be
+  dragged to split, merge or mix them into groups. Both are pure functions
+  (`lib/battlePoints`, `lib/minionGroups`) with the UI only laying the
+  result out. Built as independent, self-contained panels on
   purpose — `SessionView` itself is a thin shell that owns no combat
   state at all, so any one panel can be reworked without touching the
   others (see
@@ -489,6 +496,12 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       Adversaries, can be drag-reordered the same way
 - [x] Combat tabs: several prepped encounters per Session, each tab with
       its own Adversary/Environment roster, carried forward across Sessions
+- [x] Battle Points: the corebook's encounter budget, scored live per
+      Combat tab from the roster's Adversary types, the Party's size and the
+      Campaign's level, with the rulebook's adjustments
+- [x] Minion stacks: a Minion pulls in as one counted tile; drag single
+      Minions or whole stacks to split them, merge them, or mix different
+      Minions into one group
 - [x] In-app updates that ask first: a notice with Update now / Later,
       opt-in download with progress, Restart & install (Windows installer and
       Linux AppImage; falls back to a download link elsewhere)

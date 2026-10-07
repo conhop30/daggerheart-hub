@@ -93,3 +93,16 @@
   font-size: 0.78rem;
   min-width: 2.6rem;
 }
+
+.session-combat-sidebar__count {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--hope);
+}
+
+/* Stacks belonging to one mixed Minion group. */
+.session-combat-sidebar__combatant--grouped {
+  border-left: 2px solid var(--hope-dim);
+  padding-left: 8px;
+  border-radius: 0 6px 6px 0;
+}

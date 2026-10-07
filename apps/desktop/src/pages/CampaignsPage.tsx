@@ -131,6 +131,7 @@ export default function CampaignsPage({
         <SessionView
           session={selectedSession}
           campaignId={selectedCampaign.id}
+          campaignLevel={selectedCampaign.level}
           onBack={() => setSelectedSession(null)}
           onSessionSaved={(saved) => {
             setSelectedSession(saved);

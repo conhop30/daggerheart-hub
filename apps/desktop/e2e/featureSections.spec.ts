@@ -45,6 +45,7 @@ test.describe('Feature sections (Evolution + homebrew sections)', () => {
     await lair.locator('input[placeholder="Name"]').fill('Tremor');
     await lair.locator('textarea[placeholder="Description"]').fill('The floor shakes.');
 
+    await win.locator('.create-form select').first().selectOption('STANDARD');
     await win.click('button:has-text("Create Adversary")');
     await win.locator('.stat-gallery__tile', { hasText: 'Shapeshifter' }).click();
 

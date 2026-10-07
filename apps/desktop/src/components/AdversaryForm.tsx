@@ -100,8 +100,8 @@ export default function AdversaryForm({ initial, onSaved, onCancel }: AdversaryF
       <h3 className="create-form__title">{isEditing ? `Edit ${initial!.name}` : 'New Adversary'}</h3>
       <TextField label="Name" value={name} onChange={setName} required />
       <div className="create-form__row">
-        <SelectField label="Type" value={type} onChange={(v) => setType(v as AdversaryType | '')}>
-          <option value="">Not yet chosen</option>
+        <SelectField label="Type" value={type} onChange={(v) => setType(v as AdversaryType | '')} required>
+          <option value="">Choose a type</option>
           {ADVERSARY_TYPES.map((t) => (
             <option key={t} value={t}>
               {titleCaseEnum(t)}

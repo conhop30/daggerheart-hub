@@ -4,6 +4,7 @@ import type { FeatureSections } from '../lib/featureKinds';
 import { featureRowsFor } from '../lib/featureKinds';
 import { parseDamageNotation, rollDamage, damageNotationLabel, rollDie, type DamageRollResult } from '../lib/dice';
 import { difficultyModifierFromConditions } from '../lib/conditions';
+import { isMinion, type MoveAmount } from '../lib/minionGroups';
 import { ContentCard, FeatureRowLines, MetaChip, ModifierMetaField } from './ContentCard';
 import StatStepper from './StatStepper';
 import ConditionsEditor from './ConditionsEditor';
@@ -26,8 +27,16 @@ interface SessionAdversaryTileProps {
   spotlighted: boolean;
   onChange: (patch: UpdateSessionAdversaryRequest) => void;
   onRemove: () => void;
+  /** Minions only: add (+1) or defeat (-1) one of the stack. Defeating the last one removes the tile. */
+  onCountChange: (delta: number) => void;
+  /** Minions only: a drag began on one pip ('one') or on the count badge ('all') — see CombatPanel, which owns the drop side. */
+  onMinionDragStart: (amount: MoveAmount) => void;
+  onMinionDragEnd: () => void;
   onRoll: (label: string, total: number) => void;
 }
+
+/** Past this many, the rest of a stack's pips collapse into a "+N" so a huge stack can't swamp its tile. */
+const MAX_PIPS = 20;
 
 // A live, mutable card for one Adversary pulled into a session — reads
 // entirely off the props it's given and reports changes upward, so
@@ -44,8 +53,12 @@ export default function SessionAdversaryTile({
   spotlighted,
   onChange,
   onRemove,
+  onCountChange,
+  onMinionDragStart,
+  onMinionDragEnd,
   onRoll,
 }: SessionAdversaryTileProps) {
+  const minion = isMinion(adversary);
   const [roll, setRoll] = useState<{ notation: string; result: DamageRollResult } | null>(null);
   const [attackRoll, setAttackRoll] = useState<{ notation: string; total: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -125,6 +138,17 @@ export default function SessionAdversaryTile({
           />
           {!isCustomLabel && duplicateSuffix != null && <span className="session-tile__name-suffix">#{duplicateSuffix}</span>}
           {isCustomLabel && <span className="session-tile__name-original">{adversary.name}</span>}
+          {minion && (
+            <span
+              className="session-tile__count"
+              draggable
+              onDragStart={() => onMinionDragStart('all')}
+              onDragEnd={onMinionDragEnd}
+              title="Drag to move this whole stack onto another Minion"
+            >
+              ×{adversary.count}
+            </span>
+          )}
         </h3>
       }
       onDelete={onRemove}
@@ -171,7 +195,36 @@ export default function SessionAdversaryTile({
     >
       {bodyOpen && (
         <div className="session-tile__stats">
-          {adversary.hpMax != null && (
+          {minion && (
+            // A Minion has no HP track of its own: one hit defeats it, so
+            // the stack's count is the only thing there is to mark down.
+            <div className="stat-stepper session-tile__minions">
+              <span className="stat-stepper__label">Minions</span>
+              <div className="session-tile__pips">
+                {Array.from({ length: Math.min(adversary.count, MAX_PIPS) }, (_, i) => (
+                  <span
+                    key={i}
+                    className="session-tile__pip"
+                    draggable
+                    onDragStart={() => onMinionDragStart('one')}
+                    onDragEnd={onMinionDragEnd}
+                    title="Drag one Minion out, or onto another Minion"
+                  />
+                ))}
+                {adversary.count > MAX_PIPS && <span className="session-tile__pips-more">+{adversary.count - MAX_PIPS}</span>}
+              </div>
+              <div className="stat-stepper__controls">
+                <button type="button" className="stat-stepper__button" onClick={() => onCountChange(-1)} aria-label="Defeat one Minion">
+                  &minus;
+                </button>
+                <span className="stat-stepper__value">{adversary.count}</span>
+                <button type="button" className="stat-stepper__button" onClick={() => onCountChange(1)} aria-label="Add one Minion">
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+          {!minion && adversary.hpMax != null && (
             <StatStepper
               label="HP"
               current={adversary.hpMax - adversary.hpMarked}

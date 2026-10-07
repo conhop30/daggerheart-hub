@@ -177,3 +177,50 @@
 .session-tile__body-toggle:hover {
   color: var(--hope);
 }
+
+/* ---- Minion stacks ---- */
+/* The "x5" badge doubles as the handle for dragging the whole stack. */
+.session-tile__count {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--hope);
+  border: 1px solid var(--hope-dim);
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  cursor: grab;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.session-tile__minions {
+  flex-wrap: wrap;
+}
+
+.session-tile__pips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+/* One per Minion, each draggable on its own. */
+.session-tile__pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--hope);
+  cursor: grab;
+  transition: transform 160ms var(--ease);
+}
+
+.session-tile__pip:hover {
+  transform: scale(1.25);
+}
+
+.session-tile__pips-more {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}

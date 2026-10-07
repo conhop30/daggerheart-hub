@@ -180,6 +180,20 @@ entry for the full file-by-file breakdown. Verified (`npx tsc --noEmit -p .`
 clean, `npm test` 257 tests green, full Playwright suite 93 tests
 green). Shipped as v1.7.1, together with the Journal/Session Notes round above.
 
+v1.7.2 added two things to a Combat tab. **Battle Points**
+(`src/lib/battlePoints.ts`, shown by `BattlePointsBar.tsx`) is the
+corebook's encounter budget, `(3 x PCs) + 2` against a cost per Adversary
+type, with the rulebook's adjustments; the tab stores the GM's own choices
+(`partySizeOverride`, `easier`, `harder`, `bonusDamage`). **Minion
+stacks** (`src/lib/minionGroups.ts`): a `SessionAdversary` now carries
+`type`, `count` and `groupId`, a Minion is one record standing for `count`
+of them, and stacks of different Minions sharing a `groupId` render as one
+mixed group. Both libs are pure and unit-tested; the components only lay
+the result out. Adversary type is now required on the form (not in
+`store.js`). **This release shipped without the full Playwright suite
+being run** (Connor's call) — see `TODO.md`'s entry, and run it before
+building further on Session-page code.
+
 See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if
 it's not present, there's nothing currently blocked on Connor's input.)

@@ -967,6 +967,48 @@ describe('Combat', () => {
     expect(pulled.combatId).toBeNull();
   });
 
+  it('a pulled-in Adversary snapshots its type, and takes a Minion stack count and group', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const rat = await store.createAdversary({ name: 'Rat', type: 'MINION', gameSetId: gs.id });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+
+    const stack = await store.createSessionAdversary({ sessionId: session.id, adversaryId: rat.id, count: 15 });
+    expect(stack).toMatchObject({ type: 'MINION', count: 15, groupId: null });
+    expect(await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id })).toMatchObject({
+      type: null,
+      count: 1,
+      groupId: null,
+    });
+
+    const updated = await store.updateSessionAdversary(stack.id, { count: 0, groupId: 'g1' }, { sessionId: session.id });
+    // A stack can't be saved with nobody in it; removing it is a delete.
+    expect(updated).toMatchObject({ count: 1, groupId: 'g1' });
+    expect((await store.updateSessionAdversary(stack.id, { groupId: null }, { sessionId: session.id })).groupId).toBeNull();
+  });
+
+  it('an Adversary pulled in before types were snapshotted reads its type off the master', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const rat = await store.createAdversary({ name: 'Rat', gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: rat.id });
+    await store.updateAdversary(rat.id, { type: 'MINION' });
+    expect(store.listSessionAdversariesBySession(session.id).find((a) => a.id === pulled.id).type).toBe('MINION');
+  });
+
+  it('a Combat tab holds its Battle Points settings, defaulting to none', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const combat = await store.createCombat({ sessionId: session.id, name: 'Combat', order: 0 });
+    expect(combat).toMatchObject({ partySizeOverride: null, easier: false, harder: false, bonusDamage: false });
+
+    const updated = await store.updateCombat(combat.id, { partySizeOverride: 0, harder: 1 }, { sessionId: session.id });
+    expect(updated).toMatchObject({ partySizeOverride: 1, harder: true, easier: false });
+    expect((await store.updateCombat(combat.id, { partySizeOverride: null }, { sessionId: session.id })).partySizeOverride).toBeNull();
+  });
+
   it('a pre-tabs Adversary/Environment can be adopted into a tab by update, from that session onward', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
     const c = await store.createCampaign({ name: 'The Wildwood' });

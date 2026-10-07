@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { adversariesApi } from '../api/adversaries';
 import { environmentsApi } from '../api/environments';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import { sessionEnvironmentsApi, type SessionEnvironment, type UpdateSessionEnvironmentRequest } from '../api/sessionEnvironments';
 import { useApiList } from '../lib/useApiList';
+import { isMinion, toBoardCells, type MoveAmount, type MoveTarget } from '../lib/minionGroups';
 import ItemPicker from './ItemPicker';
 import SessionAdversaryTile from './SessionAdversaryTile';
 import SessionEnvironmentTile from './SessionEnvironmentTile';
@@ -35,9 +36,14 @@ interface CombatPanelProps {
   adversariesError: string | null;
   /** Set by SessionView when a SessionCombatSidebar row is clicked — see the spotlight effect below. */
   spotlightSignal: CombatSpotlightSignal | null;
-  onPullInAdversary: (adversaryId: string, quantity: number, combatId: string) => void;
+  /** asStack: a Minion arrives as one stack of `quantity`, not that many tiles. */
+  onPullInAdversary: (adversaryId: string, quantity: number, combatId: string, asStack: boolean) => void;
   onAdversaryChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   onAdversaryRemove: (adversary: SessionAdversary) => void;
+  /** Add or defeat Minions in a stack — see SessionView.handleMinionCount. */
+  onMinionCount: (adversary: SessionAdversary, delta: number) => void;
+  /** A Minion (or a whole stack) was dragged somewhere — see lib/minionGroups.planMinionMove. */
+  onMinionMove: (sourceId: string, amount: MoveAmount, target: MoveTarget) => void;
   onRoll: (label: string, total: number) => void;
 }
 
@@ -82,8 +88,34 @@ export default function CombatPanel({
   onPullInAdversary,
   onAdversaryChange,
   onAdversaryRemove,
+  onMinionCount,
+  onMinionMove,
   onRoll,
 }: CombatPanelProps) {
+  // What's being dragged right now, if anything: one Minion (by its pip) or
+  // a whole stack (by its count badge). Plain state rather than
+  // dataTransfer, which can't be read during dragover — and dragover is
+  // where a tile has to decide whether it's a valid drop target.
+  const [minionDrag, setMinionDrag] = useState<{ id: string; amount: MoveAmount } | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  function dropProps(key: string, target: MoveTarget) {
+    if (!minionDrag) return {};
+    return {
+      onDragOver: (e: DragEvent) => {
+        e.preventDefault();
+        if (dropTarget !== key) setDropTarget(key);
+      },
+      onDragLeave: () => setDropTarget((prev) => (prev === key ? null : prev)),
+      onDrop: (e: DragEvent) => {
+        e.preventDefault();
+        onMinionMove(minionDrag.id, minionDrag.amount, target);
+        setMinionDrag(null);
+        setDropTarget(null);
+      },
+    };
+  }
+
   const [sessionEnvironments, setSessionEnvironments] = useState<SessionEnvironment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,7 +215,8 @@ export default function CombatPanel({
     setPickerOpen(null);
     const quantity = addQuantity;
     setAddQuantity(1);
-    onPullInAdversary(adversaryId, quantity, activeCombatId);
+    const asStack = adversaries.items.find((a) => a.id === adversaryId)?.type === 'MINION';
+    onPullInAdversary(adversaryId, quantity, activeCombatId, asStack);
   }
 
   async function pullInEnvironment(environmentId: string) {
@@ -262,26 +295,55 @@ export default function CombatPanel({
       )}
 
       <div className="combat-panel__grid">
-        {sessionAdversaries.map((adversary) => (
-          <SessionAdversaryTile
-            key={adversary.id}
-            adversary={adversary}
-            // Features aren't part of the session snapshot (nothing about them
-            // is live-tracked state), so they're looked up live from the master
-            // record instead of duplicating them into every pull-in — undefined
-            // just means the master was deleted since, and the section hides.
-            masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
-            duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
-            featuresOpen={tileFeaturesOpen[adversary.id] ?? true}
-            onToggleFeatures={() => toggleFeatures(adversary.id)}
-            bodyOpen={tileBodyOpen[adversary.id] ?? true}
-            onToggleBody={() => toggleBody(adversary.id)}
-            spotlighted={highlightedId === adversary.id}
-            onChange={(patch) => onAdversaryChange(adversary, patch)}
-            onRemove={() => onAdversaryRemove(adversary)}
-            onRoll={onRoll}
-          />
-        ))}
+        {toBoardCells(sessionAdversaries).map((cell) => {
+          const tiles = cell.stacks.map((adversary) => {
+            const minion = isMinion(adversary);
+            // Only another Minion stack is somewhere a dragged Minion can land.
+            const droppable = minion && minionDrag != null && minionDrag.id !== adversary.id;
+            return (
+              <div
+                key={adversary.id}
+                className={`combat-panel__cell${dropTarget === adversary.id ? ' combat-panel__cell--over' : ''}`}
+                {...(droppable ? dropProps(adversary.id, { stackId: adversary.id }) : {})}
+              >
+                <SessionAdversaryTile
+                  adversary={adversary}
+                  // Features aren't part of the session snapshot (nothing about them
+                  // is live-tracked state), so they're looked up live from the master
+                  // record instead of duplicating them into every pull-in — undefined
+                  // just means the master was deleted since, and the section hides.
+                  masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
+                  duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
+                  featuresOpen={tileFeaturesOpen[adversary.id] ?? true}
+                  onToggleFeatures={() => toggleFeatures(adversary.id)}
+                  bodyOpen={tileBodyOpen[adversary.id] ?? true}
+                  onToggleBody={() => toggleBody(adversary.id)}
+                  spotlighted={highlightedId === adversary.id}
+                  onChange={(patch) => onAdversaryChange(adversary, patch)}
+                  onRemove={() => onAdversaryRemove(adversary)}
+                  onCountChange={(delta) => onMinionCount(adversary, delta)}
+                  // Deferred a tick: re-rendering (the drop zone appearing)
+                  // inside dragstart itself makes Chromium cancel the drag.
+                  onMinionDragStart={(amount) => setTimeout(() => setMinionDrag({ id: adversary.id, amount }), 0)}
+                  onMinionDragEnd={() => {
+                    setMinionDrag(null);
+                    setDropTarget(null);
+                  }}
+                  onRoll={onRoll}
+                />
+              </div>
+            );
+          });
+          if (!cell.groupId) return tiles;
+          return (
+            <div className="combat-panel__group" key={cell.groupId}>
+              <p className="combat-panel__group-label">
+                Minion group ×{cell.stacks.reduce((sum, stack) => sum + stack.count, 0)}
+              </p>
+              <div className="combat-panel__grid">{tiles}</div>
+            </div>
+          );
+        })}
         {visibleEnvironments.map((environment) => (
           <SessionEnvironmentTile
             key={environment.id}
@@ -292,6 +354,15 @@ export default function CombatPanel({
           />
         ))}
       </div>
+
+      {minionDrag && (
+        <div
+          className={`combat-panel__new-group${dropTarget === 'newGroup' ? ' combat-panel__new-group--over' : ''}`}
+          {...dropProps('newGroup', 'newGroup')}
+        >
+          Drop here to start a new group
+        </div>
+      )}
     </div>
   );
 }

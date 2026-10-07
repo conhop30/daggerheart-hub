@@ -1432,6 +1432,7 @@ function validateSessionAdversary(store, data) {
   if (data.combatId && !store.combats.some((c) => (c.lineageId ?? c.id) === data.combatId)) {
     throw new Error(`No combat with id ${data.combatId}`);
   }
+  clampNumber(data, 'count', { min: 1, allowNull: false });
   clampNumber(data, 'hpMarked', { min: 0 });
   clampNumber(data, 'stressMarked', { min: 0 });
   clampNumber(data, 'attackModifier');
@@ -1463,6 +1464,12 @@ function presentSessionAdversary(record) {
     // first tab the next time that session is opened (an ordinary update,
     // see SessionView/CombatPanel) rather than this file migrating it.
     combatId: record.combatId ?? null,
+    // type/count/groupId arrived with Minion groups. An older record never
+    // snapshotted its type, so it's read off the master Adversary instead
+    // (null if that master has since been deleted).
+    type: record.type ?? getCache().adversaries.find((a) => a.id === record.adversaryId)?.type ?? null,
+    count: record.count ?? 1,
+    groupId: record.groupId ?? null,
     difficultyModifier: record.difficultyModifier ?? null,
     thresholdsModifier: record.thresholdsModifier ?? { major: null, severe: null },
     conditions: normalizeConditionsForRead(record.conditions),
@@ -1501,6 +1508,12 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
       adversaryId: data.adversaryId,
       label: data.label && data.label.trim() ? data.label.trim() : adversary.name,
       name: adversary.name,
+      type: adversary.type ?? null,
+      // A stack of identical Minions is one record with a count, not N
+      // records; groupId ties stacks of different Minions into one mixed
+      // group. Both are meaningless (1 / null) for every other type.
+      count: data.count ?? 1,
+      groupId: data.groupId ?? null,
       tier: adversary.tier,
       difficulty: adversary.difficulty,
       thresholds: adversary.thresholds,
@@ -1572,11 +1585,31 @@ function validateCombat(_store, data) {
     const trimmed = String(data.name).trim();
     data.name = trimmed || undefined;
   }
+  clampNumber(data, 'partySizeOverride', { min: 1 });
+  for (const flag of COMBAT_FLAGS) {
+    if (data[flag] !== undefined) data[flag] = Boolean(data[flag]);
+  }
+}
+
+// The three Battle Points adjustments that are a GM's intent rather than
+// something readable off the roster — see src/lib/battlePoints.ts.
+const COMBAT_FLAGS = ['easier', 'harder', 'bonusDamage'];
+
+// Battle Points fields arrived after Combat tabs shipped.
+function presentCombat(record) {
+  return {
+    ...record,
+    partySizeOverride: record.partySizeOverride ?? null,
+    easier: record.easier ?? false,
+    harder: record.harder ?? false,
+    bonusDamage: record.bonusDamage ?? false,
+  };
 }
 
 const combats = makeVersionedCollection('combats', {
   context: sessionContext,
   validate: validateCombat,
+  present: presentCombat,
   build(store, data, { campaignId, sessionId }) {
     // order is always supplied by the caller (the renderer already knows
     // the current tab count when it creates one) rather than computed here
@@ -1589,6 +1622,10 @@ const combats = makeVersionedCollection('combats', {
       sessionId,
       name: data.name && data.name.trim() ? data.name.trim() : 'Combat',
       order: Math.round(Number(data.order)) || 0,
+      partySizeOverride: data.partySizeOverride ?? null,
+      easier: data.easier ?? false,
+      harder: data.harder ?? false,
+      bonusDamage: data.bonusDamage ?? false,
     };
   },
 });

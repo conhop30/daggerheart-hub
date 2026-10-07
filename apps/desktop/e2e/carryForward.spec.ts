@@ -52,6 +52,7 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await win.fill('.create-form input[type="text"]', 'Ogre');
     await win.fill('.text-field:has-text("HP") input', '8');
     await win.fill('.text-field:has-text("Stress") input', '3');
+    await win.locator('.create-form select').first().selectOption('STANDARD');
     await win.click('button:has-text("Create Adversary")');
     await win.click('.app-shell__brand');
 

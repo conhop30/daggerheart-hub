@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import { createSessionScopedCrudApi } from './createCrudApi';
-import type { AttackRange, AttackType } from './adversaries';
+import type { AdversaryType, AttackRange, AttackType } from './adversaries';
 import type { Thresholds } from '../components/ThresholdsInput';
 import type { Experience } from '../components/ExperienceListEditor';
 import type { SessionCondition } from '../lib/conditions';
@@ -15,6 +15,11 @@ export interface SessionAdversary {
   adversaryId: string;
   label: string;
   name: string;
+  type: AdversaryType | null;
+  /** How many identical Minions this one record stands for — always 1 for every other type. See lib/minionGroups. */
+  count: number;
+  /** Shared by stacks of different Minions dragged into one mixed group; null when this stack stands alone. */
+  groupId: string | null;
   tier: number | null;
   /** The book's own Difficulty/Thresholds — no longer edited directly once pulled in; see difficultyModifier/thresholdsModifier. */
   difficulty: number | null;
@@ -43,11 +48,15 @@ export interface CreateSessionAdversaryRequest {
   adversaryId: string;
   /** Defaults to the master Adversary's name — set this to tell two pulled-in copies apart. */
   label?: string;
+  count?: number;
+  groupId?: string | null;
 }
 
 export interface UpdateSessionAdversaryRequest {
   /** Only ever sent to adopt a pre-Combat-tabs record into the first tab — see SessionView. */
   combatId?: string;
+  count?: number;
+  groupId?: string | null;
   label?: string;
   hpMarked?: number;
   stressMarked?: number;

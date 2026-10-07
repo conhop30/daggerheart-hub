@@ -668,3 +668,56 @@ scratch list for planning the next pass of work.
         under the tray itself rather than relying on page length.
       - Verified: `npx tsc --noEmit -p .` clean, `npm test` (257 tests)
         green, full `playwright test` suite (93 tests) green.
+- [x] **Battle Points and Minion stacks** (shipped as v1.7.2), from a
+      design conversation with Connor (rules table + mockups + nine
+      questions, answered before any code).
+      - **Battle Points** (`lib/battlePoints.ts`, `BattlePointsBar.tsx`):
+        the corebook's encounter budget, shown under the Combat tab bar and
+        scored per tab. Budget is `(3 x PCs) + 2`; PCs default to the Party
+        roster's size (reported up by `PartyRoster`'s existing `onChange`)
+        and can be overridden per tab. Costs: Minions 1 per party-sized
+        group (a partial group rounds up), Social/Support 1, Horde/Ranged/
+        Skulk/Standard 2, Leader 3, Bruiser 4, Solo 5. Adjustments read off
+        the roster automatically: two or more Solos (-2), an adversary below
+        the party's tier (+1, tier from the Campaign's level: 1 / 2-4 / 5-7
+        / 8-10), no Bruisers/Hordes/Leaders/Solos (+1). Three are GM intent
+        and saved on the tab as checkboxes: easier (-1), harder (+2), +1d4
+        damage (-2). Advisory only: over budget colors the total. These
+        rules were written from memory of the corebook; Connor was asked to
+        check them against the PDF.
+      - New `Combat` fields: `partySizeOverride`, `easier`, `harder`,
+        `bonusDamage` (a `presentCombat` defaults them on older tabs).
+      - **Adversary type is now required on the form** (Connor: an untyped
+        Adversary "shouldn't be possible"). Not enforced in `store.js`,
+        which would reject every existing untyped record and most unit
+        tests; an untyped one already pulled in is listed as "not counted"
+        in the breakdown instead.
+      - **Minion stacks** (`lib/minionGroups.ts`): a `SessionAdversary`
+        gained `type` (snapshotted at pull-in; an older record reads it off
+        the master), `count` and `groupId`. A Minion pulls in as ONE record
+        with `count` = the quantity chosen, and joins a lone stack of the
+        same Minion if the tab has one. Its tile shows a `xN` badge and one
+        pip per Minion in place of an HP track; the sidebar shows `xN` and a
+        count stepper, where minus defeats one Minion and the last one
+        removes the tile.
+      - **Dragging**: a pip drags one Minion, the `xN` badge drags the whole
+        stack. Dropped on a stack of the same Minion they fold in; dropped
+        on a different Minion the stacks share a `groupId` and render as one
+        bordered "Minion group xN" block; dropped on the "new group" zone
+        (only on screen mid-drag, pinned above the Dice Tray) they split
+        off. `planMinionMove` returns the writes as plain data and
+        `SessionView.handleMinionMove` carries them out. Drag state is React
+        state, not `dataTransfer` (unreadable during `dragover`), and is set
+        a tick after `dragstart` because re-rendering inside `dragstart`
+        makes Chromium cancel the drag.
+      - Updated: new `battlePoints.test.ts` and `minionGroups.test.ts`,
+        three new `store.test.js` cases, two new `e2e/sessions.spec.ts`
+        tests (one drag uses the real mouse), and the e2e Adversary helpers
+        now choose a type.
+      - Verification is PARTIAL, at Connor's direction ("don't run any
+        tests", shipped as-is): `npm test` (282 tests) was green and the two
+        new e2e tests passed before the final docs pass, but the full
+        `playwright test` suite was NOT run against this change. The
+        required-type form change touches every spec that creates an
+        Adversary (`sessions`, `carryForward`, `featureSections`), so run
+        the full suite before building on this.

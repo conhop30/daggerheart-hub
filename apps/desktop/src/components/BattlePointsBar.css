@@ -1,0 +1,112 @@
+.battle-points {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}
+
+.battle-points__summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.battle-points__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.battle-points__toggle:hover {
+  color: var(--ink);
+}
+
+.battle-points__total {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.battle-points__spent {
+  color: var(--hope);
+}
+
+.battle-points--over .battle-points__spent {
+  color: var(--fear-on-dark);
+}
+
+.battle-points__party input {
+  width: 2.2rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: inherit;
+  font-weight: 600;
+  text-align: center;
+  padding: 0;
+}
+
+.battle-points__party input:focus-visible {
+  border-color: var(--hope);
+  outline: none;
+}
+
+.battle-points__note,
+.battle-points__empty {
+  color: var(--muted);
+}
+
+.battle-points__breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--hairline);
+}
+
+.battle-points__lines,
+.battle-points__adjustments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.battle-points__breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px 0;
+}
+
+.battle-points__cost {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+/* An adjustment that isn't in effect stays listed (so the rule is visible)
+   but recedes. */
+.battle-points__adjustments li:not(.battle-points__base):not(.battle-points__adjustment--on) {
+  color: var(--muted);
+}
+
+.battle-points__adjustments li:not(.battle-points__base):not(.battle-points__adjustment--on) .battle-points__cost {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.battle-points__warning {
+  color: var(--fear-on-dark);
+}

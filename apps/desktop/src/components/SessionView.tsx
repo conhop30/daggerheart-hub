@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { sessionsApi, type NewLootLogEntry, type Session, type UpdateSessionRequest } from '../api/sessions';
 import { sessionAdversariesApi, type SessionAdversary, type UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
-import { combatsApi, type Combat } from '../api/combats';
+import { combatsApi, type Combat, type UpdateCombatRequest } from '../api/combats';
+import { planMinionMove, stackToJoin, type MoveAmount, type MoveTarget } from '../lib/minionGroups';
+import BattlePointsBar from './BattlePointsBar';
 import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
 import SessionMusicPanel from './SessionMusicPanel';
@@ -29,6 +31,8 @@ const SECTION_TITLES: Record<SessionSectionId, string> = {
 interface SessionViewProps {
   session: Session;
   campaignId: string;
+  /** The Campaign's party level — sets the party's tier for Battle Points. */
+  campaignLevel: number;
   onBack: () => void;
   onSessionSaved: (session: Session) => void;
   onSessionDeleted: (id: string) => void;
@@ -42,7 +46,7 @@ interface SessionViewProps {
 // Nearly everything on this screen follows the Campaign into later sessions
 // (Fear, the Party, pulled-in combatants, the loot log); only the name
 // belongs to this session alone. See electron/carry.js for the rules.
-export default function SessionView({ session, campaignId, onBack, onSessionSaved, onSessionDeleted }: SessionViewProps) {
+export default function SessionView({ session, campaignId, campaignLevel, onBack, onSessionSaved, onSessionDeleted }: SessionViewProps) {
   const [editing, setEditing] = useState(false);
 
   // Owned here (not by CombatPanel) because SessionCombatSidebar shows this
@@ -64,6 +68,9 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   // Guards the floor-guard effect below against double-firing while its own
   // create() is still in flight — see that effect's comment.
   const floorGuardRan = useRef(false);
+  // Reported up by PartyRoster (which owns the roster itself) — Battle
+  // Points budgets for this many PCs unless the tab overrides it.
+  const [partyCount, setPartyCount] = useState(0);
 
   // A SessionCombatSidebar row click sets this; CombatPanel reacts by
   // spotlighting the matching tile. `key` changes on every click (even a
@@ -183,18 +190,76 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
   const activeSessionAdversaries = activeCombatId
     ? sessionAdversaries.filter((a) => a.combatId === activeCombatId)
     : [];
+  const activeCombat = combats.find((c) => c.id === activeCombatId) ?? null;
 
   // Sequential, not Promise.all — CombatPanel's duplicate-suffix numbering
   // (#1, #2, ...) is derived purely from sessionAdversaries' list order, and
   // Promise.all would let N creates settle in a nondeterministic order.
-  async function pullInAdversary(adversaryId: string, quantity: number, combatId: string) {
+  // A Minion (asStack) arrives as one stack of `quantity` instead of that
+  // many tiles, folding into a lone stack of the same Minion if this tab
+  // already has one — see lib/minionGroups.
+  async function pullInAdversary(adversaryId: string, quantity: number, combatId: string, asStack: boolean) {
     try {
+      if (asStack) {
+        const existing = stackToJoin(sessionAdversaries, adversaryId, combatId);
+        if (existing) {
+          await handleAdversaryChange(existing, { count: existing.count + quantity });
+          return;
+        }
+        const pulled = await sessionAdversariesApi.create({ sessionId: session.id, adversaryId, combatId, count: quantity });
+        setSessionAdversaries((prev) => [...prev, pulled]);
+        return;
+      }
       for (let i = 0; i < quantity; i++) {
         const pulled = await sessionAdversariesApi.create({ sessionId: session.id, adversaryId, combatId });
         setSessionAdversaries((prev) => [...prev, pulled]);
       }
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not pull that Adversary in.');
+    }
+  }
+
+  // Defeating the last Minion of a stack removes the stack itself — there's
+  // no such thing as a tile for zero Minions.
+  function handleMinionCount(adversary: SessionAdversary, delta: number) {
+    const next = adversary.count + delta;
+    if (next <= 0) handleAdversaryRemove(adversary);
+    else handleAdversaryChange(adversary, { count: next });
+  }
+
+  // A drag on the board: lib/minionGroups decides what it means, this just
+  // carries the resulting writes out, in order.
+  async function handleMinionMove(sourceId: string, amount: MoveAmount, target: MoveTarget) {
+    const ops = planMinionMove(activeSessionAdversaries, sourceId, amount, target, () => crypto.randomUUID());
+    try {
+      for (const op of ops) {
+        if (op.kind === 'create') {
+          const created = await sessionAdversariesApi.create({
+            sessionId: session.id,
+            adversaryId: op.adversaryId,
+            combatId: op.combatId ?? activeCombatId!,
+            count: op.count,
+            groupId: op.groupId,
+          });
+          setSessionAdversaries((prev) => [...prev, created]);
+          continue;
+        }
+        const record = sessionAdversaries.find((a) => a.id === op.id);
+        if (!record) continue;
+        if (op.kind === 'remove') await handleAdversaryRemove(record);
+        else await handleAdversaryChange(record, op.patch);
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not regroup those Minions.');
+    }
+  }
+
+  async function handleCombatChange(combat: Combat, patch: UpdateCombatRequest) {
+    setCombats((prev) => prev.map((c) => (c.id === combat.id ? { ...c, ...patch } : c)));
+    try {
+      await combatsApi.update(combat.id, patch, { sessionId: session.id });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not save that change.');
     }
   }
 
@@ -370,7 +435,14 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
           {sectionOrder.map((id, index) => (
             <div key={id} className={`session-view__section${getRowClassName(index)}`}>
               <SessionSectionShell title={SECTION_TITLES[id]} dragHandleProps={getHandleProps(index)}>
-                {id === 'PARTY' && <PartyRoster campaignId={campaignId} sessionId={session.id} layout="grid" />}
+                {id === 'PARTY' && (
+                  <PartyRoster
+                    campaignId={campaignId}
+                    sessionId={session.id}
+                    layout="grid"
+                    onChange={(members) => setPartyCount(members.length)}
+                  />
+                )}
                 {id === 'ADVERSARIES' && (
                   <>
                     {!combatsLoading && combats.length > 0 && activeCombatId && (
@@ -382,6 +454,15 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
                         onRename={handleCombatRename}
                         onAdd={handleCombatAdd}
                         onDelete={handleCombatDelete}
+                      />
+                    )}
+                    {activeCombat && (
+                      <BattlePointsBar
+                        combat={activeCombat}
+                        combatants={activeSessionAdversaries}
+                        partyCount={partyCount}
+                        campaignLevel={campaignLevel}
+                        onChange={(patch) => handleCombatChange(activeCombat, patch)}
                       />
                     )}
                     {activeCombatId && (
@@ -396,6 +477,8 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
                         onPullInAdversary={pullInAdversary}
                         onAdversaryChange={handleAdversaryChange}
                         onAdversaryRemove={handleAdversaryRemove}
+                        onMinionCount={handleMinionCount}
+                        onMinionMove={handleMinionMove}
                         onRoll={addRoll}
                       />
                     )}
@@ -418,6 +501,7 @@ export default function SessionView({ session, campaignId, onBack, onSessionSave
             onChange={handleAdversaryChange}
             onSelect={(id) => setCombatSpotlight({ id, key: Date.now() })}
             onRemove={handleAdversaryRemove}
+            onMinionCount={handleMinionCount}
           />
           <LootRoller lootLog={session.lootLog} sessionId={session.id} onRoll={handleRoll} onRemove={handleRemoveLoot} />
         </aside>

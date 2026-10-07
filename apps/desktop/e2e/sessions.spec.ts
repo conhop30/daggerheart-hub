@@ -1,4 +1,4 @@
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { test, expect, _electron as electron, type ElectronApplication, type Locator, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,12 +26,13 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  async function createAdversary(name: string, hp: string, stress: string) {
+  async function createAdversary(name: string, hp: string, stress: string, type = 'STANDARD') {
     await win.click('.create-panel__toggle');
     await win.click('.chip:text-is("Adversary")');
     await win.fill('.create-form input[type="text"]', name);
     await win.fill('.text-field:has-text("HP") input', hp);
     await win.fill('.text-field:has-text("Stress") input', stress);
+    await win.locator('.create-form select').first().selectOption(type);
     await win.click('button:has-text("Create Adversary")');
     await win.click('.app-shell__brand');
   }
@@ -53,6 +54,7 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await win.click('.feature-editor__add:has-text("passives")');
     await win.locator('.feature-editor__row input[placeholder="Name"]').first().fill(featureName);
     await win.locator('.feature-editor__row').first().locator('textarea').first().fill(featureDescription);
+    await win.locator('.create-form select').first().selectOption('STANDARD');
     await win.click('button:has-text("Create Adversary")');
     await win.click('.app-shell__brand');
   }
@@ -219,6 +221,7 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await win.fill('.text-field:has-text("Stress") input', '2');
     await win.fill('.text-field:has-text("Attack Modifier") input', '3');
     await win.fill('label:has-text("Attack Description") textarea', 'Bite: 1d8+1 phy damage');
+    await win.locator('.create-form select').first().selectOption('STANDARD');
     await win.click('button:has-text("Create Adversary")');
     await win.click('.app-shell__brand');
 
@@ -335,6 +338,7 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await win.fill('.text-field:has-text("HP") input', '8');
     await win.fill('.text-field:has-text("Stress") input', '3');
     await win.fill('label:has-text("Attack Description") textarea', 'Slam: 1d10+2 phy damage');
+    await win.locator('.create-form select').first().selectOption('STANDARD');
     await win.click('button:has-text("Create Adversary")');
     await win.click('.app-shell__brand');
 
@@ -845,5 +849,148 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(tabs).toHaveCount(2);
     await expect(tabs.nth(0).locator('.combat-tab-bar__label')).toHaveText('Combat');
     await expect(tabs.nth(1).locator('.combat-tab-bar__label')).toHaveText('Boss Fight');
+  });
+
+  test('Battle Points score the active Combat tab against a budget for the party', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createAdversary('Dragon', '10', '5', 'SOLO');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    const spent = win.locator('.battle-points__spent');
+    const budget = win.locator('.battle-points__budget');
+    // Nobody in the Party yet: budgeted as 1 PC, (3 x 1) + 2.
+    await expect(spent).toHaveText('0');
+    await expect(budget).toHaveText('5');
+
+    // A Standard costs 2, and a board with nothing heavy on it earns +1.
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Goblin")');
+    await expect(spent).toHaveText('2');
+    await expect(budget).toHaveText('6');
+
+    // Overriding the PC count rebudgets: (3 x 4) + 2, + 1.
+    await win.fill('.battle-points__party input', '4');
+    await expect(budget).toHaveText('15');
+
+    // A Solo costs 5 and ends the nothing-heavy bonus.
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Dragon")');
+    await expect(spent).toHaveText('7');
+    await expect(budget).toHaveText('14');
+
+    await win.click('.battle-points__toggle');
+    await win.locator('.battle-points__adjustments label', { hasText: 'Harder or longer fight' }).click();
+    await expect(budget).toHaveText('16');
+
+    // Scored per tab: a fresh tab starts from nothing, with its own settings.
+    await win.click('.combat-tab-bar__add');
+    await expect(spent).toHaveText('0');
+    await expect(budget).toHaveText('5');
+
+    // And saved with the tab.
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(spent).toHaveText('7');
+    await expect(budget).toHaveText('16');
+  });
+
+  // The app's own handlers only read React state, never dataTransfer, so a
+  // dispatched event sequence drives them exactly as a real drag would.
+  async function dragMinion(source: Locator, target: Locator) {
+    await source.dispatchEvent('dragstart');
+    await expect(win.locator('.combat-panel__new-group')).toBeVisible();
+    await target.dispatchEvent('dragover');
+    await target.dispatchEvent('drop');
+    // The source is gone already when its whole stack was folded away.
+    await source.dispatchEvent('dragend', {}, { timeout: 500 }).catch(() => {});
+    await expect(win.locator('.combat-panel__new-group')).toHaveCount(0);
+  }
+
+  test('Minions arrive as one stack that can be split, regrouped, mixed and defeated one at a time', async () => {
+    await createAdversary('Rat', '1', '1', 'MINION');
+    await createAdversary('Bat', '1', '1', 'MINION');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    const tiles = win.locator('.combat-panel .content-card');
+    const counts = win.locator('.combat-panel .session-tile__count');
+    const pullIn = async (name: string, quantity: number) => {
+      await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+      for (let i = 1; i < quantity; i++) await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
+      await win.click(`.item-picker__option:has-text("${name}")`);
+    };
+
+    // Five of a Minion is one tile, not five.
+    await pullIn('Rat', 5);
+    await expect(tiles).toHaveCount(1);
+    await expect(counts).toHaveText(['×5']);
+    await expect(tiles.first().locator('.session-tile__pip')).toHaveCount(5);
+    // Priced as a group, not per head: 5 Minions for 1 PC is 5 groups.
+    await expect(win.locator('.battle-points__spent')).toHaveText('5');
+
+    // Pulling in more of the same Minion joins the stack already there.
+    await pullIn('Rat', 1);
+    await expect(counts).toHaveText(['×6']);
+
+    // The sidebar shows the count, and its minus defeats one Minion.
+    const sidebarRow = win.locator('.session-combat-sidebar__combatant');
+    await expect(sidebarRow.locator('.session-combat-sidebar__count')).toHaveText('×6');
+    await sidebarRow.getByRole('button', { name: 'Defeat one Rat' }).click();
+    await expect(counts).toHaveText(['×5']);
+
+    // Dragging one pip out starts a second stack. This one drag uses the
+    // real mouse, so the browser's own drag has to start and land.
+    const pipBox = await tiles.first().locator('.session-tile__pip').first().boundingBox();
+    if (!pipBox) throw new Error('pip not visible');
+    await win.mouse.move(pipBox.x + pipBox.width / 2, pipBox.y + pipBox.height / 2);
+    await win.mouse.down();
+    await win.mouse.move(pipBox.x + 40, pipBox.y + 40, { steps: 5 });
+    const zone = win.locator('.combat-panel__new-group');
+    await expect(zone).toBeVisible();
+    const zoneBox = await zone.boundingBox();
+    if (!zoneBox) throw new Error('drop zone not visible');
+    await win.mouse.move(zoneBox.x + zoneBox.width / 2, zoneBox.y + zoneBox.height / 2, { steps: 10 });
+    await win.mouse.up();
+    await expect(counts).toHaveText(['×4', '×1']);
+    await expect(zone).toHaveCount(0);
+
+    // Dragging another onto it grows that stack rather than making a third.
+    await dragMinion(tiles.nth(0).locator('.session-tile__pip').first(), win.locator('.combat-panel__cell').nth(1));
+    await expect(counts).toHaveText(['×3', '×2']);
+
+    // A whole stack dropped on the other folds the two back together.
+    await dragMinion(counts.nth(1), win.locator('.combat-panel__cell').nth(0));
+    await expect(counts).toHaveText(['×5']);
+
+    // A different Minion dropped on it makes a mixed group of both stacks.
+    await pullIn('Bat', 2);
+    await expect(counts).toHaveText(['×5', '×2']);
+    await expect(win.locator('.combat-panel__group')).toHaveCount(0);
+    await dragMinion(counts.nth(1), win.locator('.combat-panel__cell').nth(0));
+    await expect(win.locator('.combat-panel__group-label')).toHaveText('Minion group ×7');
+    await expect(win.locator('.combat-panel__group .content-card')).toHaveCount(2);
+    await expect(win.locator('.session-combat-sidebar__combatant--grouped')).toHaveCount(2);
+
+    // Groups survive a reload — they're saved, not just arranged on screen.
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.combat-panel__group-label')).toHaveText('Minion group ×7');
+
+    // Dragging a stack out of the group dissolves it.
+    await dragMinion(counts.nth(1), win.locator('.combat-panel__new-group'));
+    await expect(win.locator('.combat-panel__group')).toHaveCount(0);
+    await expect(counts).toHaveText(['×5', '×2']);
+
+    // Defeating the last Minion of a stack removes its tile.
+    const bat = tiles.nth(1);
+    await bat.getByRole('button', { name: 'Defeat one Minion' }).click();
+    await bat.getByRole('button', { name: 'Defeat one Minion' }).click();
+    await expect(tiles).toHaveCount(1);
+    await expect(counts).toHaveText(['×5']);
   });
 });

@@ -1,4 +1,5 @@
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
+import { isMinion, toBoardCells } from '../lib/minionGroups';
 import StatStepper from './StatStepper';
 import './SessionCombatSidebar.css';
 
@@ -9,6 +10,8 @@ interface SessionCombatSidebarProps {
   onSelect: (adversaryId: string) => void;
   /** Removes the Adversary from this Session entirely, without having to scroll down to its full CombatPanel tile first. */
   onRemove: (adversary: SessionAdversary) => void;
+  /** Add or defeat Minions in a stack — a Minion row has this in place of an HP stepper. */
+  onMinionCount: (adversary: SessionAdversary, delta: number) => void;
 }
 
 // A very condensed, glanceable readout of the Adversaries currently pulled
@@ -17,15 +20,23 @@ interface SessionCombatSidebarProps {
 // recall "wait, what's still Restrained?" Reads the same live list
 // CombatPanel does (lifted to SessionView, see its own comment) so the two
 // views of the same Session never disagree.
-export default function SessionCombatSidebar({ sessionAdversaries, onChange, onSelect, onRemove }: SessionCombatSidebarProps) {
+export default function SessionCombatSidebar({
+  sessionAdversaries,
+  onChange,
+  onSelect,
+  onRemove,
+  onMinionCount,
+}: SessionCombatSidebarProps) {
   if (sessionAdversaries.length === 0) return null;
 
   return (
     <div className="session-combat-sidebar">
       <p className="session-combat-sidebar__label">Adversaries</p>
-      {sessionAdversaries.map((adversary) => (
+      {toBoardCells(sessionAdversaries).flatMap((cell) => cell.stacks.map((adversary) => (
         <div
-          className="session-combat-sidebar__combatant"
+          // Stacks of one mixed group read as a bracketed run, same order
+          // as the board.
+          className={`session-combat-sidebar__combatant${cell.groupId ? ' session-combat-sidebar__combatant--grouped' : ''}`}
           key={adversary.id}
           role="button"
           tabIndex={0}
@@ -44,7 +55,10 @@ export default function SessionCombatSidebar({ sessionAdversaries, onChange, onS
             onSelect(adversary.id);
           }}
         >
-          <span className="session-combat-sidebar__name">{adversary.label}</span>
+          <span className="session-combat-sidebar__name">
+            {adversary.label}
+            {isMinion(adversary) && <span className="session-combat-sidebar__count"> ×{adversary.count}</span>}
+          </span>
           <button
             type="button"
             className="session-combat-sidebar__remove"
@@ -56,7 +70,31 @@ export default function SessionCombatSidebar({ sessionAdversaries, onChange, onS
           >
             &times;
           </button>
-          {adversary.hpMax != null && (
+          {isMinion(adversary) && (
+            <div className="stat-stepper">
+              <span className="stat-stepper__label">Minions</span>
+              <div className="stat-stepper__controls">
+                <button
+                  type="button"
+                  className="stat-stepper__button"
+                  onClick={() => onMinionCount(adversary, -1)}
+                  aria-label={`Defeat one ${adversary.label}`}
+                >
+                  &minus;
+                </button>
+                <span className="stat-stepper__value">{adversary.count}</span>
+                <button
+                  type="button"
+                  className="stat-stepper__button"
+                  onClick={() => onMinionCount(adversary, 1)}
+                  aria-label={`Add one ${adversary.label}`}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+          {!isMinion(adversary) && adversary.hpMax != null && (
             <StatStepper
               label="HP"
               current={adversary.hpMax - adversary.hpMarked}
@@ -78,7 +116,7 @@ export default function SessionCombatSidebar({ sessionAdversaries, onChange, onS
             </p>
           )}
         </div>
-      ))}
+      )))}
     </div>
   );
 }
