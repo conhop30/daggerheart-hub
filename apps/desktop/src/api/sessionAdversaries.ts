@@ -10,6 +10,8 @@ import type { SessionCondition } from '../lib/conditions';
 export interface SessionAdversary {
   id: string;
   sessionId: string;
+  /** Which Combat tab this was pulled into — see api/combats.ts. Records predating Combat tabs read as null until first opened, when they are adopted into the first tab. */
+  combatId: string | null;
   adversaryId: string;
   label: string;
   name: string;
@@ -37,12 +39,15 @@ export interface SessionAdversary {
 
 export interface CreateSessionAdversaryRequest {
   sessionId: string;
+  combatId: string;
   adversaryId: string;
   /** Defaults to the master Adversary's name — set this to tell two pulled-in copies apart. */
   label?: string;
 }
 
 export interface UpdateSessionAdversaryRequest {
+  /** Only ever sent to adopt a pre-Combat-tabs record into the first tab — see SessionView. */
+  combatId?: string;
   label?: string;
   hpMarked?: number;
   stressMarked?: number;

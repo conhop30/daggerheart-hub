@@ -898,6 +898,99 @@ describe('SessionEnvironment', () => {
   });
 });
 
+describe('Combat', () => {
+  it('rejects a sessionId that does not exist', async () => {
+    await expect(store.createCombat({ sessionId: 'missing', name: 'Combat', order: 0 })).rejects.toThrow(
+      'No session with id'
+    );
+  });
+
+  it('requires an order', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    await expect(store.createCombat({ sessionId: session.id, name: 'Combat' })).rejects.toThrow('order is required');
+  });
+
+  it('defaults an empty name to "Combat"', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const combat = await store.createCombat({ sessionId: session.id, name: '  ', order: 0 });
+    expect(combat.name).toBe('Combat');
+  });
+
+  it('renames and reorders via update', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const combat = await store.createCombat({ sessionId: session.id, name: 'Combat', order: 0 });
+    const updated = await store.updateCombat(combat.id, { name: 'Boss Fight', order: 2 }, { sessionId: session.id });
+    expect(updated.name).toBe('Boss Fight');
+    expect(updated.order).toBe(2);
+  });
+
+  it('a blank rename is a no-op, keeping the old name rather than erroring or clearing it', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const combat = await store.createCombat({ sessionId: session.id, name: 'Boss Fight', order: 0 });
+    const updated = await store.updateCombat(combat.id, { name: '  ' }, { sessionId: session.id });
+    expect(updated.name).toBe('Boss Fight');
+  });
+
+  it('remove deletes the record', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const combat = await store.createCombat({ sessionId: session.id, name: 'Combat', order: 0 });
+    await store.removeCombat(combat.id, { sessionId: session.id });
+    expect(store.listCombatsBySession(session.id)).toHaveLength(0);
+  });
+
+  it('a pulled-in Adversary/Environment can reference a Combat tab by id, validated against real tabs', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const combat = await store.createCombat({ sessionId: session.id, name: 'Combat', order: 0 });
+
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id, combatId: combat.id });
+    expect(pulled.combatId).toBe(combat.id);
+
+    await expect(
+      store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id, combatId: 'missing' })
+    ).rejects.toThrow('No combat with id');
+  });
+
+  it('combatId is optional — a SessionAdversary/SessionEnvironment pulled in without one reads as null', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+    expect(pulled.combatId).toBeNull();
+  });
+
+  it('a pre-tabs Adversary/Environment can be adopted into a tab by update, from that session onward', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const first = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const second = await store.createSession({ campaignId: c.id, name: 'Session 2' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const bog = await store.createEnvironment({ name: 'Bog', gameSetId: gs.id });
+    const adv = await store.createSessionAdversary({ sessionId: first.id, adversaryId: ogre.id });
+    const env = await store.createSessionEnvironment({ sessionId: first.id, environmentId: bog.id });
+    const combat = await store.createCombat({ sessionId: second.id, name: 'Combat', order: 0 });
+
+    await store.updateSessionAdversary(adv.id, { combatId: combat.id }, { sessionId: second.id });
+    await store.updateSessionEnvironment(env.id, { combatId: combat.id }, { sessionId: second.id });
+
+    expect(store.listSessionAdversariesBySession(second.id)[0].combatId).toBe(combat.id);
+    expect(store.listSessionEnvironmentsBySession(second.id)[0].combatId).toBe(combat.id);
+    expect(store.listSessionAdversariesBySession(first.id)[0].combatId).toBeNull();
+
+    await expect(store.updateSessionAdversary(adv.id, { combatId: 'missing' }, { sessionId: second.id })).rejects.toThrow(
+      'No combat with id'
+    );
+  });
+});
+
 describe('generic collection (makeCollection) shared behavior', () => {
   it('PATCH semantics: an omitted field is untouched, an explicit empty value overwrites', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
@@ -1624,6 +1717,71 @@ describe('Carrying data across Sessions', () => {
     });
   });
 
+  describe('Combats', () => {
+    it('a tab created in session 1 is still there in session 2', async () => {
+      const { sessions } = await campaignWithSessions();
+      const combat = await store.createCombat({ sessionId: sessions[0].id, name: 'Combat', order: 0 });
+      expect(store.listCombatsBySession(sessions[1].id).map((c) => c.id)).toEqual([combat.id]);
+    });
+
+    it('renamed in session 2 leaves session 1 showing the old name, and session 3 the new one', async () => {
+      const { sessions } = await campaignWithSessions();
+      const combat = await store.createCombat({ sessionId: sessions[0].id, name: 'Combat', order: 0 });
+      await store.updateCombat(combat.id, { name: 'Boss Fight' }, { sessionId: sessions[1].id });
+      const name = (i) => store.listCombatsBySession(sessions[i].id)[0].name;
+      expect([name(0), name(1), name(2)]).toEqual(['Combat', 'Boss Fight', 'Boss Fight']);
+    });
+
+    it('reordered in session 2 leaves session 1 alone and session 3 inherits it', async () => {
+      const { sessions } = await campaignWithSessions();
+      const combat = await store.createCombat({ sessionId: sessions[0].id, name: 'Combat', order: 0 });
+      await store.updateCombat(combat.id, { order: 3 }, { sessionId: sessions[1].id });
+      const order = (i) => store.listCombatsBySession(sessions[i].id)[0].order;
+      expect([order(0), order(1), order(2)]).toEqual([0, 3, 3]);
+    });
+
+    it('deleted in session 2 is gone from 2 and 3, still present in 1', async () => {
+      const { sessions } = await campaignWithSessions();
+      const combat = await store.createCombat({ sessionId: sessions[0].id, name: 'Combat', order: 0 });
+      await store.removeCombat(combat.id, { sessionId: sessions[1].id });
+      expect(store.listCombatsBySession(sessions[0].id)).toHaveLength(1);
+      expect(store.listCombatsBySession(sessions[1].id)).toHaveLength(0);
+      expect(store.listCombatsBySession(sessions[2].id)).toHaveLength(0);
+    });
+
+    it('deleting a tab cascades to its own Adversaries/Environments, as of the same session, and leaves an earlier session alone', async () => {
+      const gs = await store.createGameSet({ name: 'Core' });
+      const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+      const bog = await store.createEnvironment({ name: 'Bog', gameSetId: gs.id });
+      const { sessions } = await campaignWithSessions();
+      const combat = await store.createCombat({ sessionId: sessions[0].id, name: 'Boss Fight', order: 0 });
+      const adv = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id, combatId: combat.id });
+      const env = await store.createSessionEnvironment({ sessionId: sessions[0].id, environmentId: bog.id, combatId: combat.id });
+
+      await store.removeCombat(combat.id, { sessionId: sessions[1].id });
+
+      expect(store.listCombatsBySession(sessions[1].id)).toHaveLength(0);
+      expect(store.listSessionAdversariesBySession(sessions[1].id)).toHaveLength(0);
+      expect(store.listSessionEnvironmentsBySession(sessions[1].id)).toHaveLength(0);
+      // Session 1 never saw the delete — tab and contents both still there.
+      expect(store.listCombatsBySession(sessions[0].id).map((c) => c.id)).toEqual([combat.id]);
+      expect(store.listSessionAdversariesBySession(sessions[0].id).map((a) => a.id)).toEqual([adv.id]);
+      expect(store.listSessionEnvironmentsBySession(sessions[0].id).map((e) => e.id)).toEqual([env.id]);
+    });
+
+    it('deleting a tab never removes an Adversary not yet adopted into any tab (combatId null)', async () => {
+      const gs = await store.createGameSet({ name: 'Core' });
+      const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+      const session = await store.createSession({ campaignId: (await store.createCampaign({ name: 'The Wildwood' })).id, name: 'Session 1' });
+      const combat = await store.createCombat({ sessionId: session.id, name: 'Combat', order: 0 });
+      const legacy = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+
+      await store.removeCombat(combat.id, { sessionId: session.id });
+
+      expect(store.listSessionAdversariesBySession(session.id).map((a) => a.id)).toEqual([legacy.id]);
+    });
+  });
+
   describe('Loot log', () => {
     const roll = (total) => ({ rolledAt: `t${total}`, rarity: 'COMMON', poolSize: 1, rollTotal: total, results: [] });
 
@@ -1674,7 +1832,7 @@ describe('Carrying data across Sessions', () => {
   });
 
   describe('deleting a Session', () => {
-    it('keeps what later sessions were showing: fear, loot, party and board', async () => {
+    it('keeps what later sessions were showing: fear, loot, party, board, and Combat tabs', async () => {
       const gs = await store.createGameSet({ name: 'Core' });
       const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
       const { c, sessions } = await campaignWithSessions();
@@ -1682,6 +1840,7 @@ describe('Carrying data across Sessions', () => {
       await store.addSessionLoot(sessions[1].id, { rolledAt: 't', rarity: 'COMMON', poolSize: 1, rollTotal: 3, results: [] });
       const pm = await store.createPartyMember({ campaignId: c.id, sessionId: sessions[1].id, name: 'Late Joiner' });
       const adv = await store.createSessionAdversary({ sessionId: sessions[1].id, adversaryId: ogre.id });
+      const combat = await store.createCombat({ sessionId: sessions[1].id, name: 'Boss Fight', order: 0 });
 
       await store.removeSession(sessions[1].id);
 
@@ -1690,9 +1849,11 @@ describe('Carrying data across Sessions', () => {
       expect(after.lootLog).toHaveLength(1);
       expect(store.listPartyMembersBySession(sessions[2].id).map((m) => m.id)).toEqual([pm.id]);
       expect(store.listSessionAdversariesBySession(sessions[2].id).map((a) => a.id)).toEqual([adv.id]);
+      expect(store.listCombatsBySession(sessions[2].id).map((c) => c.id)).toEqual([combat.id]);
       // ...and session 1 still never saw any of it.
       expect(view(sessions[0].id).fear).toBe(0);
       expect(store.listPartyMembersBySession(sessions[0].id)).toHaveLength(0);
+      expect(store.listCombatsBySession(sessions[0].id)).toHaveLength(0);
     });
 
     it('a later session that set its own value keeps it', async () => {
@@ -1711,12 +1872,14 @@ describe('Carrying data across Sessions', () => {
       await store.updatePartyMember(pm.id, { notes: 'v2' }, { sessionId: sessions[1].id });
       const adv = await store.createSessionAdversary({ sessionId: sessions[0].id, adversaryId: ogre.id });
       await store.removeSessionAdversary(adv.id, { sessionId: sessions[2].id });
+      await store.createCombat({ sessionId: sessions[0].id, name: 'Combat', order: 0 });
       await store.createJournalEntry({ campaignId: c.id, kind: 'OTHER', label: 'Remember the bridge toll' });
       await store.removeCampaign(c.id);
       store.flushPendingWrite();
       const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf-8'));
       expect(raw.partyMembers).toEqual([]);
       expect(raw.sessionAdversaries).toEqual([]);
+      expect(raw.combats).toEqual([]);
       expect(raw.sessions).toEqual([]);
       expect(raw.journalEntries).toEqual([]);
     });

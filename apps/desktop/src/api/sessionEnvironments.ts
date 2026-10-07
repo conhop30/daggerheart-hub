@@ -6,6 +6,8 @@ import { createSessionScopedCrudApi } from './createCrudApi';
 export interface SessionEnvironment {
   id: string;
   sessionId: string;
+  /** Which Combat tab this was pulled into — see api/combats.ts. Records predating Combat tabs read as null until first opened, when they are adopted into the first tab. */
+  combatId: string | null;
   environmentId: string;
   label: string;
   name: string;
@@ -20,6 +22,7 @@ export interface SessionEnvironment {
 
 export interface CreateSessionEnvironmentRequest {
   sessionId: string;
+  combatId: string;
   environmentId: string;
   /** Defaults to the master Environment's name — set this to tell two pulled-in copies apart. */
   label?: string;
@@ -27,6 +30,8 @@ export interface CreateSessionEnvironmentRequest {
 }
 
 export interface UpdateSessionEnvironmentRequest {
+  /** Only ever sent to adopt a pre-Combat-tabs record into the first tab — see CombatPanel. */
+  combatId?: string;
   label?: string;
   notes?: string;
   /** Adjusted independently of the master Environment once pulled in — see SessionEnvironmentTile. */

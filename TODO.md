@@ -589,3 +589,82 @@ scratch list for planning the next pass of work.
         Journal refetches, picking up an edit made elsewhere").
       - Re-verified: `npx tsc --noEmit -p .` clean, `npm test` (242 tests)
         green, full `playwright test` suite (86 tests) green.
+- [x] **Combat tabs**: lets a GM prep multiple encounters ahead of time
+      without disturbing the one currently live, from a design
+      conversation (mockups, then follow-up questions) rather than a
+      blank page per the project's standing rule for new creative UI.
+      - A new horizontal tab bar (`CombatTabBar.tsx`/`.css`) sits above
+        the Adversaries section; each tab scopes its own Adversary AND
+        Environment roster. Fear/Loot/Dice Tray stay session-wide,
+        untouched by any of this.
+      - **New `combats` versioned collection** (`electron/store.js`),
+        built on the exact same `makeVersionedCollection` factory as
+        `sessionAdversaries`/`sessionEnvironments`/`partyMembers` — so a
+        tab carries forward across Sessions in a Campaign, can be renamed/
+        reordered from a later session without disturbing earlier ones,
+        and deleting one only removes it from that session onward, with
+        zero new engine code in `carry.js`. Only two fields beyond
+        identity: `name` (double-click to rename) and `order` (drag-
+        reordered, via the same `useDragReorder` hook already used
+        elsewhere — a tab's whole label is its own drag handle here,
+        the one deliberate exception to this app's usual separate-handle-
+        glyph convention, since there's no competing free-text surface
+        inside a tab except transiently during rename).
+      - **`combatId`** added to `SessionAdversary`/`SessionEnvironment` —
+        optional, not required (nothing about either record's own
+        correctness depends on it), validated against a real Combat
+        lineage id when present. A `null` `combatId` (every record that
+        predates this feature) is **adopted into the session's first tab
+        the first time that session is opened** — an ordinary `update`
+        from the renderer (`SessionView` for Adversaries, `CombatPanel`
+        for Environments, each after its own fetch has settled), so it
+        stays put if tabs are reordered later. The first cut treated
+        `null` as a wildcard visible from every tab instead; Connor's own
+        live data (all of it pre-feature) made every tab show the same
+        roster, which read as "the tab won't switch."
+      - **Deleting a tab cascades** to every Adversary/Environment
+        currently resolved under it, as of the same session — new
+        `removeCombatAndContents` in `store.js`, mirroring
+        `updateSessionAndSyncNotes`'s "one `mutate()`, call unwrapped
+        mechanics directly" shape. Needed `makeVersionedCollection` to
+        expose an unwrapped `applyRemove(store, id, ctx)` alongside
+        `list/create/update/remove`, the same way `makeCollection` already
+        exposes `applyUpdate`.
+      - **Floor-guard** ("a Session never shows zero tabs") lives entirely
+        in the renderer (`SessionView.tsx`), not the backend — a `useRef`
+        guard (not `useState`) makes the lazy "create one named Combat if
+        the list comes back empty" race-safe against a second effect run
+        while that create is still in flight, reset per `session.id` so
+        navigating between two different empty Sessions doesn't skip the
+        second one's own guard.
+      - Both `CombatPanel`'s and `SessionCombatSidebar`'s rosters are
+        filtered client-side to the active tab (`SessionView`'s
+        `activeSessionAdversaries`) rather than re-fetched per tab switch
+        — `listBySession` already returns every tab's combined,
+        correctly-carried set in one call, so filtering in memory avoids
+        an IPC round trip and a loading flash on every click.
+      - New `src/api/combats.ts` (built on the existing
+        `createSessionScopedCrudApi` factory, same shape as
+        `sessionEnvironments.ts`); wired through `main.js`/`preload.js`/
+        `client.ts` following the existing `*BySession` precedent exactly.
+      - Updated: `electron/store.test.js` (a new `describe('Combat')`
+        suite, carry-forward/rename/reorder/delete coverage inside
+        `describe('Carrying data across Sessions')`, the cascade-delete
+        helper, and `VERSIONED`/`COLLECTIONS` now covering `combats` in
+        the Session/Campaign-delete tests), `e2e/sessions.spec.ts` (tab
+        creation with an independent roster, double-click rename
+        persisting across reload, drag-reorder, delete-cascades-contents
+        + the floor-guard regenerating "Combat", the sidebar scoping to
+        the active tab only, and a second Session opening with the same
+        carried-forward tabs).
+      - Bugs the first real run caught and fixed: the wildcard rule
+        above; the floor-guard's `useRef` was never re-armed after its
+        first auto-create, so deleting the last tab left zero tabs (now
+        reset in `.finally`); a tab carried the shared `.drag-handle`
+        class, whose `.session-section-shell .drag-handle` rules outranked
+        the active tab's own colors (the tab now uses only its own
+        classes); and the tab bar's extra height pushed Notes below the
+        fold in the Dice Tray overlap e2e test, which now scrolls Notes
+        under the tray itself rather than relying on page length.
+      - Verified: `npx tsc --noEmit -p .` clean, `npm test` (257 tests)
+        green, full `playwright test` suite (93 tests) green.

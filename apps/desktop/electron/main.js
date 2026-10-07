@@ -135,6 +135,7 @@ const LIST = {
   sessions: store.listSessions,
   sessionAdversaries: store.listSessionAdversaries,
   sessionEnvironments: store.listSessionEnvironments,
+  combats: store.listCombats,
   musicRegions: store.listMusicRegions,
   musicTracks: store.listMusicTracks,
   journalEntries: store.listJournalEntries,
@@ -161,6 +162,7 @@ const CREATE = {
   sessions: store.createSession,
   sessionAdversaries: store.createSessionAdversary,
   sessionEnvironments: store.createSessionEnvironment,
+  combats: store.createCombat,
   // musicTracks is deliberately absent: a track is only ever created by the
   // audio import flow below, which has to copy the file in first.
   musicRegions: store.createMusicRegion,
@@ -188,6 +190,7 @@ const UPDATE = {
   sessions: store.updateSession,
   sessionAdversaries: store.updateSessionAdversary,
   sessionEnvironments: store.updateSessionEnvironment,
+  combats: store.updateCombat,
   musicRegions: store.updateMusicRegion,
   musicTracks: store.updateMusicTrack,
   journalEntries: store.updateJournalEntry,
@@ -222,6 +225,9 @@ const REMOVE = {
   sessions: store.removeSession,
   sessionAdversaries: store.removeSessionAdversary,
   sessionEnvironments: store.removeSessionEnvironment,
+  // Combat delete cascades to its own SessionAdversaries/SessionEnvironments
+  // inside store.js, same reasoning as Session -> SessionAdversaries.
+  combats: store.removeCombat,
   musicRegions: store.removeMusicRegion,
   // Removing a track also deletes the audio file copied in for it.
   musicTracks: async (id) => {
@@ -256,6 +262,7 @@ ipcMain.handle('store:cloneSession', (_event, sourceId, options) => store.cloneS
 ipcMain.handle('store:listSessionAdversariesBySession', (_event, sessionId) =>
   store.listSessionAdversariesBySession(sessionId)
 );
+ipcMain.handle('store:listCombatsBySession', (_event, sessionId) => store.listCombatsBySession(sessionId));
 ipcMain.handle('store:listSessionEnvironmentsBySession', (_event, sessionId) =>
   store.listSessionEnvironmentsBySession(sessionId)
 );

@@ -37,6 +37,7 @@ export interface DaggerheartBridge {
   removeSessionLoot: (sessionId: string, entryId: string) => Promise<unknown>;
   listSessionAdversariesBySession: (sessionId: string) => Promise<unknown[]>;
   listSessionEnvironmentsBySession: (sessionId: string) => Promise<unknown[]>;
+  listCombatsBySession: (sessionId: string) => Promise<unknown[]>;
   cloneSession: (sourceId: string, options?: { name?: string }) => Promise<unknown>;
   importMusicFiles: (regionId: string) => Promise<{ canceled: boolean; tracks: unknown[] }>;
   importDroppedMusicPaths: (regionId: string, filePaths: string[]) => Promise<{ tracks: unknown[] }>;
@@ -119,6 +120,8 @@ export const apiClient = {
     (await unwrap(bridge().listSessionAdversariesBySession(sessionId))) as T[],
   listSessionEnvironmentsBySession: async <T>(sessionId: string): Promise<T[]> =>
     (await unwrap(bridge().listSessionEnvironmentsBySession(sessionId))) as T[],
+  listCombatsBySession: async <T>(sessionId: string): Promise<T[]> =>
+    (await unwrap(bridge().listCombatsBySession(sessionId))) as T[],
   cloneSession: async <T>(sourceId: string, options?: { name?: string }): Promise<T> =>
     (await unwrap(bridge().cloneSession(sourceId, options))) as T,
   importMusicFiles: async <T>(regionId: string): Promise<{ canceled: boolean; tracks: T[] }> =>

@@ -45,6 +45,7 @@ const COLLECTIONS = [
   'sessions',
   'sessionAdversaries',
   'sessionEnvironments',
+  'combats',
   'musicRegions',
   'musicTracks',
   'journalEntries',
@@ -855,7 +856,7 @@ const transformations = makeCollection('transformations', {
 // Editing or deleting inside session N reaches N and everything after it,
 // never the sessions before.
 
-const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments'];
+const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments', 'combats'];
 const CARRIED_SESSION_FIELDS = ['fear', 'regionId'];
 
 function sessionOrder(store, campaignId) {
@@ -952,17 +953,23 @@ function makeVersionedCollection(key, { context, build, validate, uniqueByName =
     });
   }
 
-  function remove(id, ctx) {
-    return mutate((store) => {
-      const first = store[key].find((v) => lineageOfVersion(v) === id);
-      if (!first) throw new Error(`No record with id ${id}`);
-      const campaignId = campaignIdOfVersion(store, first);
-      const { order, sessionId } = editSession(store, campaignId, ctx);
-      store[key] = carry.removeVersions(store[key], order, id, sessionId, randomUUID);
-    });
+  // Unwrapped from `mutate`, same reasoning as makeCollection's applyUpdate:
+  // a caller already inside its own mutate() (removeCombatAndContents, see
+  // below) needs to run this exact removal logic atomically alongside other
+  // store writes, without nesting a second mutate() call.
+  function applyRemove(store, id, ctx) {
+    const first = store[key].find((v) => lineageOfVersion(v) === id);
+    if (!first) throw new Error(`No record with id ${id}`);
+    const campaignId = campaignIdOfVersion(store, first);
+    const { order, sessionId } = editSession(store, campaignId, ctx);
+    store[key] = carry.removeVersions(store[key], order, id, sessionId, randomUUID);
   }
 
-  return { list, listByCampaign, listBySession, create, update, remove };
+  function remove(id, ctx) {
+    return mutate((store) => applyRemove(store, id, ctx));
+  }
+
+  return { list, listByCampaign, listBySession, create, update, remove, applyRemove };
 }
 
 // ---- Campaigns ----
@@ -1416,7 +1423,15 @@ function sessionContext(store, data) {
 // only real sanitization gap is on values a GM can edit live during Combat
 // — Difficulty/Thresholds (editable once pulled in) and the HP/Stress
 // marked-boxes trackers.
-function validateSessionAdversary(_store, data) {
+function validateSessionAdversary(store, data) {
+  // combatId is optional, not required: the renderer always sends one when
+  // pulling an Adversary in through the Combat tab bar, but nothing else
+  // about this record depends on it, and a missing/null value is itself a
+  // meaningful state (pulled in before Combat tabs existed — see
+  // presentSessionAdversary) rather than an error.
+  if (data.combatId && !store.combats.some((c) => (c.lineageId ?? c.id) === data.combatId)) {
+    throw new Error(`No combat with id ${data.combatId}`);
+  }
   clampNumber(data, 'hpMarked', { min: 0 });
   clampNumber(data, 'stressMarked', { min: 0 });
   clampNumber(data, 'attackModifier');
@@ -1443,6 +1458,11 @@ function validateSessionAdversary(_store, data) {
 function presentSessionAdversary(record) {
   return {
     ...record,
+    // combatId predates this too. A record pulled in before Combat tabs
+    // existed reads as null; the renderer adopts it into the session's
+    // first tab the next time that session is opened (an ordinary update,
+    // see SessionView/CombatPanel) rather than this file migrating it.
+    combatId: record.combatId ?? null,
     difficultyModifier: record.difficultyModifier ?? null,
     thresholdsModifier: record.thresholdsModifier ?? { major: null, severe: null },
     conditions: normalizeConditionsForRead(record.conditions),
@@ -1477,6 +1497,7 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
       id: randomUUID(),
       campaignId,
       sessionId,
+      combatId: data.combatId ?? null,
       adversaryId: data.adversaryId,
       label: data.label && data.label.trim() ? data.label.trim() : adversary.name,
       name: adversary.name,
@@ -1499,13 +1520,20 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
   },
 });
 
-function validateSessionEnvironment(_store, data) {
+function validateSessionEnvironment(store, data) {
+  // See validateSessionAdversary's comment: combatId is optional on purpose.
+  if (data.combatId && !store.combats.some((c) => (c.lineageId ?? c.id) === data.combatId)) {
+    throw new Error(`No combat with id ${data.combatId}`);
+  }
   clampNumber(data, 'difficulty', { min: 0 });
 }
 
 const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
   context: sessionContext,
   validate: validateSessionEnvironment,
+  // combatId predates this collection's other fields too — same
+  // treatment as presentSessionAdversary's, see its comment.
+  present: (record) => ({ ...record, combatId: record.combatId ?? null }),
   build(store, data, { campaignId, sessionId }) {
     const environment = store.environments.find((e) => e.id === data.environmentId);
     if (!environment) throw new Error(`No environment with id ${data.environmentId}`);
@@ -1513,6 +1541,7 @@ const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
       id: randomUUID(),
       campaignId,
       sessionId,
+      combatId: data.combatId ?? null,
       environmentId: data.environmentId,
       label: data.label && data.label.trim() ? data.label.trim() : environment.name,
       name: environment.name,
@@ -1524,6 +1553,70 @@ const sessionEnvironments = makeVersionedCollection('sessionEnvironments', {
     };
   },
 });
+
+// ---- Combats (Combat tabs) ----
+// A GM-visible workspace inside a Session that scopes a subset of pulled-in
+// Adversaries/Environments ("Boss Fight" vs "Random Encounter"), prepped
+// ahead of the fight that's actually live. Versioned exactly like
+// partyMembers/sessionAdversaries/sessionEnvironments — a tab created in
+// session 1 is still there in session 2 unless deleted from some session on.
+// Only two fields beyond identity: name (renamed via double-click) and
+// order (drag-reordered) — Fear/Loot/Dice Tray stay session-wide and never
+// touch this collection at all.
+function validateCombat(_store, data) {
+  if (data.name !== undefined) {
+    // A blank name is treated as "leave it alone" (update) rather than an
+    // error — undefined is what applyPatch/editVersion skip, and what
+    // build() below falls back from on create — not something that needs
+    // its own rejection path on top of that.
+    const trimmed = String(data.name).trim();
+    data.name = trimmed || undefined;
+  }
+}
+
+const combats = makeVersionedCollection('combats', {
+  context: sessionContext,
+  validate: validateCombat,
+  build(store, data, { campaignId, sessionId }) {
+    // order is always supplied by the caller (the renderer already knows
+    // the current tab count when it creates one) rather than computed here
+    // by calling back into combats.listBySession — one less self-
+    // referential subtlety in a file that otherwise keeps build() boring.
+    if (data.order === undefined) throw new Error('order is required');
+    return {
+      id: randomUUID(),
+      campaignId,
+      sessionId,
+      name: data.name && data.name.trim() ? data.name.trim() : 'Combat',
+      order: Math.round(Number(data.order)) || 0,
+    };
+  },
+});
+
+// Deleting a Combat tab must also remove everything currently resolved
+// under it, as of the same session being viewed — same no-undo, same-
+// session-onward semantics as removing one Adversary/Environment today
+// (not a blanket wipe of the tab's whole history). Mirrors
+// updateSessionAndSyncNotes's "one mutate(), call the unwrapped mechanics
+// directly" shape rather than nesting mutate() calls. A record still at
+// combatId === null (not yet adopted into a tab, see presentSessionAdversary)
+// belongs to no tab, so deleting one never deletes it.
+function removeCombatAndContents(id, ctx) {
+  return mutate((store) => {
+    const first = store.combats.find((c) => (c.lineageId ?? c.id) === id);
+    if (!first) throw new Error(`No combat with id ${id}`);
+    const campaignId = first.campaignId ?? store.sessions.find((s) => s.id === first.sessionId)?.campaignId;
+    const { sessionId } = editSession(store, campaignId, ctx);
+
+    for (const a of sessionAdversaries.listBySession(sessionId)) {
+      if (a.combatId === id) sessionAdversaries.applyRemove(store, a.id, { sessionId });
+    }
+    for (const e of sessionEnvironments.listBySession(sessionId)) {
+      if (e.combatId === id) sessionEnvironments.applyRemove(store, e.id, { sessionId });
+    }
+    combats.applyRemove(store, id, { sessionId });
+  });
+}
 
 // ---- Starting the next Session ----
 // "New Session" is just createSession: everything that carries is inherited
@@ -1879,6 +1972,11 @@ module.exports = {
   updateSessionEnvironment: sessionEnvironments.update,
   removeSessionEnvironment: sessionEnvironments.remove,
   listSessionEnvironmentsBySession: sessionEnvironments.listBySession,
+  listCombats: combats.list,
+  createCombat: combats.create,
+  updateCombat: combats.update,
+  removeCombat: removeCombatAndContents,
+  listCombatsBySession: combats.listBySession,
   listMusicRegions,
   createMusicRegion: musicRegions.create,
   updateMusicRegion,

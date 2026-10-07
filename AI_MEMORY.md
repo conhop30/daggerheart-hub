@@ -157,6 +157,29 @@ order) is test-isolated the same way the JSON store already was — it
 wasn't before, and a new e2e test asserting a specific default
 `localStorage`-backed state is what surfaced it.
 
+A further round, also from live play, added **Combat tabs**: the Session
+page's Adversaries section now has a horizontal tab bar
+(`CombatTabBar.tsx`), each tab scoping its own Adversary/Environment
+roster so a GM can prep several encounters without disturbing the one
+currently live. Backed by a new `combats` versioned collection
+(`electron/store.js`) built on the same `makeVersionedCollection` factory
+`sessionAdversaries`/`sessionEnvironments`/`partyMembers` already use, so
+a tab carries forward across a Campaign's Sessions with zero new engine
+code in `carry.js`. `SessionAdversary`/`SessionEnvironment` gained a
+`combatId` field — optional; a `null` one (anything pulled in before
+tabs existed) is adopted into the session's first tab by the renderer
+the first time that session is opened, not shown in every tab (see
+TODO.md's entry for why the original wildcard rule was dropped). Deleting a tab cascades to its own contents via a new
+`removeCombatAndContents` helper, which needed `makeVersionedCollection`
+to expose an unwrapped `applyRemove` the way `makeCollection` already
+exposes `applyUpdate`. A Session never shows zero tabs — a renderer-side,
+race-safe lazy-create in `SessionView.tsx` (a `useRef` guard, not
+`useState`, re-armed after each create so it fires again when the last
+tab is deleted) handles that, not the backend. See `TODO.md`'s "Combat tabs"
+entry for the full file-by-file breakdown. Verified (`npx tsc --noEmit -p .`
+clean, `npm test` 257 tests green, full Playwright suite 93 tests
+green).
+
 See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if
 it's not present, there's nothing currently blocked on Connor's input.)

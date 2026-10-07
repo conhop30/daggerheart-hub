@@ -585,9 +585,18 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     // settle before measuring boxes, or the computed overlap point can be
     // off by the time the click actually lands.
     await win.waitForTimeout(300);
+    // Notes can start below the fold (and, fully scrolled, sits clear above
+    // the tray), so scroll its bottom edge to just inside the tray's top
+    // padding — deep enough to overlap, shallow enough that the click below
+    // lands on the tray's inert container rather than one of its buttons.
+    const notes = win.locator('.session-notes-panel__notes');
+    const tray = win.locator('.dice-tray');
+    const before = { notes: await notes.boundingBox(), tray: await tray.boundingBox() };
+    if (!before.notes || !before.tray) throw new Error('notes or dice tray not visible');
+    await win.evaluate((dy) => window.scrollBy(0, dy), before.notes.y + before.notes.height - (before.tray.y + 10));
 
-    const notesBox = await win.locator('.session-notes-panel__notes').boundingBox();
-    const diceTrayBox = await win.locator('.dice-tray').boundingBox();
+    const notesBox = await notes.boundingBox();
+    const diceTrayBox = await tray.boundingBox();
     if (!notesBox || !diceTrayBox) throw new Error('notes or dice tray not visible');
     const overlapX = (Math.max(notesBox.x, diceTrayBox.x) + Math.min(notesBox.x + notesBox.width, diceTrayBox.x + diceTrayBox.width)) / 2;
     const overlapY = (Math.max(notesBox.y, diceTrayBox.y) + Math.min(notesBox.y + notesBox.height, diceTrayBox.y + diceTrayBox.height)) / 2;
@@ -650,5 +659,191 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
     await expect(sectionLabels.nth(0)).toHaveText('Notes');
+  });
+
+  test('a new Session opens with a single "Combat" tab; a second tab keeps an independent roster', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createAdversary('Ogre', '8', '3');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    const tabs = win.locator('.combat-tab-bar__tab');
+    await expect(tabs).toHaveCount(1);
+    await expect(tabs.first().locator('.combat-tab-bar__label')).toHaveText('Combat');
+
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Goblin")');
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(1);
+
+    await win.click('.combat-tab-bar__add');
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(1).locator('.combat-tab-bar__label')).toHaveText('Combat 2');
+    // The new tab is its own, empty workspace — the Goblin stays behind.
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
+
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Ogre")');
+    const tile = win.locator('.combat-panel .content-card');
+    await expect(tile).toHaveCount(1);
+    await expect(tile.locator('.session-tile__name-input')).toHaveValue('Ogre');
+
+    // Switching back to the first tab shows the Goblin again, not the Ogre.
+    await tabs.nth(0).click();
+    await expect(tile).toHaveCount(1);
+    await expect(tile.locator('.session-tile__name-input')).toHaveValue('Goblin');
+  });
+
+  test('double-clicking a Combat tab renames it', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    const tab = win.locator('.combat-tab-bar__tab').first();
+
+    await tab.dblclick();
+    await win.fill('.combat-tab-bar__rename', 'Boss Fight');
+    await win.keyboard.press('Enter');
+
+    await expect(tab.locator('.combat-tab-bar__label')).toHaveText('Boss Fight');
+    await expect(win.locator('.combat-tab-bar__rename')).toHaveCount(0);
+
+    // Persists across reload — it's real Session data, not local UI state.
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.combat-tab-bar__tab').first().locator('.combat-tab-bar__label')).toHaveText('Boss Fight');
+  });
+
+  test('Combat tabs can be drag-reordered', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.combat-tab-bar__add');
+
+    const tabs = win.locator('.combat-tab-bar__tab');
+    await expect(tabs.nth(0).locator('.combat-tab-bar__label')).toHaveText('Combat');
+    await expect(tabs.nth(1).locator('.combat-tab-bar__label')).toHaveText('Combat 2');
+
+    const firstBox = await tabs.nth(0).boundingBox();
+    const secondBox = await tabs.nth(1).boundingBox();
+    if (!firstBox || !secondBox) throw new Error('tab not visible');
+    await win.mouse.move(secondBox.x + secondBox.width / 2, secondBox.y + secondBox.height / 2);
+    await win.mouse.down();
+    await win.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2, { steps: 10 });
+    await win.dispatchEvent('.combat-tab-bar__tab >> nth=0', 'dragenter');
+    await win.mouse.up();
+
+    await expect(tabs.nth(0).locator('.combat-tab-bar__label')).toHaveText('Combat 2');
+    await expect(tabs.nth(1).locator('.combat-tab-bar__label')).toHaveText('Combat');
+  });
+
+  test('deleting a Combat tab removes it and its pulled Adversaries; deleting the last tab regenerates "Combat"', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Goblin")');
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(1);
+
+    await win.click('.combat-tab-bar__add');
+    await expect(win.locator('.combat-tab-bar__tab')).toHaveCount(2);
+    // The new tab just created is active, and empty.
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
+
+    // Delete the active (new, empty) tab — falls back to the first.
+    await win.click('.combat-tab-bar__tab--active .combat-tab-bar__delete');
+    await expect(win.locator('.combat-tab-bar__tab')).toHaveCount(1);
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(1);
+
+    // Deleting the one remaining tab regenerates a fresh "Combat" tab, and
+    // the Goblin pulled into the deleted tab is gone for good.
+    await win.click('.combat-tab-bar__tab--active .combat-tab-bar__delete');
+    await expect(win.locator('.combat-tab-bar__tab')).toHaveCount(1);
+    await expect(win.locator('.combat-tab-bar__tab--active .combat-tab-bar__label')).toHaveText('Combat');
+    await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
+  });
+
+  test('the condensed sidebar only shows the active Combat tab\'s roster', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createAdversary('Ogre', '8', '3');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Goblin")');
+    const sidebarRows = win.locator('.session-combat-sidebar__combatant');
+    await expect(sidebarRows).toHaveCount(1);
+    await expect(sidebarRows.locator('.session-combat-sidebar__name')).toHaveText('Goblin');
+
+    const tabs = win.locator('.combat-tab-bar__tab');
+    await win.click('.combat-tab-bar__add');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Ogre")');
+
+    // Only the newly-active tab's Adversary shows in the sidebar now.
+    await expect(sidebarRows).toHaveCount(1);
+    await expect(sidebarRows.locator('.session-combat-sidebar__name')).toHaveText('Ogre');
+
+    // Switching back brings the Goblin back and hides the Ogre.
+    await tabs.nth(0).click();
+    await expect(sidebarRows).toHaveCount(1);
+    await expect(sidebarRows.locator('.session-combat-sidebar__name')).toHaveText('Goblin');
+  });
+
+  test('an Adversary pulled in before Combat tabs existed lands in the first tab only, not every tab', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await expect(win.locator('.combat-tab-bar__tab')).toHaveCount(1);
+
+    // No combatId — the shape every record had before this feature.
+    await win.evaluate(async () => {
+      const bridge = (window as any).daggerheart;
+      const [session] = await bridge.list('sessions');
+      const [goblin] = await bridge.list('adversaries');
+      await bridge.create('sessionAdversaries', { sessionId: session.id, adversaryId: goblin.id });
+    });
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+
+    const tiles = win.locator('.combat-panel .content-card');
+    const tabs = win.locator('.combat-tab-bar__tab');
+    await expect(tiles).toHaveCount(1);
+
+    await win.click('.combat-tab-bar__add');
+    await expect(tabs.nth(1)).toHaveClass(/combat-tab-bar__tab--active/);
+    await expect(tiles).toHaveCount(0);
+
+    await tabs.nth(0).click();
+    await expect(tabs.nth(0)).toHaveClass(/combat-tab-bar__tab--active/);
+    await expect(tiles).toHaveCount(1);
+
+    // Adopted for good: moving the other tab to the front doesn't move it.
+    const stored = await win.evaluate(async () => {
+      const bridge = (window as any).daggerheart;
+      const [session] = await bridge.list('sessions');
+      const combats = await bridge.listCombatsBySession(session.id);
+      const [adv] = await bridge.listSessionAdversariesBySession(session.id);
+      return { combatId: adv.combatId, firstTabId: combats.find((c: any) => c.order === 0).id };
+    });
+    expect(stored.combatId).toBe(stored.firstTabId);
+  });
+
+  test('a second Session in the same Campaign opens showing the same carried-forward Combat tabs', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.combat-tab-bar__add');
+    await win.locator('.combat-tab-bar__tab').nth(1).dblclick();
+    await win.fill('.combat-tab-bar__rename', 'Boss Fight');
+    await win.keyboard.press('Enter');
+    await expect(win.locator('.combat-tab-bar__tab')).toHaveCount(2);
+
+    await win.click('.session-view__back');
+    await win.click('.session-list__add');
+    await win.fill('.create-form input[type="text"]', 'Session 2');
+    await win.click('button:has-text("Start Session")');
+    await win.locator('.content-card', { hasText: 'Session 2' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.session-view__title')).toHaveText('Session 2');
+
+    const tabs = win.locator('.combat-tab-bar__tab');
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(0).locator('.combat-tab-bar__label')).toHaveText('Combat');
+    await expect(tabs.nth(1).locator('.combat-tab-bar__label')).toHaveText('Boss Fight');
   });
 });

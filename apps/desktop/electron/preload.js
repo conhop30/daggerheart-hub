@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('daggerheart', {
     ipcRenderer.invoke('store:listSessionAdversariesBySession', sessionId),
   listSessionEnvironmentsBySession: (sessionId) =>
     ipcRenderer.invoke('store:listSessionEnvironmentsBySession', sessionId),
+  listCombatsBySession: (sessionId) => ipcRenderer.invoke('store:listCombatsBySession', sessionId),
   cloneSession: (sourceId, options) => ipcRenderer.invoke('store:cloneSession', sourceId, options),
   importMusicFiles: (regionId) => ipcRenderer.invoke('music:importFiles', regionId),
   importDroppedMusicPaths: (regionId, filePaths) => ipcRenderer.invoke('music:importDroppedPaths', regionId, filePaths),

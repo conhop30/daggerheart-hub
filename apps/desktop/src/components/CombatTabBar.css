@@ -1,0 +1,91 @@
+.combat-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  overflow-x: auto;
+  margin-bottom: var(--space-2);
+  padding-bottom: 2px;
+}
+
+.combat-tab-bar__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: background 160ms var(--ease), color 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+.combat-tab-bar__tab:hover {
+  color: var(--ink);
+}
+
+.combat-tab-bar__tab--active {
+  background: rgba(228, 179, 65, 0.18);
+  border-color: var(--hope);
+  color: var(--hope);
+}
+
+.combat-tab-bar__tab.is-drag-over {
+  border-color: var(--hope);
+}
+
+.combat-tab-bar__tab--dragging {
+  opacity: 0.4;
+}
+
+.combat-tab-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.combat-tab-bar__rename {
+  background: var(--panel);
+  border: 1px solid var(--hope);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  padding: 0.1rem 0.3rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  max-width: 140px;
+}
+
+.combat-tab-bar__delete {
+  background: none;
+  border: none;
+  color: inherit;
+  line-height: 1;
+  font-size: 0.9rem;
+  padding: 0 0.1rem;
+  opacity: 0.6;
+}
+
+.combat-tab-bar__delete:hover {
+  opacity: 1;
+}
+
+.combat-tab-bar__add {
+  flex-shrink: 0;
+  background: none;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.combat-tab-bar__add:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}

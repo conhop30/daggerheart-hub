@@ -20,16 +20,22 @@ export interface CombatSpotlightSignal {
 
 interface CombatPanelProps {
   sessionId: string;
+  /** The Combat tab currently being viewed — new Adversaries/Environments get pulled in under this id. */
+  activeCombatId: string;
+  /** The leftmost Combat tab (null while tabs are still loading) — Environments pulled in before tabs existed get adopted into it, see the effect below. */
+  firstCombatId: string | null;
   // Adversaries are lifted up into SessionView (not owned here) because
   // SessionCombatSidebar shows the very same live list at the same time,
   // on the same screen — unlike Environments, which nothing else renders
-  // concurrently, so they can stay fully self-contained below.
+  // concurrently, so they can stay fully self-contained below. Already
+  // filtered down to the active Combat tab's roster by the time it reaches
+  // here — see SessionView's activeSessionAdversaries.
   sessionAdversaries: SessionAdversary[];
   adversariesLoading: boolean;
   adversariesError: string | null;
   /** Set by SessionView when a SessionCombatSidebar row is clicked — see the spotlight effect below. */
   spotlightSignal: CombatSpotlightSignal | null;
-  onPullInAdversary: (adversaryId: string, quantity: number) => void;
+  onPullInAdversary: (adversaryId: string, quantity: number, combatId: string) => void;
   onAdversaryChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   onAdversaryRemove: (adversary: SessionAdversary) => void;
   onRoll: (label: string, total: number) => void;
@@ -67,6 +73,8 @@ function computeDuplicateSuffixes(list: SessionAdversary[]): Map<string, number>
 // and pushing one out removes it from this session only.
 export default function CombatPanel({
   sessionId,
+  activeCombatId,
+  firstCombatId,
   sessionAdversaries,
   adversariesLoading,
   adversariesError,
@@ -152,17 +160,36 @@ export default function CombatPanel({
     };
   }, [sessionId]);
 
+  // Same one-time adoption SessionView does for Adversaries (see its
+  // comment): an Environment with no combatId predates Combat tabs, and is
+  // moved into the first tab for good.
+  useEffect(() => {
+    if (!firstCombatId || loading) return;
+    const unassigned = sessionEnvironments.filter((e) => e.combatId == null);
+    if (unassigned.length === 0) return;
+    setSessionEnvironments((prev) => prev.map((e) => (e.combatId == null ? { ...e, combatId: firstCombatId } : e)));
+    (async () => {
+      try {
+        for (const e of unassigned) {
+          await sessionEnvironmentsApi.update(e.id, { combatId: firstCombatId }, { sessionId });
+        }
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Could not move older Environments into the first Combat tab.');
+      }
+    })();
+  }, [firstCombatId, loading, sessionEnvironments, sessionId]);
+
   function pullInAdversary(adversaryId: string) {
     setPickerOpen(null);
     const quantity = addQuantity;
     setAddQuantity(1);
-    onPullInAdversary(adversaryId, quantity);
+    onPullInAdversary(adversaryId, quantity, activeCombatId);
   }
 
   async function pullInEnvironment(environmentId: string) {
     setPickerOpen(null);
     try {
-      const pulled = await sessionEnvironmentsApi.create({ sessionId, environmentId });
+      const pulled = await sessionEnvironmentsApi.create({ sessionId, environmentId, combatId: activeCombatId });
       setSessionEnvironments((prev) => [...prev, pulled]);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not pull that Environment in.');
@@ -188,6 +215,7 @@ export default function CombatPanel({
   }
 
   const duplicateSuffixes = computeDuplicateSuffixes(sessionAdversaries);
+  const visibleEnvironments = sessionEnvironments.filter((e) => e.combatId === activeCombatId);
 
   return (
     <div className="combat-panel">
@@ -229,7 +257,7 @@ export default function CombatPanel({
         <p className="combat-panel__status combat-panel__status--error">{error || adversariesError}</p>
       )}
 
-      {!loading && !error && !adversariesLoading && !adversariesError && sessionAdversaries.length === 0 && sessionEnvironments.length === 0 && (
+      {!loading && !error && !adversariesLoading && !adversariesError && sessionAdversaries.length === 0 && visibleEnvironments.length === 0 && (
         <p className="combat-panel__status">Nothing pulled in yet — use the buttons above to bring in a fight.</p>
       )}
 
@@ -254,7 +282,7 @@ export default function CombatPanel({
             onRoll={onRoll}
           />
         ))}
-        {sessionEnvironments.map((environment) => (
+        {visibleEnvironments.map((environment) => (
           <SessionEnvironmentTile
             key={environment.id}
             environment={environment}
