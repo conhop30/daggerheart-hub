@@ -178,7 +178,7 @@ race-safe lazy-create in `SessionView.tsx` (a `useRef` guard, not
 tab is deleted) handles that, not the backend. See `TODO.md`'s "Combat tabs"
 entry for the full file-by-file breakdown. Verified (`npx tsc --noEmit -p .`
 clean, `npm test` 257 tests green, full Playwright suite 93 tests
-green).
+green). Shipped as v1.7.1, together with the Journal/Session Notes round above.
 
 See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if
