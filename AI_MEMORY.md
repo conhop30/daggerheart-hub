@@ -222,6 +222,6 @@ stat block is the drag handle; see `CombatPanel.boardCell` for the two
 non-obvious parts (cancelling a drag that starts in an input, and ending a
 drag whose `dragend` never arrives).
 
-See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
+See `TODO.md` for the live backlog. Its completed entries were cleared on 2026-10-07; wherever this file says "see `TODO.md`'s ... entry", that entry is now in git history (`TODO.md` as of commit `d1a8669`). (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if
 it's not present, there's nothing currently blocked on Connor's input.)
