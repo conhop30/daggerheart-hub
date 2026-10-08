@@ -721,3 +721,145 @@ scratch list for planning the next pass of work.
         required-type form change touches every spec that creates an
         Adversary (`sessions`, `carryForward`, `featureSections`), so run
         the full suite before building on this.
+- [ ] **Playtest round** (2026-10-07), six changes from running a real
+      session. Implemented and typechecked; **no tests have been run**.
+      - Second pass the same day, from Connor's review of the first: Notes
+        tabs carry forward, the Party roster was reworked rather than left
+        as it was, any duplicate Adversary can be stacked, the Fear rail is
+        bigger, and the Campaign row's hover is cleaner. Folded in below.
+      - **Party section removed from the Session page.** `PARTY` is gone
+        from `sessionSectionOrder` (a saved order that still lists it
+        filters down cleanly to the two that remain). The roster itself is
+        untouched and still managed on the Campaign page; `SessionView`
+        now just fetches its size for Battle Points
+        (`partyMembersApi.listBySession`), still overridable per tab.
+      - **Fear is a vertical rail fixed to the window's left edge**
+        (`FearTrack.css`: `position: fixed`, filling from the bottom up via
+        `column-reverse`, pips shrink on a short window). `SessionView`
+        pads its left side to make room.
+      - **Journal bubble is pinned bottom-left, no longer draggable.**
+        `lib/bubblePosition.ts` is deleted along with the bubble's
+        `usePointerDrag` use and the anchor-side CSS; the hook itself stays
+        for `JournalFloatingNote`. A position saved by an older version is
+        simply ignored.
+      - **Dice Tray result sits above the dice.** The tray is anchored to
+        the bottom of the window, so a row on top grows it upward and the
+        die buttons never move; the old `everRolled` space reservation is
+        gone as unnecessary.
+      - **Roll results show on a collapsed Adversary tile** (they were
+        gated on `bodyOpen`).
+      - **Kill** (`SessionAdversary.slain`): a tile's new Kill button takes
+        it off the board and the compact list but keeps it in a "Slain"
+        list below the compact Adversaries, with Restore and a remove.
+        Remove is unchanged. Defeating a Minion with the stack's minus adds
+        it to a slain stack of that Minion instead of discarding it. Slain
+        Adversaries still count toward Battle Points (the encounter as
+        built). Kill uses `ContentCard`'s `onEdit` slot relabelled, since
+        the card only has two action slots.
+      - **Notes tabs, carried forward.** `CombatTabBar` became a generic
+        `TabBar` (shared `tab-bar__*` styling classes plus a per-bar `hook`
+        prefix such as `combat-tab-bar` / `notes-tab-bar`, so tests and CSS
+        can still tell two bars apart). Notes tabs are a new `noteTabs`
+        versioned collection (`name`, `order`, `notes`), built on
+        `makeVersionedCollection` exactly like `combats`, so they carry
+        forward the same way. A Campaign with no tab shows one unsaved
+        "Notes" tab, created on first edit/rename/add. The older per-Session
+        note (a `SESSION` JournalEntry named after the Session) is left
+        alone in the Journal bubble; if the Session being viewed has one and
+        no tabs exist yet, its text seeds that first tab. Clicking a Combat
+        tab selects the Notes tab of the same name (case-insensitive) via a
+        signal prop, same shape as the sidebar spotlight. (A first cut
+        stored tabs as Journal entries, which can't carry forward; Connor
+        asked for carry-forward, so that was replaced before it shipped.)
+      - **Party roster reworked** (kept on the Campaign page, not on the
+        Session page): a member is name + Class + Subclass + Heritage
+        (Ancestry and Community), plus an optional second Class + Subclass
+        for a multiclassed PC, all picked from the app's own content. No
+        HP/Stress at all: `TrackableEditor` is deleted, `store.js` drops
+        `trackables` on the way in and leaves it off older records on the
+        way out. The form's pickers are `ChipSelect` (a labelled row of
+        chips), not dropdowns — four unlabelled "Not yet chosen" selects in
+        a row were unreadable.
+      - **Subclass backgrounds, chosen automatically.** A Subclass holds a
+        `backdropImage` ("Party Background" in its form). A member's tile
+        uses their Subclass's image with no per-player step; a multiclassed
+        member gets both, half each (`MemberBackdrop` takes `images[]`). A
+        member's own portrait, if one was uploaded, still replaces it.
+        Images are uploaded per Subclass, not bundled with the app.
+      - **Any duplicate Adversary can be stacked, each keeping its own
+        HP/Stress.** Minions are still one counted record. Anything else
+        stays one record each and is stacked by sharing a `groupId`;
+        `toBoardCells` reports that as a `'stack'` cell, and
+        `SessionAdversaryStackTile` shows it as ONE stat block: a row per
+        member (name, HP, Stress, and Modify / Kill / remove), then the
+        attack, Experiences and Features printed once
+        (`AdversaryStatBody`, shared with the single tile). A row's Modify
+        opens that one copy's Difficulty, Thresholds, Conditions and an
+        Unstack button; whatever differs from the book shows as a line
+        under its name. A stack is one tile wide like any other, so a
+        row's three buttons are glyphs (pencil / skull / x) to keep it to
+        one line. A member also leaves by dragging its row onto the strip
+        under the board; dragging the whole stat block there takes the
+        stack apart (`planMinionMove` -> `planMemberMove`). That strip
+        used to ignore non-Minions entirely, which read as "unstacking is
+        broken". Its label now says what a drop would do.
+      - **"+" left of an Adversary's name** (single tiles and stacks, not
+        Minions, which have their own +1): pulls in one more of the same
+        Adversary on a tile of its own, never into the stack.
+      - **Party background fallback colours.** `MemberBackdrop` takes
+        `layers` (`{ image, colors }`), and paints a gradient of the
+        Class's primary and secondary Domain `colorHex` under each image,
+        so it shows when a Subclass has no image, while one loads, or if
+        it fails to load.
+      - **The whole stat block is the drag handle.** `CombatPanel.boardCell`
+        wraps each tile in a `draggable` div; a drag that starts in an
+        input is cancelled so text can still be selected (it records the
+        `mousedown` target, since `dragstart` only reports the draggable
+        itself). Buttons need no change: a click only fires on a press
+        released in place. Dragging across an identical stat block picks it
+        up on contact (`planPickUp` on `dragenter`), so one sweep gathers
+        several and never collects a different Adversary.
+        `SessionView.handlePickUp` works from a ref of the latest list and a
+        serialized write queue, because pick-ups can land faster than React
+        re-renders. A drag is ended by `dragend` OR the next mouse event:
+        stacking can unmount the dragged tile, and its `dragend` then never
+        reaches React.
+      - **Fear rail enlarged** (wider, bigger pips, more gap), and the
+        **Campaign row's description fades out on hover** so it no longer
+        runs under the "Select" cue.
+      - Tests updated but NOT run: `store.test.js` (slain, Note tabs,
+        Party member Class/Heritage/multiclass and no trackables, Subclass
+        background), `minionGroups.test.ts` (`planPickUp`, stack cells),
+        `e2e/sessions.spec.ts` (six new tests; the Party test removed; the
+        two Journal/Notes tests rewritten around the Journal bubble, since
+        the Notes panel no longer writes Journal entries; section-reorder
+        rewritten for two sections; the Minion drag helper now sends
+        `dragenter`), `e2e/carryForward.spec.ts` (in-Session Party
+        assertions and the per-Session Party-removal test removed, since
+        that UI is gone), `e2e/campaigns.spec.ts` (trackable test rewritten
+        for chips and multiclass), `e2e/journal.spec.ts` (drag-to-edge test
+        replaced by a stays-pinned test).
+      - **Stack rows are two lines**: name and #N, then HP | Stress. A
+        row's Modify / Kill / Remove are folded behind its "⋯" toggle.
+      - **Every stat block is a bordered card**; a stack shows two more
+        card edges behind it. A drag swaps the browser's snapshot for an
+        outlined card that follows the pointer (`CombatPanel.placeGhost`,
+        moved by document `dragover`, not state) and shows "xN" once it
+        holds more than one.
+      - **Subclass pictures are per-install, not shipped**: files named
+        after the Subclass in `<store dir>/subclass-backdrops`, listed over
+        `backdrops:list` and served as `dhmedia://backdrop/<file>`
+        (`lib/subclassBackdrops.ts`). Nothing of the kind is in the repo.
+      - **Journal fix**: its Session list now refetches each time the
+        panel opens (a Session renamed while it was closed kept its old
+        name there).
+      - Full runs green on 2026-10-07: vitest (295) and Playwright (99).
+        `journal.spec.ts` lost its "edit made elsewhere" test, whose
+        premise (Session Notes writing Journal entries) no longer exists;
+        the Session rename test in `sessions.spec.ts` covers the refetch.
+      - Seen working by hand (a throwaway Playwright script, since
+        deleted, driving the real app with real mouse input): three stat
+        blocks gathered into one stack by dragging, the drop strip clearing
+        afterwards, Roll Damage still firing on a click inside the
+        draggable block, and the Party form's chips. Nothing else here has
+        been exercised.

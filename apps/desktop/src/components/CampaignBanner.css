@@ -97,6 +97,14 @@
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.88);
   margin-bottom: 8px;
+  transition: opacity 200ms var(--ease);
+}
+
+/* The description runs under the "Select" cue and muddies it, so it steps
+   aside while the cue is showing. Faded, not removed, so the row keeps its
+   height and nothing below it jumps. */
+.campaign-row:hover .campaign-row__notes {
+  opacity: 0;
 }
 
 .campaign-row__level {

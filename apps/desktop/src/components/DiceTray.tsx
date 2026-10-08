@@ -33,10 +33,6 @@ function dieLabel(sides: number): string {
 export default function DiceTray({ onRoll }: DiceTrayProps) {
   const [queue, setQueue] = useState<Record<number, number>>({});
   const [roll, setRoll] = useState<{ notation: string; result: DiceTrayRollResult } | null>(null);
-  // Once true, stays true for the life of the tray — reserves the result
-  // row's space permanently after the first roll so later rolls/dismissals
-  // never resize the panel again (see dice-tray__result--empty below).
-  const [everRolled, setEverRolled] = useState(false);
 
   const hasQueued = DIE_SIZES.some((sides) => (queue[sides] ?? 0) > 0);
 
@@ -59,13 +55,25 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
     const result = rollDiceQueue(entries);
     const notation = entries.map((e) => `${e.count}d${e.sides}`).join(' + ');
     setRoll({ notation, result });
-    setEverRolled(true);
     setQueue({});
     onRoll(`Dice roller ${formatDiceQueueLabel(entries)}`, result.total);
   }
 
   return (
     <div className="dice-tray">
+      {/* Above the dice, never below: the tray is anchored to the bottom
+          of the window, so a row added on top grows it upward and leaves
+          every die button exactly where it was. */}
+      {roll && (
+        <div className="dice-tray__result">
+          <span className="dice-tray__result-notation">{roll.notation}</span>
+          <span className="dice-tray__result-equals">=</span>
+          <span className="dice-tray__result-total">{roll.result.total}</span>
+          <button type="button" className="dice-tray__dismiss" onClick={() => setRoll(null)} aria-label="Clear result">
+            ×
+          </button>
+        </div>
+      )}
       <div className="dice-tray__row">
         {DIE_SIZES.map((sides) => {
           const count = queue[sides] ?? 0;
@@ -97,20 +105,6 @@ export default function DiceTray({ onRoll }: DiceTrayProps) {
           Roll
         </button>
       </div>
-      {everRolled && (
-        <div className="dice-tray__result">
-          {roll && (
-            <>
-              <span className="dice-tray__result-notation">{roll.notation}</span>
-              <span className="dice-tray__result-equals">=</span>
-              <span className="dice-tray__result-total">{roll.result.total}</span>
-              <button type="button" className="dice-tray__dismiss" onClick={() => setRoll(null)} aria-label="Clear result">
-                ×
-              </button>
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }

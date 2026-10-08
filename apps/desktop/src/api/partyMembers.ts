@@ -1,18 +1,19 @@
 import { apiClient, type SessionContext } from './client';
 
-export interface Trackable {
-  label: string;
-  current: number;
-  max: number;
-}
-
 export interface PartyMember {
   id: string;
   campaignId: string;
   name: string;
   notes: string | null;
-  trackables: Trackable[];
-  /** Optional portrait for the member's tile, as a data: URL. A tall image centers and fades on both sides; a wide one fills the tile. Unset leaves the tile exactly as it was before this existed. */
+  classId: string | null;
+  subclassId: string | null;
+  /** A multiclassed PC's second Class and Subclass. */
+  secondClassId: string | null;
+  secondSubclassId: string | null;
+  /** Heritage is the pair: Ancestry + Community. */
+  ancestryId: string | null;
+  communityId: string | null;
+  /** Optional portrait for the member's tile, as a data: URL — wins over their Subclass backdrop(s) when set. A tall image centers and fades on both sides; a wide one fills the tile. */
   portraitImage: string | null;
   /** True when this member was last changed in an earlier session than the one being viewed. */
   carried?: boolean;
@@ -24,16 +25,26 @@ export interface CreatePartyMemberRequest {
   sessionId?: string;
   name: string;
   notes?: string;
-  trackables?: Trackable[];
   portraitImage?: string | null;
+  classId?: string | null;
+  subclassId?: string | null;
+  secondClassId?: string | null;
+  secondSubclassId?: string | null;
+  ancestryId?: string | null;
+  communityId?: string | null;
 }
 
 export interface UpdatePartyMemberRequest {
   campaignId?: string;
   name?: string;
   notes?: string;
-  trackables?: Trackable[];
   portraitImage?: string | null;
+  classId?: string | null;
+  subclassId?: string | null;
+  secondClassId?: string | null;
+  secondSubclassId?: string | null;
+  ancestryId?: string | null;
+  communityId?: string | null;
 }
 
 export const partyMembersApi = {

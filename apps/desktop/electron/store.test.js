@@ -416,20 +416,24 @@ describe('PartyMember', () => {
     );
   });
 
-  it('defaults trackables to an empty array', async () => {
-    const c = await store.createCampaign({ name: 'The Wildwood' });
-    const member = await store.createPartyMember({ campaignId: c.id, name: 'Fenn' });
-    expect(member.trackables).toEqual([]);
-  });
-
-  it('stores freeform trackables as given, keyed positionally (no synthetic id)', async () => {
+  it('no longer tracks HP/Stress: trackables are dropped on the way in, and left off an older record on the way out', async () => {
     const c = await store.createCampaign({ name: 'The Wildwood' });
     const member = await store.createPartyMember({
       campaignId: c.id,
       name: 'Fenn',
       trackables: [{ label: 'HP', current: 6, max: 6 }],
     });
-    expect(member.trackables).toEqual([{ label: 'HP', current: 6, max: 6 }]);
+    expect(member).not.toHaveProperty('trackables');
+    expect(await store.updatePartyMember(member.id, { trackables: [{ label: 'HP', current: 1, max: 6 }] })).not.toHaveProperty(
+      'trackables'
+    );
+
+    const raw = JSON.parse(fs.readFileSync(path.join(tempDir, 'data.json'), 'utf8'));
+    expect(raw.partyMembers.every((m) => !('trackables' in m))).toBe(true);
+    raw.partyMembers.push({ id: 'old-hand', campaignId: c.id, name: 'Old Hand', notes: null, trackables: [{ label: 'HP', current: 3, max: 6 }] });
+    fs.writeFileSync(path.join(tempDir, 'data.json'), JSON.stringify(raw));
+    store.__resetCacheForTests();
+    expect(store.listPartyMembersByCampaign(c.id).find((m) => m.id === 'old-hand')).not.toHaveProperty('trackables');
   });
 
   it('listPartyMembersByCampaign only returns matching members', async () => {
@@ -460,15 +464,6 @@ describe('PartyMember', () => {
     );
   });
 
-  it('clamps a trackable\'s current/max to non-negative whole numbers', async () => {
-    const c = await store.createCampaign({ name: 'The Wildwood' });
-    const member = await store.createPartyMember({
-      campaignId: c.id,
-      name: 'Fenn',
-      trackables: [{ label: 'HP', current: -2, max: 6.7 }],
-    });
-    expect(member.trackables).toEqual([{ label: 'HP', current: 0, max: 7 }]);
-  });
 });
 
 describe('LootTable', () => {
@@ -988,6 +983,113 @@ describe('Combat', () => {
     expect((await store.updateSessionAdversary(stack.id, { groupId: null }, { sessionId: session.id })).groupId).toBeNull();
   });
 
+  it('a pulled-in Adversary can be marked slain and restored, and is not slain to begin with', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const session = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const ogre = await store.createAdversary({ name: 'Ogre', gameSetId: gs.id });
+    const pulled = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id });
+    expect(pulled.slain).toBe(false);
+
+    expect((await store.updateSessionAdversary(pulled.id, { slain: true }, { sessionId: session.id })).slain).toBe(true);
+    expect(store.listSessionAdversariesBySession(session.id)[0].slain).toBe(true);
+    expect((await store.updateSessionAdversary(pulled.id, { slain: false }, { sessionId: session.id })).slain).toBe(false);
+
+    const dead = await store.createSessionAdversary({ sessionId: session.id, adversaryId: ogre.id, slain: true });
+    expect(dead.slain).toBe(true);
+  });
+
+  it('Note tabs carry forward, and a later edit or delete leaves the earlier Session as it was', async () => {
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const first = await store.createSession({ campaignId: c.id, name: 'Session 1' });
+    const second = await store.createSession({ campaignId: c.id, name: 'Session 2' });
+    await expect(store.createNoteTab({ sessionId: first.id, name: 'Notes' })).rejects.toThrow('order is required');
+
+    const tab = await store.createNoteTab({ sessionId: first.id, name: '  ', order: 0, notes: 'Opening scene.' });
+    expect(tab).toMatchObject({ name: 'Notes', order: 0, notes: 'Opening scene.' });
+    const boss = await store.createNoteTab({ sessionId: first.id, name: 'Boss Fight', order: 1 });
+    expect(boss.notes).toBe('');
+
+    expect(store.listNoteTabsBySession(second.id).map((t) => [t.name, t.notes])).toEqual([
+      ['Notes', 'Opening scene.'],
+      ['Boss Fight', ''],
+    ]);
+
+    await store.updateNoteTab(tab.id, { notes: 'Picks up at the gate.', name: ' ' }, { sessionId: second.id });
+    await store.removeNoteTab(boss.id, { sessionId: second.id });
+    // A blank rename is ignored, like a Combat tab's.
+    expect(store.listNoteTabsBySession(second.id).map((t) => [t.name, t.notes])).toEqual([['Notes', 'Picks up at the gate.']]);
+    expect(store.listNoteTabsBySession(first.id).map((t) => [t.name, t.notes])).toEqual([
+      ['Notes', 'Opening scene.'],
+      ['Boss Fight', ''],
+    ]);
+
+    await store.removeCampaign(c.id);
+    expect(store.listNoteTabs()).toEqual([]);
+  });
+
+  it('a Party member records Class, Subclass, Ancestry and Community, validated against real records', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const c = await store.createCampaign({ name: 'The Wildwood' });
+    const d1 = await store.createDomain({ name: 'Grace', gameSetId: gs.id });
+    const d2 = await store.createDomain({ name: 'Codex', gameSetId: gs.id });
+    const domains = { primaryDomainId: d1.id, secondaryDomainId: d2.id };
+    const bard = await store.createHeroClass({ name: 'Minstrel', ...domains, gameSetId: gs.id });
+    const other = await store.createHeroClass({ name: 'Knight', ...domains, gameSetId: gs.id });
+    const troubadour = await store.createSubclass({ name: 'Troubadour', parentClassId: bard.id, gameSetId: gs.id });
+    const elf = await store.createAncestry({ name: 'Elf', gameSetId: gs.id });
+    const highborne = await store.createCommunity({ name: 'Highborne', gameSetId: gs.id });
+
+    const plain = await store.createPartyMember({ campaignId: c.id, name: 'Mira' });
+    expect(plain).toMatchObject({
+      classId: null,
+      subclassId: null,
+      secondClassId: null,
+      secondSubclassId: null,
+      ancestryId: null,
+      communityId: null,
+    });
+
+    // A multiclassed PC has a second Class and Subclass, settled the same way.
+    const squire = await store.createSubclass({ name: 'Squire', parentClassId: other.id, gameSetId: gs.id });
+    const multi = await store.createPartyMember({ campaignId: c.id, name: 'Dax', subclassId: troubadour.id, secondSubclassId: squire.id });
+    expect(multi).toMatchObject({ classId: bard.id, secondClassId: other.id, secondSubclassId: squire.id });
+    await expect(store.updatePartyMember(multi.id, { secondClassId: 'missing' })).rejects.toThrow('secondClassId does not match');
+
+    // Picking a Subclass settles the Class, even if a different one was sent.
+    const fenn = await store.createPartyMember({
+      campaignId: c.id,
+      name: 'Fenn',
+      classId: other.id,
+      subclassId: troubadour.id,
+      ancestryId: elf.id,
+      communityId: highborne.id,
+    });
+    expect(fenn).toMatchObject({ classId: bard.id, subclassId: troubadour.id, ancestryId: elf.id, communityId: highborne.id });
+
+    expect((await store.updatePartyMember(fenn.id, { subclassId: null, classId: other.id })).classId).toBe(other.id);
+    await expect(store.createPartyMember({ campaignId: c.id, name: 'Toth', ancestryId: 'missing' })).rejects.toThrow(
+      'ancestryId does not match'
+    );
+    await expect(store.updatePartyMember(fenn.id, { subclassId: 'missing' })).rejects.toThrow('subclassId does not match');
+  });
+
+  it('a Subclass holds an optional Party background image, defaulting to none', async () => {
+    const gs = await store.createGameSet({ name: 'Core' });
+    const d1 = await store.createDomain({ name: 'Grace', gameSetId: gs.id });
+    const d2 = await store.createDomain({ name: 'Codex', gameSetId: gs.id });
+    const domains = { primaryDomainId: d1.id, secondaryDomainId: d2.id };
+    const bard = await store.createHeroClass({ name: 'Minstrel', ...domains, gameSetId: gs.id });
+    const sub = await store.createSubclass({ name: 'Troubadour', parentClassId: bard.id, gameSetId: gs.id });
+    expect(sub.backdropImage).toBeNull();
+
+    const image = 'data:image/png;base64,iVBORw0KGgo=';
+    expect((await store.updateSubclass(sub.id, { backdropImage: image })).backdropImage).toBe(image);
+    expect(store.listSubclassesByParentClass(bard.id)[0].backdropImage).toBe(image);
+    await expect(store.updateSubclass(sub.id, { backdropImage: 'not an image' })).rejects.toThrow('must be an image data URL');
+    expect((await store.updateSubclass(sub.id, { backdropImage: null })).backdropImage).toBeNull();
+  });
+
   it('an Adversary pulled in before types were snapshotted reads its type off the master', async () => {
     const gs = await store.createGameSet({ name: 'Core' });
     const c = await store.createCampaign({ name: 'The Wildwood' });
@@ -1101,7 +1203,7 @@ describe('Export / Import', () => {
     const member = await store.createPartyMember({
       campaignId: campaign.id,
       name: 'Fenn',
-      trackables: [{ label: 'HP', current: 6, max: 6 }],
+      notes: 'Ranger',
     });
 
     const snapshot = store.exportSnapshot();
@@ -1556,17 +1658,17 @@ describe('Carrying data across Sessions', () => {
       expect(store.listPartyMembersBySession(s1.id).map((m) => m.id)).toEqual([mira.id]);
     });
 
-    it('marking HP in session 2 leaves session 1 as it was and carries into session 3', async () => {
+    it('a change made in session 2 leaves session 1 as it was and carries into session 3', async () => {
       const c = await store.createCampaign({ name: 'The Wildwood' });
-      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira', trackables: [{ label: 'HP', current: 0, max: 6 }] });
+      const mira = await store.createPartyMember({ campaignId: c.id, name: 'Mira', notes: 'Fresh recruit' });
       const [s1, s2, s3] = await threeSessions(c);
-      const hp = (sid) => store.listPartyMembersBySession(sid)[0].trackables[0].current;
+      const notes = (sid) => store.listPartyMembersBySession(sid)[0].notes;
 
-      await store.updatePartyMember(mira.id, { trackables: [{ label: 'HP', current: 4, max: 6 }] }, { sessionId: s2.id });
+      await store.updatePartyMember(mira.id, { notes: 'Now a veteran' }, { sessionId: s2.id });
 
-      expect(hp(s1.id)).toBe(0);
-      expect(hp(s2.id)).toBe(4);
-      expect(hp(s3.id)).toBe(4);
+      expect(notes(s1.id)).toBe('Fresh recruit');
+      expect(notes(s2.id)).toBe('Now a veteran');
+      expect(notes(s3.id)).toBe('Now a veteran');
       expect(store.listPartyMembersBySession(s3.id)[0].id).toBe(mira.id);
     });
 

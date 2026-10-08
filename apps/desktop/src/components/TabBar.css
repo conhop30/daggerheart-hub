@@ -1,4 +1,4 @@
-.combat-tab-bar {
+.tab-bar {
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -7,7 +7,7 @@
   padding-bottom: 2px;
 }
 
-.combat-tab-bar__tab {
+.tab-bar__tab {
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -24,32 +24,32 @@
   transition: background 160ms var(--ease), color 160ms var(--ease), border-color 160ms var(--ease);
 }
 
-.combat-tab-bar__tab:hover {
+.tab-bar__tab:hover {
   color: var(--ink);
 }
 
-.combat-tab-bar__tab--active {
+.tab-bar__tab--active {
   background: rgba(228, 179, 65, 0.18);
   border-color: var(--hope);
   color: var(--hope);
 }
 
-.combat-tab-bar__tab.is-drag-over {
+.tab-bar__tab.is-drag-over {
   border-color: var(--hope);
 }
 
-.combat-tab-bar__tab--dragging {
+.tab-bar__tab--dragging {
   opacity: 0.4;
 }
 
-.combat-tab-bar__label {
+.tab-bar__label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 140px;
 }
 
-.combat-tab-bar__rename {
+.tab-bar__rename {
   background: var(--panel);
   border: 1px solid var(--hope);
   border-radius: var(--radius-sm);
@@ -60,7 +60,7 @@
   max-width: 140px;
 }
 
-.combat-tab-bar__delete {
+.tab-bar__delete {
   background: none;
   border: none;
   color: inherit;
@@ -70,11 +70,11 @@
   opacity: 0.6;
 }
 
-.combat-tab-bar__delete:hover {
+.tab-bar__delete:hover {
   opacity: 1;
 }
 
-.combat-tab-bar__add {
+.tab-bar__add {
   flex-shrink: 0;
   background: none;
   border: 1px dashed var(--hairline);
@@ -85,7 +85,7 @@
   line-height: 1;
 }
 
-.combat-tab-bar__add:hover {
+.tab-bar__add:hover {
   color: var(--ink);
   border-color: var(--ink);
 }

@@ -1,43 +1,61 @@
+/* A vertical rail pinned to the left edge of the window, centered between
+   the app's top bar and the Journal bubble in the bottom-left corner (the
+   two things it must never sit on top of). SessionView pads its own left
+   side to make room — see .session-view in SessionView.css. */
 .fear-track {
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-  padding: var(--space-3) 0;
-  margin-bottom: var(--space-4);
+  position: fixed;
+  left: var(--space-2);
+  top: 72px;
+  bottom: 88px;
+  z-index: 800;
+  width: 3.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* Only its own controls take clicks, so the empty stretch above and
+     below a short rail never blocks the page behind it. */
+  pointer-events: none;
 }
 
-.fear-track__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--space-2);
+.fear-track > * {
+  pointer-events: auto;
 }
 
 .fear-track__label {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: var(--fear-on-dark, #c66);
 }
 
 .fear-track__value {
   font-family: var(--font-mono);
   color: var(--fear-on-dark, #c66);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
+  white-space: nowrap;
+  margin-bottom: 2px;
 }
 
 .fear-track__pips {
   display: flex;
+  flex-direction: column-reverse;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 12px;
+  /* Shrinks with a short window instead of running under the bubble. */
+  min-height: 0;
+  flex: 0 1 auto;
 }
 
 .fear-track__pip {
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
+  width: 2rem;
+  flex: 0 1 2rem;
+  min-height: 0.6rem;
+  border-radius: 999px;
   border: 1px solid var(--hairline);
   background: var(--void);
+  padding: 0;
   transition:
     background 160ms var(--ease),
     border-color 160ms var(--ease);
@@ -53,13 +71,15 @@
 }
 
 .fear-track__step {
-  background: none;
+  background: var(--void);
   border: 1px solid var(--hairline);
   color: var(--ink);
-  width: 1.8rem;
-  height: 1.8rem;
-  font-size: 1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: none;
+  font-size: 1.15rem;
   line-height: 1;
+  padding: 0;
 }
 
 .fear-track__step:disabled {

@@ -38,10 +38,12 @@ export interface DaggerheartBridge {
   listSessionAdversariesBySession: (sessionId: string) => Promise<unknown[]>;
   listSessionEnvironmentsBySession: (sessionId: string) => Promise<unknown[]>;
   listCombatsBySession: (sessionId: string) => Promise<unknown[]>;
+  listNoteTabsBySession: (sessionId: string) => Promise<unknown[]>;
   cloneSession: (sourceId: string, options?: { name?: string }) => Promise<unknown>;
   importMusicFiles: (regionId: string) => Promise<{ canceled: boolean; tracks: unknown[] }>;
   importDroppedMusicPaths: (regionId: string, filePaths: string[]) => Promise<{ tracks: unknown[] }>;
   copyMusicTrackToRegion: (trackId: string, targetRegionId: string) => Promise<unknown>;
+  listSubclassBackdrops: () => Promise<string[]>;
   create: (collection: string, data: unknown) => Promise<unknown>;
   update: (collection: string, id: string, patch: unknown, ctx?: SessionContext) => Promise<unknown>;
   remove: (collection: string, id: string, ctx?: SessionContext) => Promise<void>;
@@ -122,6 +124,10 @@ export const apiClient = {
     (await unwrap(bridge().listSessionEnvironmentsBySession(sessionId))) as T[],
   listCombatsBySession: async <T>(sessionId: string): Promise<T[]> =>
     (await unwrap(bridge().listCombatsBySession(sessionId))) as T[],
+  listNoteTabsBySession: async <T>(sessionId: string): Promise<T[]> =>
+    (await unwrap(bridge().listNoteTabsBySession(sessionId))) as T[],
+  /** File names in this install's own subclass-backdrops folder - see electron/main.js. */
+  listSubclassBackdrops: async (): Promise<string[]> => (await unwrap(bridge().listSubclassBackdrops())) as string[],
   cloneSession: async <T>(sourceId: string, options?: { name?: string }): Promise<T> =>
     (await unwrap(bridge().cloneSession(sourceId, options))) as T,
   importMusicFiles: async <T>(regionId: string): Promise<{ canceled: boolean; tracks: T[] }> =>

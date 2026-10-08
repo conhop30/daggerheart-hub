@@ -2,17 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { sessionsApi, type NewLootLogEntry, type Session, type UpdateSessionRequest } from '../api/sessions';
 import { sessionAdversariesApi, type SessionAdversary, type UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import { combatsApi, type Combat, type UpdateCombatRequest } from '../api/combats';
-import { planMinionMove, stackToJoin, type MoveAmount, type MoveTarget } from '../lib/minionGroups';
+import { partyMembersApi } from '../api/partyMembers';
+import { planMinionMove, planPickUp, stackToJoin, type MoveAmount, type MoveTarget } from '../lib/minionGroups';
 import BattlePointsBar from './BattlePointsBar';
 import SessionForm from './SessionForm';
 import FearTrack from './FearTrack';
 import SessionMusicPanel from './SessionMusicPanel';
 import CombatPanel, { type CombatSpotlightSignal } from './CombatPanel';
-import CombatTabBar from './CombatTabBar';
+import TabBar from './TabBar';
 import SessionCombatSidebar from './SessionCombatSidebar';
 import LootRoller from './LootRoller';
-import PartyRoster from './PartyRoster';
-import SessionNotesPanel from './SessionNotesPanel';
+import SessionNotesPanel, { type NotesTabSignal } from './SessionNotesPanel';
 import SessionSectionShell from './SessionSectionShell';
 import DiceTray from './DiceTray';
 import RollLogPanel from './RollLogPanel';
@@ -23,7 +23,6 @@ import { loadSectionOrder, saveSectionOrder, type SessionSectionId } from '../li
 import './SessionView.css';
 
 const SECTION_TITLES: Record<SessionSectionId, string> = {
-  PARTY: 'Party',
   ADVERSARIES: 'Adversaries',
   NOTES: 'Notes',
 };
@@ -38,8 +37,8 @@ interface SessionViewProps {
   onSessionDeleted: (id: string) => void;
 }
 
-// A thin shell, not the owner of any panel's data — it wires FearTrack, the
-// Party, and CombatPanel together, but each of those manages (or is handed)
+// A thin shell, not the owner of any panel's data — it wires FearTrack,
+// CombatPanel and the Notes together, but each of those manages (or is handed)
 // its own state. Ripping out and rebuilding any one panel never means
 // touching this file beyond the single line that renders it.
 //
@@ -68,9 +67,33 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
   // Guards the floor-guard effect below against double-firing while its own
   // create() is still in flight — see that effect's comment.
   const floorGuardRan = useRef(false);
-  // Reported up by PartyRoster (which owns the roster itself) — Battle
-  // Points budgets for this many PCs unless the tab overrides it.
+  // How many PCs the Campaign's Party has as of this session — all Battle
+  // Points needs of it (the roster itself is managed on the Campaign page,
+  // not here). A tab can override the number.
   const [partyCount, setPartyCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    partyMembersApi
+      .listBySession(session.id)
+      .then((members) => {
+        if (!cancelled) setPartyCount(members.length);
+      })
+      .catch(() => {
+        // Battle Points just budgets for one PC until a tab says otherwise.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id]);
+
+  // Clicking a Combat tab also brings up the Notes tab of the same name,
+  // if there is one — see SessionNotesPanel.
+  const [notesTabSignal, setNotesTabSignal] = useState<NotesTabSignal | null>(null);
+  function selectCombat(id: string) {
+    setActiveCombatId(id);
+    const combat = combats.find((c) => c.id === id);
+    if (combat) setNotesTabSignal({ name: combat.name, key: Date.now() });
+  }
 
   // A SessionCombatSidebar row click sets this; CombatPanel reacts by
   // spotlighting the matching tile. `key` changes on every click (even a
@@ -78,10 +101,9 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
   // again" apart from a re-render that changed nothing.
   const [combatSpotlight, setCombatSpotlight] = useState<CombatSpotlightSignal | null>(null);
 
-  // Party/Adversaries/Notes are drag-reorderable, the same way Journal
+  // Adversaries and Notes are drag-reorderable, the same way Journal
   // entries already are — a global GM layout preference (see
-  // sessionSectionOrder.ts), not per-session data. FearTrack stays pinned
-  // above all three, unaffected by this.
+  // sessionSectionOrder.ts), not per-session data.
   const [sectionOrder, setSectionOrder] = useState<SessionSectionId[]>(loadSectionOrder());
   const { getHandleProps, getRowClassName } = useDragReorder(sectionOrder, (next) => {
     setSectionOrder(next);
@@ -187,9 +209,13 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
     })();
   }, [firstCombatId, adversariesLoading, sessionAdversaries, session.id]);
 
-  const activeSessionAdversaries = activeCombatId
-    ? sessionAdversaries.filter((a) => a.combatId === activeCombatId)
-    : [];
+  // Everything pulled into the active tab, then split by whether it's
+  // still in the fight. Battle Points score the whole encounter as built
+  // (killing something doesn't make the fight it was part of cheaper); the
+  // board and the compact list only show what's still standing.
+  const tabAdversaries = activeCombatId ? sessionAdversaries.filter((a) => a.combatId === activeCombatId) : [];
+  const activeSessionAdversaries = tabAdversaries.filter((a) => !a.slain);
+  const slainAdversaries = tabAdversaries.filter((a) => a.slain);
   const activeCombat = combats.find((c) => c.id === activeCombatId) ?? null;
 
   // Sequential, not Promise.all — CombatPanel's duplicate-suffix numbering
@@ -221,10 +247,39 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
 
   // Defeating the last Minion of a stack removes the stack itself — there's
   // no such thing as a tile for zero Minions.
-  function handleMinionCount(adversary: SessionAdversary, delta: number) {
-    const next = adversary.count + delta;
-    if (next <= 0) handleAdversaryRemove(adversary);
-    else handleAdversaryChange(adversary, { count: next });
+  // A defeated Minion joins the Slain list like anything else that's
+  // killed: as one more on the slain stack of that same Minion.
+  async function handleMinionCount(adversary: SessionAdversary, delta: number) {
+    if (delta > 0) {
+      handleAdversaryChange(adversary, { count: adversary.count + delta });
+      return;
+    }
+    const slainStack = slainAdversaries.find((a) => a.adversaryId === adversary.adversaryId);
+    try {
+      if (adversary.count <= 1) {
+        if (!slainStack) {
+          await handleAdversaryChange(adversary, { slain: true });
+          return;
+        }
+        await handleAdversaryRemove(adversary);
+      } else {
+        await handleAdversaryChange(adversary, { count: adversary.count - 1 });
+      }
+      if (slainStack) {
+        await handleAdversaryChange(slainStack, { count: slainStack.count + 1 });
+      } else {
+        const created = await sessionAdversariesApi.create({
+          sessionId: session.id,
+          adversaryId: adversary.adversaryId,
+          combatId: adversary.combatId ?? activeCombatId!,
+          count: 1,
+          slain: true,
+        });
+        setSessionAdversaries((prev) => [...prev, created]);
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not record that Minion as slain.');
+    }
   }
 
   // A drag on the board: lib/minionGroups decides what it means, this just
@@ -252,6 +307,35 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Could not regroup those Minions.');
     }
+  }
+
+  // A dragged tile touching its duplicate: the duplicate joins the dragged
+  // stack at once. Several can be touched in one sweep, faster than React
+  // re-renders, so this works from (and updates) a ref of the latest list
+  // rather than the `sessionAdversaries` this render closed over, and
+  // queues its writes one behind another.
+  const latestAdversaries = useRef(sessionAdversaries);
+  latestAdversaries.current = sessionAdversaries;
+  const pickUpWrites = useRef<Promise<unknown>>(Promise.resolve());
+  function handlePickUp(sourceId: string, targetId: string) {
+    const list = latestAdversaries.current.filter((a) => !a.slain);
+    const ops = planPickUp(list, sourceId, targetId, () => crypto.randomUUID());
+    if (ops.length === 0) return;
+    let next = latestAdversaries.current;
+    for (const op of ops) {
+      if (op.kind === 'update') next = next.map((a) => (a.id === op.id ? { ...a, ...op.patch } : a));
+      if (op.kind === 'remove') next = next.filter((a) => a.id !== op.id);
+    }
+    latestAdversaries.current = next;
+    setSessionAdversaries(next);
+    pickUpWrites.current = pickUpWrites.current
+      .then(async () => {
+        for (const op of ops) {
+          if (op.kind === 'update') await sessionAdversariesApi.update(op.id, op.patch, { sessionId: session.id });
+          if (op.kind === 'remove') await sessionAdversariesApi.remove(op.id, { sessionId: session.id });
+        }
+      })
+      .catch((err) => window.alert(err instanceof Error ? err.message : 'Could not stack those Adversaries.'));
   }
 
   async function handleCombatChange(combat: Combat, patch: UpdateCombatRequest) {
@@ -430,26 +514,18 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
 
       <div className="session-view__layout">
         <div className="session-view__main">
-          <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
-
           {sectionOrder.map((id, index) => (
             <div key={id} className={`session-view__section${getRowClassName(index)}`}>
               <SessionSectionShell title={SECTION_TITLES[id]} dragHandleProps={getHandleProps(index)}>
-                {id === 'PARTY' && (
-                  <PartyRoster
-                    campaignId={campaignId}
-                    sessionId={session.id}
-                    layout="grid"
-                    onChange={(members) => setPartyCount(members.length)}
-                  />
-                )}
                 {id === 'ADVERSARIES' && (
                   <>
                     {!combatsLoading && combats.length > 0 && activeCombatId && (
-                      <CombatTabBar
-                        combats={combats}
-                        activeCombatId={activeCombatId}
-                        onSelect={setActiveCombatId}
+                      <TabBar
+                        tabs={combats}
+                        activeId={activeCombatId}
+                        noun="Combat"
+                        hook="combat-tab-bar"
+                        onSelect={selectCombat}
                         onReorder={handleCombatReorder}
                         onRename={handleCombatRename}
                         onAdd={handleCombatAdd}
@@ -459,7 +535,7 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
                     {activeCombat && (
                       <BattlePointsBar
                         combat={activeCombat}
-                        combatants={activeSessionAdversaries}
+                        combatants={tabAdversaries}
                         partyCount={partyCount}
                         campaignLevel={campaignLevel}
                         onChange={(patch) => handleCombatChange(activeCombat, patch)}
@@ -479,12 +555,13 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
                         onAdversaryRemove={handleAdversaryRemove}
                         onMinionCount={handleMinionCount}
                         onMinionMove={handleMinionMove}
+                        onPickUp={handlePickUp}
                         onRoll={addRoll}
                       />
                     )}
                   </>
                 )}
-                {id === 'NOTES' && <SessionNotesPanel campaignId={campaignId} session={session} />}
+                {id === 'NOTES' && <SessionNotesPanel campaignId={campaignId} session={session} tabSignal={notesTabSignal} />}
               </SessionSectionShell>
             </div>
           ))}
@@ -498,6 +575,7 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
           />
           <SessionCombatSidebar
             sessionAdversaries={activeSessionAdversaries}
+            slain={slainAdversaries}
             onChange={handleAdversaryChange}
             onSelect={(id) => setCombatSpotlight({ id, key: Date.now() })}
             onRemove={handleAdversaryRemove}
@@ -507,6 +585,8 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
         </aside>
       </div>
 
+      {/* Fixed to the window's left edge, not part of the page flow. */}
+      <FearTrack fear={session.fear} onChange={(fear) => persist({ fear })} />
       <DiceTray onRoll={addRoll} />
       <RollLogPanel entries={rollLog} onClear={clearRollLog} />
     </div>

@@ -111,22 +111,6 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(reloadedTile).toHaveCount(0);
   });
 
-  test('the Party is always grid-formatted and sits above the Combat panel', async () => {
-    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-    await win.click('.party-roster__add');
-    await win.fill('.create-form input[type="text"]', 'Mira');
-    await win.click('button:has-text("Add Party Member")');
-    await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toBeVisible();
-
-    // Party/Adversaries/Notes are drag-reorderable sections now (see
-    // SessionSectionShell) — Party defaults above Combat, each inside its
-    // own .session-view__section wrapper.
-    const sections = win.locator('.session-view__section');
-    await expect(sections.nth(0).locator('.party-roster')).toBeVisible();
-    await expect(sections.nth(1).locator('.combat-panel')).toBeVisible();
-    await expect(win.locator('.party-roster .content-card-list')).toHaveClass(/content-card-list--grid/);
-  });
-
   test('a session can be renamed and deleted', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
@@ -551,22 +535,15 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(tile.locator('.session-tile__features-toggle')).toHaveText('▸ Features');
   });
 
-  test('Session Notes and the matching Journal entry are the same record, either side can edit it', async () => {
+  test('a note written for a Session before Notes had tabs seeds its first tab, and stays in the Journal', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
-    await win.fill('.session-notes-panel__notes', 'Remember the bridge toll.');
-    await win.click('.session-view__title');
-    await win.waitForTimeout(50);
-
-    // The Journal's Session view finds the same record by name — not a copy.
+    // The pre-tabs kind of Session note: a Journal entry named after the Session.
     await win.click('.journal-bubble');
     await win.click('.journal-campaign-row__name:has-text("The Wildwood")');
     await win.click('.journal-panel__scope-btn:has-text("Session")');
     await win.click('.journal-session-row:has-text("Session 1")');
-    await expect(win.locator('.journal-detail__notes')).toHaveValue('Remember the bridge toll.');
-
-    // Editing from the Journal side edits that same record.
-    await win.fill('.journal-detail__notes', 'Edited from the Journal.');
+    await win.fill('.journal-detail__notes', 'Remember the bridge toll.');
     await win.click('.journal-detail__close');
     await win.click('.journal-bubble');
 
@@ -575,7 +552,8 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
-    await expect(win.locator('.session-notes-panel__notes')).toHaveValue('Edited from the Journal.');
+    await expect(win.locator('.notes-tab-bar__label')).toHaveText(['Notes']);
+    await expect(win.locator('.session-notes-panel__notes')).toHaveValue('Remember the bridge toll.');
   });
 
   test('the Notes textarea stays clickable even where it visually overlaps the fixed Dice Tray', async () => {
@@ -595,6 +573,11 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     // lands on the tray's inert container rather than one of its buttons.
     const notes = win.locator('.session-notes-panel__notes');
     const tray = win.locator('.dice-tray');
+    // On an empty Session the Notes end well above the tray; a GM's notes
+    // are rarely that short, so give them the height of a real page.
+    await notes.evaluate((el) => {
+      (el as HTMLElement).style.height = '900px';
+    });
     const before = { notes: await notes.boundingBox(), tray: await tray.boundingBox() };
     if (!before.notes || !before.tray) throw new Error('notes or dice tray not visible');
     await win.evaluate((dy) => window.scrollBy(0, dy), before.notes.y + before.notes.height - (before.tray.y + 10));
@@ -614,19 +597,24 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(win.locator('.session-notes-panel__notes')).toHaveValue('Typed where Dice Tray overlaps');
   });
 
-  test('renaming a Session keeps its linked Journal entry’s label in sync, rather than orphaning it', async () => {
+  test('renaming a Session keeps its Journal entry’s label in sync, rather than orphaning it', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
-    await win.fill('.session-notes-panel__notes', 'Notes made before the rename.');
-    await win.click('.session-view__title');
-    await win.waitForTimeout(50);
+    await win.click('.journal-bubble');
+    await win.click('.journal-campaign-row__name:has-text("The Wildwood")');
+    await win.click('.journal-panel__scope-btn:has-text("Session")');
+    await win.click('.journal-session-row:has-text("Session 1")');
+    await win.fill('.journal-detail__notes', 'Notes made before the rename.');
+    await win.click('.journal-detail__close');
+    await win.click('.journal-bubble');
 
     await win.click('.session-view__header-action:not(.session-view__header-action--danger)');
     await win.fill('.create-form input[type="text"]', 'The Ambush at Dawn');
     await win.click('button:has-text("Save Changes")');
     await expect(win.locator('.session-view__title')).toHaveText('The Ambush at Dawn');
 
+    // Reopens on the Campaign it was left on, and refetches: the rename
+    // happened on another surface entirely while the panel was closed.
     await win.click('.journal-bubble');
-    await win.click('.journal-campaign-row__name:has-text("The Wildwood")');
     await win.click('.journal-panel__scope-btn:has-text("Session")');
     await expect(win.locator('.journal-session-row', { hasText: 'The Ambush at Dawn' })).toBeVisible();
     await expect(win.locator('.journal-session-row', { hasText: 'Session 1' })).toHaveCount(0);
@@ -634,35 +622,33 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(win.locator('.journal-detail__notes')).toHaveValue('Notes made before the rename.');
   });
 
-  test('Party/Adversaries/Notes can be drag-reordered, and the order persists across reload as a global preference', async () => {
+  test('Adversaries/Notes can be drag-reordered, and the order persists across reload as a global preference', async () => {
     await createCampaignAndOpenSession('The Wildwood', 'Session 1');
 
+    // The Party lives on the Campaign page only; a Session has no Party section.
+    await expect(win.locator('.session-view .party-roster')).toHaveCount(0);
     const sectionLabels = win.locator('.session-section-shell__label');
-    await expect(sectionLabels.nth(0)).toHaveText('Party');
-    await expect(sectionLabels.nth(1)).toHaveText('Adversaries');
-    await expect(sectionLabels.nth(2)).toHaveText('Notes');
+    await expect(sectionLabels).toHaveText(['Adversaries', 'Notes']);
 
-    // Drag the Notes section's handle above Party.
+    // Drag the Notes section's handle above Adversaries.
     const handles = win.locator('.session-section-shell .drag-handle');
-    const notesBox = await handles.nth(2).boundingBox();
-    const partyBox = await handles.nth(0).boundingBox();
-    if (!notesBox || !partyBox) throw new Error('section handle not visible');
+    const notesBox = await handles.nth(1).boundingBox();
+    const firstBox = await handles.nth(0).boundingBox();
+    if (!notesBox || !firstBox) throw new Error('section handle not visible');
     await win.mouse.move(notesBox.x + notesBox.width / 2, notesBox.y + notesBox.height / 2);
     await win.mouse.down();
-    await win.mouse.move(partyBox.x + partyBox.width / 2, partyBox.y + partyBox.height / 2, { steps: 10 });
+    await win.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2, { steps: 10 });
     await win.dispatchEvent('.session-section-shell .drag-handle >> nth=0', 'dragenter');
     await win.mouse.up();
 
-    await expect(sectionLabels.nth(0)).toHaveText('Notes');
-    await expect(sectionLabels.nth(1)).toHaveText('Party');
-    await expect(sectionLabels.nth(2)).toHaveText('Adversaries');
+    await expect(sectionLabels).toHaveText(['Notes', 'Adversaries']);
 
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
-    await expect(sectionLabels.nth(0)).toHaveText('Notes');
+    await expect(sectionLabels).toHaveText(['Notes', 'Adversaries']);
   });
 
   test('a new Session opens with a single "Combat" tab; a second tab keeps an independent roster', async () => {
@@ -899,13 +885,18 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
 
   // The app's own handlers only read React state, never dataTransfer, so a
   // dispatched event sequence drives them exactly as a real drag would.
+  // A whole tile touching its duplicate is picked up on dragenter and is
+  // gone before there's anything to drop on, hence the short timeouts.
   async function dragMinion(source: Locator, target: Locator) {
     await source.dispatchEvent('dragstart');
     await expect(win.locator('.combat-panel__new-group')).toBeVisible();
-    await target.dispatchEvent('dragover');
-    await target.dispatchEvent('drop');
-    // The source is gone already when its whole stack was folded away.
+    await target.dispatchEvent('dragenter');
+    await target.dispatchEvent('dragover', {}, { timeout: 500 }).catch(() => {});
+    await target.dispatchEvent('drop', {}, { timeout: 500 }).catch(() => {});
     await source.dispatchEvent('dragend', {}, { timeout: 500 }).catch(() => {});
+    // Any mouse movement ends a drag whose own dragend went missing.
+    await win.mouse.move(5, 5);
+    await win.mouse.move(12, 12);
     await expect(win.locator('.combat-panel__new-group')).toHaveCount(0);
   }
 
@@ -992,5 +983,326 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await bat.getByRole('button', { name: 'Defeat one Minion' }).click();
     await expect(tiles).toHaveCount(1);
     await expect(counts).toHaveText(['×5']);
+  });
+
+  test('the Fear tracker is a rail on the left edge, clear of the Journal bubble pinned below it', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.waitForTimeout(400);
+    const { width, height } = await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+
+    const rail = await win.locator('.fear-track').boundingBox();
+    const bubble = await win.locator('.journal-bubble').boundingBox();
+    if (!rail || !bubble) throw new Error('fear rail or journal bubble not visible');
+    // Tall and narrow, hugging the left edge.
+    expect(rail.x + rail.width).toBeLessThan(width / 8);
+    expect(rail.height).toBeGreaterThan(rail.width * 3);
+    // The bubble is in the bottom-left corner, entirely below the rail.
+    expect(bubble.x).toBeLessThan(100);
+    expect(bubble.y).toBeGreaterThan(height - 150);
+    expect(rail.y + rail.height).toBeLessThanOrEqual(bubble.y);
+
+    // It fills from the bottom up: pip 1 sits below pip 12.
+    const first = await win.getByRole('button', { name: 'Set Fear to 1', exact: true }).boundingBox();
+    const last = await win.getByRole('button', { name: 'Set Fear to 12' }).boundingBox();
+    if (!first || !last) throw new Error('fear pips not visible');
+    expect(first.y).toBeGreaterThan(last.y);
+
+    // And stays put when the page scrolls.
+    await win.getByRole('button', { name: 'Set Fear to 3' }).click();
+    await expect(win.locator('.fear-track__value')).toHaveText('3 / 12');
+    await win.evaluate(() => window.scrollTo(0, 400));
+    const scrolled = await win.locator('.fear-track').boundingBox();
+    expect(scrolled?.y).toBe(rail.y);
+  });
+
+  test('the Dice Tray shows its result above the dice, without moving them', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.waitForTimeout(400);
+    const d6 = win.locator('.dice-tray__die', { hasText: 'd6' });
+    const before = await d6.boundingBox();
+    await d6.click();
+    await win.click('.dice-tray__roll');
+
+    const result = await win.locator('.dice-tray__result').boundingBox();
+    const after = await d6.boundingBox();
+    if (!before || !after || !result) throw new Error('dice tray not visible');
+    expect(result.y + result.height).toBeLessThanOrEqual(after.y);
+    expect(after.y).toBe(before.y);
+  });
+
+  test('an Attack or Damage roll stays visible on a collapsed Adversary tile', async () => {
+    await createAdversaryWithAttackAndFeature('Ogre', '8', '3', '1d8+2 phy', 'Brute', 'Hits hard.');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Ogre")');
+
+    const tile = win.locator('.combat-panel .content-card');
+    await tile.getByRole('button', { name: 'Collapse details' }).click();
+    await expect(tile.locator('.session-tile__stats')).toHaveCount(0);
+
+    await tile.getByRole('button', { name: 'Roll Damage' }).click();
+    await expect(tile.locator('.session-tile__roll-result')).toBeVisible();
+  });
+
+  test('Kill moves an Adversary off the board onto the Slain list; Remove still forgets it', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createAdversary('Rat', '1', '1', 'MINION');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    const pullIn = async (name: string, quantity = 1) => {
+      await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+      for (let i = 1; i < quantity; i++) await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
+      await win.click(`.item-picker__option:has-text("${name}")`);
+    };
+    await pullIn('Goblin', 2);
+
+    const tiles = win.locator('.combat-panel .content-card');
+    const live = win.locator('.session-combat-sidebar__combatant');
+    const slain = win.locator('.session-combat-sidebar__slain-row');
+    await expect(tiles).toHaveCount(2);
+    await expect(slain).toHaveCount(0);
+
+    // Killed: gone from the board and the compact list, kept under Slain.
+    await tiles.first().getByRole('button', { name: 'Kill' }).click();
+    await expect(tiles).toHaveCount(1);
+    await expect(live).toHaveCount(1);
+    await expect(slain).toHaveCount(1);
+    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText('Goblin');
+    // Still part of the encounter as built: 2 Standards cost 4.
+    await expect(win.locator('.battle-points__spent')).toHaveText('4');
+
+    // Removed: gone without a trace.
+    await tiles.first().getByRole('button', { name: 'Remove' }).click();
+    await expect(tiles).toHaveCount(0);
+    await expect(slain).toHaveCount(1);
+    await expect(win.locator('.battle-points__spent')).toHaveText('2');
+
+    // Slain survives a reload, and Restore puts it back on the board.
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(slain).toHaveCount(1);
+    await expect(tiles).toHaveCount(0);
+    await slain.getByRole('button', { name: 'Restore Goblin' }).click();
+    await expect(slain).toHaveCount(0);
+    await expect(tiles).toHaveCount(1);
+
+    // Defeating Minions one at a time builds up a single slain stack.
+    await tiles.first().getByRole('button', { name: 'Remove' }).click();
+    await pullIn('Rat', 3);
+    await tiles.first().getByRole('button', { name: 'Defeat one Minion' }).click();
+    await expect(win.locator('.combat-panel .session-tile__count')).toHaveText(['×2']);
+    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat']);
+    await tiles.first().getByRole('button', { name: 'Defeat one Minion' }).click();
+    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat ×2']);
+    await tiles.first().getByRole('button', { name: 'Defeat one Minion' }).click();
+    await expect(tiles).toHaveCount(0);
+    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat ×3']);
+  });
+
+  test('Notes have renamable tabs, each with its own text, that follow the Combat tab of the same name and carry forward', async () => {
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    const noteTabs = win.locator('.notes-tab-bar__tab');
+    const notes = win.locator('.session-notes-panel__notes');
+
+    // One tab to begin with.
+    await expect(noteTabs.locator('.notes-tab-bar__label')).toHaveText(['Notes']);
+    await notes.fill('Opening scene.');
+    await notes.blur();
+
+    await win.click('.notes-tab-bar__add');
+    await expect(noteTabs).toHaveCount(2);
+    await expect(noteTabs.nth(1)).toHaveClass(/notes-tab-bar__tab--active/);
+    await expect(notes).toHaveValue('');
+    await noteTabs.nth(1).dblclick();
+    await win.fill('.notes-tab-bar__rename', 'Boss Fight');
+    await win.keyboard.press('Enter');
+    await expect(noteTabs.locator('.notes-tab-bar__label')).toHaveText(['Notes', 'Boss Fight']);
+    await notes.fill('The dragon opens with its breath.');
+
+    // Each tab keeps its own text.
+    await noteTabs.nth(0).click();
+    await expect(notes).toHaveValue('Opening scene.');
+    await noteTabs.nth(1).click();
+    await expect(notes).toHaveValue('The dragon opens with its breath.');
+    await noteTabs.nth(0).click();
+
+    // Clicking a Combat tab brings up the Notes tab with the same name.
+    await win.click('.combat-tab-bar__add');
+    await win.locator('.combat-tab-bar__tab').nth(1).dblclick();
+    await win.fill('.combat-tab-bar__rename', 'boss fight');
+    await win.keyboard.press('Enter');
+    await win.locator('.combat-tab-bar__tab').nth(0).click();
+    await expect(noteTabs.nth(0)).toHaveClass(/notes-tab-bar__tab--active/);
+    await win.locator('.combat-tab-bar__tab').nth(1).click();
+    await expect(noteTabs.nth(1)).toHaveClass(/notes-tab-bar__tab--active/);
+    await expect(notes).toHaveValue('The dragon opens with its breath.');
+
+    // A later Session opens with the same tabs and their text, and what's
+    // written there never reaches back into the earlier Session.
+    await win.click('.session-view__back');
+    await win.click('.session-list__add');
+    await win.fill('.create-form input[type="text"]', 'Session 2');
+    await win.click('button:has-text("Start Session")');
+    await win.locator('.content-card', { hasText: 'Session 2' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.session-view__title')).toHaveText('Session 2');
+    await expect(noteTabs.locator('.notes-tab-bar__label')).toHaveText(['Notes', 'Boss Fight']);
+    await expect(notes).toHaveValue('Opening scene.');
+    await notes.fill('Session two picks up at the gate.');
+    await notes.blur();
+    await noteTabs.nth(1).locator('.notes-tab-bar__delete').click();
+    await expect(noteTabs.locator('.notes-tab-bar__label')).toHaveText(['Notes']);
+
+    await win.click('.session-view__back');
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(win.locator('.session-view__title')).toHaveText('Session 1');
+    await expect(noteTabs.locator('.notes-tab-bar__label')).toHaveText(['Notes', 'Boss Fight']);
+    await expect(notes).toHaveValue('Opening scene.');
+  });
+
+  test('dragging a stat block across its duplicates stacks them into one, a row each, leaving other Adversaries alone', async () => {
+    await createAdversaryWithAttackAndFeature('Goblin', '4', '2', '1d6+1 phy', 'Sneaky', 'Hard to pin down.');
+    await createAdversary('Ogre', '8', '3');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    const pullIn = async (name: string, quantity = 1) => {
+      await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+      for (let i = 1; i < quantity; i++) await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
+      await win.click(`.item-picker__option:has-text("${name}")`);
+    };
+    await pullIn('Goblin', 3);
+    await pullIn('Ogre');
+
+    // Anything that isn't a Minion still arrives one tile each.
+    const tiles = win.locator('.combat-panel .content-card');
+    const cells = win.locator('.combat-panel__cell');
+    const rows = win.locator('.session-stack__row');
+    await expect(tiles).toHaveCount(4);
+    await expect(rows).toHaveCount(0);
+
+    // Sweep the first Goblin over the Ogre and then the other two Goblins.
+    // The drag starts anywhere on the stat block, not on a handle.
+    await cells.nth(0).locator('.content-card__title').dispatchEvent('dragstart');
+    await expect(win.locator('.combat-panel__new-group')).toBeVisible();
+    await cells.nth(3).dispatchEvent('dragenter');
+    await expect(tiles).toHaveCount(4);
+    await cells.nth(1).dispatchEvent('dragenter');
+    await expect(tiles).toHaveCount(3);
+    await cells.nth(1).dispatchEvent('dragenter');
+    await expect(tiles).toHaveCount(2);
+    await cells.nth(0).dispatchEvent('dragend');
+    await expect(win.locator('.combat-panel__new-group')).toHaveCount(0);
+
+    // One stat block, a row per Goblin, the Features printed once.
+    const stack = win.locator('.session-stack');
+    await expect(stack.locator('.session-tile__count')).toHaveText('×3');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.locator('.session-tile__name-suffix')).toHaveText(['#1', '#2', '#3']);
+    await expect(stack.locator('.session-tile__features-toggle')).toHaveCount(1);
+    // Each is still its own combatant everywhere else.
+    await expect(win.locator('.session-combat-sidebar__combatant')).toHaveCount(4);
+    await expect(win.locator('.battle-points__spent')).toHaveText('8');
+
+    // A row's Modify / Kill / Remove sit behind its "⋯" until asked for.
+    const rowAction = async (row: Locator, name: RegExp) => {
+      const button = row.getByRole('button', { name });
+      if (!(await button.isVisible())) await row.getByRole('button', { name: /^Actions for/ }).click();
+      await button.click();
+    };
+
+    // HP and Stress are tracked per row.
+    await rows.nth(1).getByRole('button', { name: 'Decrease HP' }).click();
+    await expect(rows.nth(1).locator('.stat-stepper__value').first()).toHaveText('3 / 4');
+    await expect(rows.nth(0).locator('.stat-stepper__value').first()).toHaveText('4 / 4');
+
+    // Modify changes one copy's own stats, noted under its name.
+    await expect(rows.nth(2).getByRole('button', { name: /^Modify/ })).toHaveCount(0);
+    await rowAction(rows.nth(2), /^Modify/);
+    await rows.nth(2).getByLabel('Difficulty').fill('15');
+    await rowAction(rows.nth(2), /^Modify/);
+    await expect(rows.nth(2).locator('.session-stack__diffs')).toHaveText('Difficulty 15');
+    await expect(rows.nth(0).locator('.session-stack__diffs')).toHaveCount(0);
+
+    // A button inside the draggable stat block still works as a button.
+    await stack.getByRole('button', { name: 'Roll Damage' }).click();
+    await expect(stack.locator('.session-tile__roll-result')).toBeVisible();
+
+    // Killing one row sends just that Goblin to Slain.
+    await rowAction(rows.nth(0), /^Kill/);
+    await expect(rows).toHaveCount(2);
+    await expect(win.locator('.session-combat-sidebar__slain-name')).toHaveText(['Goblin']);
+
+    // Stacks survive a reload.
+    await win.reload();
+    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
+    await win.click('.app-shell__nav-link:has-text("Campaigns")');
+    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
+    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0).locator('.stat-stepper__value').first()).toHaveText('3 / 4');
+    await expect(rows.nth(1).locator('.session-stack__diffs')).toHaveText('Difficulty 15');
+
+    // Unstack puts one back on a tile of its own; a stack of one is just a tile.
+    await rowAction(rows.nth(0), /^Modify/);
+    await rows.nth(0).getByRole('button', { name: /^Unstack/ }).click();
+    await expect(rows).toHaveCount(0);
+    await expect(tiles).toHaveCount(3);
+
+    // "+" beside the name pulls in one more, on a tile of its own.
+    await tiles.first().getByRole('button', { name: 'Add another Goblin' }).click();
+    await expect(tiles).toHaveCount(4);
+    await expect(rows).toHaveCount(0);
+  });
+
+  test('a stack is one tile wide, and comes apart by dragging a row, or the whole stat block, onto the strip under the board', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createAdversary('Ogre', '8', '3');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    for (const [name, quantity] of [['Goblin', 3], ['Ogre', 1]] as const) {
+      await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+      for (let i = 1; i < quantity; i++) await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
+      await win.click(`.item-picker__option:has-text("${name}")`);
+    }
+    const tiles = win.locator('.combat-panel .content-card');
+    const rows = win.locator('.session-stack__row');
+    const stack = win.locator('.session-stack');
+    await expect(tiles).toHaveCount(4);
+
+    // All with the real mouse, as a GM would. Gather the three Goblins by
+    // sweeping the first across the other two...
+    const mouseDrag = async (from: Locator, to: Locator[]) => {
+      const start = (await from.boundingBox())!;
+      // Where each stop is now: tiles shift as the sweep gathers them. (The
+      // strip under the board only exists once a drag is under way.)
+      const known = await Promise.all(to.map(async (stop) => ((await stop.count()) ? stop.boundingBox() : null)));
+      await win.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+      await win.mouse.down();
+      await win.mouse.move(start.x + start.width / 2 + 12, start.y + start.height / 2 + 12, { steps: 4 });
+      for (let i = 0; i < to.length; i++) {
+        const box = known[i] ?? (await to[i].boundingBox())!;
+        await win.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+      }
+      await win.mouse.up();
+      await win.mouse.move(5, 5);
+    };
+    const goblinTiles = win.locator('.combat-panel__cell');
+    await mouseDrag(goblinTiles.nth(0).locator('.stat-stepper__label').first(), [goblinTiles.nth(1), goblinTiles.nth(2)]);
+    await expect(rows).toHaveCount(3);
+    // ...and a stack is no wider than any other tile.
+    const stackBox = (await win.locator('.combat-panel__cell', { has: stack }).boundingBox())!;
+    const ogreBox = (await win.locator('.combat-panel__cell').nth(1).boundingBox())!;
+    expect(stackBox.width).toBeLessThanOrEqual(ogreBox.width + 1);
+
+    // Dragging one row out onto the strip under the board unstacks just it.
+    const zone = win.locator('.combat-panel__new-group');
+    await mouseDrag(rows.nth(1).locator('.stat-stepper__label').first(), [zone]);
+    await expect(rows).toHaveCount(2);
+    await expect(tiles).toHaveCount(3);
+
+    // Dragging the whole stat block there takes the rest of it apart.
+    await mouseDrag(stack.locator('.session-stack__name'), [zone]);
+    await expect(rows).toHaveCount(0);
+    await expect(tiles).toHaveCount(4);
+    await expect(zone).toHaveCount(0);
   });
 });

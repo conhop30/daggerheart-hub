@@ -18,10 +18,12 @@ contextBridge.exposeInMainWorld('daggerheart', {
   listSessionEnvironmentsBySession: (sessionId) =>
     ipcRenderer.invoke('store:listSessionEnvironmentsBySession', sessionId),
   listCombatsBySession: (sessionId) => ipcRenderer.invoke('store:listCombatsBySession', sessionId),
+  listNoteTabsBySession: (sessionId) => ipcRenderer.invoke('store:listNoteTabsBySession', sessionId),
   cloneSession: (sourceId, options) => ipcRenderer.invoke('store:cloneSession', sourceId, options),
   importMusicFiles: (regionId) => ipcRenderer.invoke('music:importFiles', regionId),
   importDroppedMusicPaths: (regionId, filePaths) => ipcRenderer.invoke('music:importDroppedPaths', regionId, filePaths),
   copyMusicTrackToRegion: (trackId, targetRegionId) => ipcRenderer.invoke('music:copyTrackToRegion', trackId, targetRegionId),
+  listSubclassBackdrops: () => ipcRenderer.invoke('backdrops:list'),
   create: (collection, data) => ipcRenderer.invoke('store:create', collection, data),
   update: (collection, id, patch, ctx) => ipcRenderer.invoke('store:update', collection, id, patch, ctx),
   remove: (collection, id, ctx) => ipcRenderer.invoke('store:remove', collection, id, ctx),

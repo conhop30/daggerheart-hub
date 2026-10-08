@@ -68,10 +68,18 @@
   margin-bottom: var(--space-1);
 }
 
-.party-roster__trackables {
-  border-top: 1px solid var(--hairline);
-  margin-top: var(--space-1);
-  padding-top: var(--space-1);
+.party-roster__class {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--ink);
+  margin: 0 0 2px;
+}
+
+.party-roster__heritage {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 var(--space-1);
 }
 
 .party-roster__hint {
@@ -112,23 +120,16 @@
 }
 
 .party-roster__member--photo .content-card__title,
-.party-roster__member--photo .party-roster__notes,
-.party-roster__member--photo .stat-stepper__label,
-.party-roster__member--photo .stat-stepper__value {
+.party-roster__member--photo .party-roster__class,
+.party-roster__member--photo .party-roster__heritage,
+.party-roster__member--photo .party-roster__notes {
   color: #ffffff;
 }
 
-.party-roster__member--photo .stat-stepper__button {
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
-}
-
-/* No blur here — legibility behind HP/Stress comes from MemberBackdrop's
-   own scrim gradient darkening toward the tile's bottom edge (see
-   MemberBackdrop.css), not from a filter layered on top of the trackables
-   themselves. Just the border tint stays, to read against the photo. */
-.party-roster__member--photo .party-roster__trackables {
-  border-top-color: rgba(255, 255, 255, 0.2);
+/* Tall enough for a themed background to read as one, even on a tile with
+   only a name and two short lines on it. */
+.party-roster__member--photo .content-card {
+  min-height: 132px;
 }
 
 /* A plain translucent tint behind Edit/Delete so they stay legible over

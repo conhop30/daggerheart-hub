@@ -13,6 +13,9 @@ interface FearTrackProps {
 // position; clicking the currently-topmost filled pip again empties back
 // to it minus one, so a misclick is one click to undo. The +/- buttons
 // exist for exact single-step control, matching StatStepper's affordance.
+// Laid out as a vertical rail pinned to the window's left edge (see
+// FearTrack.css), so it stays in reach however far the Session page is
+// scrolled.
 export default function FearTrack({ fear, onChange }: FearTrackProps) {
   function clamp(value: number): number {
     return Math.max(0, Math.min(MAX_FEAR, value));
@@ -25,22 +28,22 @@ export default function FearTrack({ fear, onChange }: FearTrackProps) {
 
   return (
     <div className="fear-track">
-      <div className="fear-track__header">
-        <span className="fear-track__label">Fear</span>
-        <span className="fear-track__value">
-          {fear} / {MAX_FEAR}
-        </span>
-      </div>
+      <span className="fear-track__label">Fear</span>
+      <span className="fear-track__value">
+        {fear} / {MAX_FEAR}
+      </span>
+      <button
+        type="button"
+        className="fear-track__step"
+        onClick={() => onChange(clamp(fear + 1))}
+        disabled={fear >= MAX_FEAR}
+        aria-label="Increase Fear"
+      >
+        +
+      </button>
+      {/* Fills from the bottom up, like a gauge: the column is reversed in
+          CSS so pip 1 sits lowest while the DOM stays in counting order. */}
       <div className="fear-track__pips">
-        <button
-          type="button"
-          className="fear-track__step"
-          onClick={() => onChange(clamp(fear - 1))}
-          disabled={fear <= 0}
-          aria-label="Decrease Fear"
-        >
-          &minus;
-        </button>
         {Array.from({ length: MAX_FEAR }, (_, index) => (
           <button
             key={index}
@@ -50,16 +53,16 @@ export default function FearTrack({ fear, onChange }: FearTrackProps) {
             aria-label={`Set Fear to ${index + 1}`}
           />
         ))}
-        <button
-          type="button"
-          className="fear-track__step"
-          onClick={() => onChange(clamp(fear + 1))}
-          disabled={fear >= MAX_FEAR}
-          aria-label="Increase Fear"
-        >
-          +
-        </button>
       </div>
+      <button
+        type="button"
+        className="fear-track__step"
+        onClick={() => onChange(clamp(fear - 1))}
+        disabled={fear <= 0}
+        aria-label="Decrease Fear"
+      >
+        &minus;
+      </button>
     </div>
   );
 }

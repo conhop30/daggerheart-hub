@@ -46,6 +46,7 @@ const COLLECTIONS = [
   'sessionAdversaries',
   'sessionEnvironments',
   'combats',
+  'noteTabs',
   'musicRegions',
   'musicTracks',
   'journalEntries',
@@ -398,12 +399,18 @@ function updateHeroClass(id, patch) {
 
 // ---- Subclasses ----
 
+// backdropImage (the themed background a Party member of this Subclass
+// gets on their tile) arrived after Subclasses existed.
+const presentSubclass = (record) => ({ ...record, backdropImage: record.backdropImage ?? null });
+
 function listSubclasses() {
-  return getCache().subclasses;
+  return getCache().subclasses.map(presentSubclass);
 }
 
 function listSubclassesByParentClass(parentClassId) {
-  return getCache().subclasses.filter((s) => s.parentClassId === parentClassId);
+  return getCache()
+    .subclasses.filter((s) => s.parentClassId === parentClassId)
+    .map(presentSubclass);
 }
 
 // Root cause of a real bug (reproduced with Ranger — an official/core
@@ -426,10 +433,11 @@ function createSubclass(data) {
     const existing = store.subclasses.find(
       (s) => s.parentClassId === data.parentClassId && s.name.toLowerCase() === data.name.toLowerCase()
     );
-    if (existing) return existing;
+    if (existing) return presentSubclass(existing);
     if (!store.heroClasses.some((c) => c.id === data.parentClassId)) {
       throw new Error(`No hero class with id ${data.parentClassId}`);
     }
+    validateImageDataUrl(data, 'backdropImage');
     const record = {
       id: randomUUID(),
       name: data.name,
@@ -439,6 +447,7 @@ function createSubclass(data) {
       foundationFeatures: data.foundationFeatures ?? [],
       specializationFeatures: data.specializationFeatures ?? [],
       masteryFeatures: data.masteryFeatures ?? [],
+      backdropImage: data.backdropImage ?? null,
       gameSetId: data.gameSetId,
     };
     store.subclasses.push(record);
@@ -453,6 +462,7 @@ function updateSubclass(id, patch) {
     if (patch.parentClassId !== undefined && !store.heroClasses.some((c) => c.id === patch.parentClassId)) {
       throw new Error(`No hero class with id ${patch.parentClassId}`);
     }
+    validateImageDataUrl(patch, 'backdropImage');
     const merged = mergePatch(existing, patch);
     // Same parentClassId scoping as createSubclass above, applied to the
     // rename-collision check too — pre-filtered to siblings under the same
@@ -466,7 +476,7 @@ function updateSubclass(id, patch) {
       merged
     );
     Object.assign(existing, merged);
-    return existing;
+    return presentSubclass(existing);
   });
 }
 
@@ -856,7 +866,7 @@ const transformations = makeCollection('transformations', {
 // Editing or deleting inside session N reaches N and everything after it,
 // never the sessions before.
 
-const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments', 'combats'];
+const VERSIONED = ['partyMembers', 'sessionAdversaries', 'sessionEnvironments', 'combats', 'noteTabs'];
 const CARRIED_SESSION_FIELDS = ['fear', 'regionId'];
 
 function sessionOrder(store, campaignId) {
@@ -1078,19 +1088,6 @@ function sanitizeConditions(data) {
   }));
 }
 
-// PartyMember trackables are fully freeform ({label, current, max}) — no
-// fixed schema, so there's nothing to enum-check, but current/max still
-// need to stay non-negative whole numbers.
-function clampTrackables(data) {
-  if (!Array.isArray(data.trackables)) return;
-  for (const t of data.trackables) {
-    if (t && typeof t === 'object') {
-      clampNumber(t, 'current', { min: 0 });
-      clampNumber(t, 'max', { min: 0 });
-    }
-  }
-}
-
 const campaigns = makeCollection('campaigns', {
   validate: validateCampaign,
   buildRecord: (data) => ({
@@ -1201,21 +1198,42 @@ function removeJournalEntry(id) {
 }
 
 // ---- Party Members ----
-// A standing roster per Campaign, carried across its Sessions. Deliberately
-// lightweight: name + notes plus a fully freeform trackables list (label/
-// current/max) rather than a fixed HP/Stress/Hope schema, so a table can
-// track whatever it wants without the store caring what "HP" means. Marking
-// HP in session 3 shows in session 3 onward, not in sessions 1-2.
+// A standing roster per Campaign, carried across its Sessions: who each PC
+// is (name, Class and Subclass — two of each for a multiclassed PC —
+// Ancestry and Community), not a tracker for what they've marked. A roster
+// from before this had a freeform `trackables` list (HP, Stress and the
+// like); that's no longer accepted, and is left off whatever is read back.
 //
 // Name uniqueness is scoped to the Campaign (two Campaigns can each have a
 // same-named PC). Called with no session, edits land on the Campaign's latest
 // session (or the baseline, before any session exists).
 
+const PARTY_MEMBER_REFS = [
+  ['classId', 'heroClasses'],
+  ['subclassId', 'subclasses'],
+  ['secondClassId', 'heroClasses'],
+  ['secondSubclassId', 'subclasses'],
+  ['ancestryId', 'ancestries'],
+  ['communityId', 'communities'],
+];
+
 const partyMembers = makeVersionedCollection('partyMembers', {
   uniqueByName: true,
-  validate: (_store, data) => {
-    clampTrackables(data);
+  validate: (store, data) => {
+    delete data.trackables;
     validateImageDataUrl(data, 'portraitImage');
+    for (const [field, collection] of PARTY_MEMBER_REFS) {
+      if (data[field] != null && !store[collection].some((r) => r.id === data[field])) {
+        throw new Error(`${field} does not match anything in ${collection}`);
+      }
+    }
+    // A Subclass belongs to one Class; picking it settles the Class too.
+    if (data.subclassId != null) {
+      data.classId = store.subclasses.find((s) => s.id === data.subclassId).parentClassId;
+    }
+    if (data.secondSubclassId != null) {
+      data.secondClassId = store.subclasses.find((s) => s.id === data.secondSubclassId).parentClassId;
+    }
   },
   context(store, data) {
     if (!store.campaigns.some((c) => c.id === data.campaignId)) {
@@ -1230,12 +1248,26 @@ const partyMembers = makeVersionedCollection('partyMembers', {
     sessionId,
     name: data.name,
     notes: data.notes ?? null,
-    trackables: data.trackables ?? [],
     portraitImage: data.portraitImage ?? null,
+    classId: data.classId ?? null,
+    subclassId: data.subclassId ?? null,
+    secondClassId: data.secondClassId ?? null,
+    secondSubclassId: data.secondSubclassId ?? null,
+    ancestryId: data.ancestryId ?? null,
+    communityId: data.communityId ?? null,
   }),
   // Same read-time default as Campaign's coverImage, for members created
-  // before portraitImage existed.
-  present: (record) => ({ ...record, portraitImage: record.portraitImage ?? null }),
+  // before portraitImage (and, later, Class/Heritage) existed.
+  present: ({ trackables: _trackables, ...record }) => ({
+    ...record,
+    portraitImage: record.portraitImage ?? null,
+    classId: record.classId ?? null,
+    subclassId: record.subclassId ?? null,
+    secondClassId: record.secondClassId ?? null,
+    secondSubclassId: record.secondSubclassId ?? null,
+    ancestryId: record.ancestryId ?? null,
+    communityId: record.communityId ?? null,
+  }),
 });
 
 const listPartyMembersByCampaign = partyMembers.listByCampaign;
@@ -1433,6 +1465,7 @@ function validateSessionAdversary(store, data) {
     throw new Error(`No combat with id ${data.combatId}`);
   }
   clampNumber(data, 'count', { min: 1, allowNull: false });
+  if (data.slain !== undefined) data.slain = Boolean(data.slain);
   clampNumber(data, 'hpMarked', { min: 0 });
   clampNumber(data, 'stressMarked', { min: 0 });
   clampNumber(data, 'attackModifier');
@@ -1470,6 +1503,7 @@ function presentSessionAdversary(record) {
     type: record.type ?? getCache().adversaries.find((a) => a.id === record.adversaryId)?.type ?? null,
     count: record.count ?? 1,
     groupId: record.groupId ?? null,
+    slain: record.slain ?? false,
     difficultyModifier: record.difficultyModifier ?? null,
     thresholdsModifier: record.thresholdsModifier ?? { major: null, severe: null },
     conditions: normalizeConditionsForRead(record.conditions),
@@ -1514,6 +1548,9 @@ const sessionAdversaries = makeVersionedCollection('sessionAdversaries', {
       // group. Both are meaningless (1 / null) for every other type.
       count: data.count ?? 1,
       groupId: data.groupId ?? null,
+      // Killed rather than removed: off the board, but kept on the
+      // session's Slain list as a record of the fight.
+      slain: Boolean(data.slain),
       tier: adversary.tier,
       difficulty: adversary.difficulty,
       thresholds: adversary.thresholds,
@@ -1626,6 +1663,38 @@ const combats = makeVersionedCollection('combats', {
       easier: data.easier ?? false,
       harder: data.harder ?? false,
       bonusDamage: data.bonusDamage ?? false,
+    };
+  },
+});
+
+// ---- Note tabs ----
+// The tabs of a Session's Notes section: a name, an order, and the text.
+// Versioned exactly like Combat tabs, so they carry forward the same way —
+// a tab written in session 1 is there in session 2 with its text, and
+// editing it in session 2 leaves session 1's copy as it was. (The older
+// per-Session note, a SESSION-kind Journal entry, is a separate thing that
+// still lives in the Journal bubble; see SessionNotesPanel for how its text
+// seeds a Campaign's first tab.)
+function validateNoteTab(_store, data) {
+  if (data.name !== undefined) {
+    const trimmed = String(data.name).trim();
+    data.name = trimmed || undefined;
+  }
+  if (data.notes !== undefined) data.notes = String(data.notes ?? '');
+}
+
+const noteTabs = makeVersionedCollection('noteTabs', {
+  context: sessionContext,
+  validate: validateNoteTab,
+  build(_store, data, { campaignId, sessionId }) {
+    if (data.order === undefined) throw new Error('order is required');
+    return {
+      id: randomUUID(),
+      campaignId,
+      sessionId,
+      name: data.name && data.name.trim() ? data.name.trim() : 'Notes',
+      order: Math.round(Number(data.order)) || 0,
+      notes: data.notes ?? '',
     };
   },
 });
@@ -2014,6 +2083,11 @@ module.exports = {
   updateCombat: combats.update,
   removeCombat: removeCombatAndContents,
   listCombatsBySession: combats.listBySession,
+  listNoteTabs: noteTabs.list,
+  createNoteTab: noteTabs.create,
+  updateNoteTab: noteTabs.update,
+  removeNoteTab: noteTabs.remove,
+  listNoteTabsBySession: noteTabs.listBySession,
   listMusicRegions,
   createMusicRegion: musicRegions.create,
   updateMusicRegion,

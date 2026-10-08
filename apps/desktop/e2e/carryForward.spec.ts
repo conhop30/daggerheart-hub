@@ -32,7 +32,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
   const openSession = (name: string) =>
     win.locator('.content-card', { hasText: name }).getByRole('button', { name: 'Open' }).click();
 
-  const partyHp = () => win.locator('.party-roster .content-card', { hasText: 'Mira' }).locator('.stat-stepper__value');
   // Found by container, not name text — a Session Adversary's name now
   // lives in an editable <input>, not visible textContent (see
   // SessionAdversaryTile); only the Ogre is ever pulled into Combat here.
@@ -64,7 +63,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
     await win.click('.party-roster__add');
     await win.fill('.create-form input[type="text"]', 'Mira');
-    await win.click('.trackable-editor__chip:has-text("HP")');
     await win.click('button:has-text("Add Party Member")');
     await expect(win.locator('.content-card', { hasText: 'Mira' })).toBeVisible();
 
@@ -72,13 +70,8 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await newSession('Session 1');
     await openSession('Session 1');
     await expect(win.locator('.session-view__title')).toHaveText('Session 1');
-    await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toBeVisible();
-    const startHp = (await partyHp().first().innerText()).trim(); // e.g. "6 / 6"
-    const [startCurrent, hpMax] = startHp.split('/').map((n) => Number(n.trim()));
 
     await win.getByRole('button', { name: 'Set Fear to 4' }).click();
-    await win.locator('.party-roster .content-card', { hasText: 'Mira' }).getByRole('button', { name: 'Decrease HP' }).click();
-    await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
 
     await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
     await win.click('.item-picker__option:has-text("Ogre")');
@@ -91,21 +84,17 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await openSession('Session 2');
     await expect(win.locator('.session-view__title')).toHaveText('Session 2');
     await expect(win.locator('.fear-track__value')).toHaveText('4 / 12');
-    await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
     await expect(ogreHp()).toHaveText('7 / 8');
 
     // Change things in Session 2.
     await win.locator('.combat-panel .content-card').getByRole('button', { name: 'Decrease HP' }).click();
     await expect(ogreHp()).toHaveText('6 / 8');
-    await win.locator('.party-roster .content-card', { hasText: 'Mira' }).getByRole('button', { name: 'Decrease HP' }).click();
-    await expect(partyHp().first()).toHaveText(`${startCurrent - 2} / ${hpMax}`);
     await win.getByRole('button', { name: 'Set Fear to 7' }).click();
     await win.click('.session-view__back');
 
     // ---- Session 1 is exactly as it was ----
     await openSession('Session 1');
     await expect(win.locator('.fear-track__value')).toHaveText('4 / 12');
-    await expect(partyHp().first()).toHaveText(`${startCurrent - 1} / ${hpMax}`);
     await expect(ogreHp()).toHaveText('7 / 8');
     await win.click('.session-view__back');
 
@@ -118,7 +107,6 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await newSession('Session 3');
     await openSession('Session 3');
     await expect(win.locator('.fear-track__value')).toHaveText('7 / 12');
-    await expect(partyHp().first()).toHaveText(`${startCurrent - 2} / ${hpMax}`);
     await expect(win.locator('.combat-panel .content-card')).toHaveCount(0);
     await win.click('.session-view__back');
 
@@ -126,29 +114,4 @@ test.describe('Carrying a Campaign forward across sessions', () => {
     await expect(ogreHp()).toHaveText('7 / 8'); // still there in the session it was pulled into
   });
 
-  test('removing a party member in a later session leaves the earlier session’s party alone', async () => {
-    await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-row--hollow');
-    await win.fill('.create-form input[type="text"]', 'The Wildwood');
-    await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
-    await win.click('.party-roster__add');
-    await win.fill('.create-form input[type="text"]', 'Mira');
-    await win.click('button:has-text("Add Party Member")');
-
-    await newSession('Session 1');
-    await newSession('Session 2');
-
-    await openSession('Session 2');
-    await win.locator('.party-roster .content-card', { hasText: 'Mira' }).getByRole('button', { name: 'Delete' }).click();
-    await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toHaveCount(0);
-    await win.click('.session-view__back');
-
-    await openSession('Session 1');
-    await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toBeVisible();
-    await win.click('.session-view__back');
-
-    // The Campaign page shows the party as of the latest session: Mira is gone there.
-    await expect(win.locator('.party-roster .content-card', { hasText: 'Mira' })).toHaveCount(0);
-  });
 });

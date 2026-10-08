@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
 import type { FeatureSections } from '../lib/featureKinds';
-import { featureRowsFor } from '../lib/featureKinds';
-import { parseDamageNotation, rollDamage, damageNotationLabel, rollDie, type DamageRollResult } from '../lib/dice';
 import { difficultyModifierFromConditions } from '../lib/conditions';
-import { isMinion, type MoveAmount } from '../lib/minionGroups';
-import { ContentCard, FeatureRowLines, MetaChip, ModifierMetaField } from './ContentCard';
+import { isMinion } from '../lib/minionGroups';
+import { ContentCard, MetaChip, ModifierMetaField } from './ContentCard';
+import AdversaryStatBody, { ThresholdsModifierChip } from './AdversaryStatBody';
 import StatStepper from './StatStepper';
 import ConditionsEditor from './ConditionsEditor';
-import NumberInput from './NumberInput';
 import './SessionTile.css';
 
 interface SessionAdversaryTileProps {
@@ -27,11 +25,14 @@ interface SessionAdversaryTileProps {
   spotlighted: boolean;
   onChange: (patch: UpdateSessionAdversaryRequest) => void;
   onRemove: () => void;
-  /** Minions only: add (+1) or defeat (-1) one of the stack. Defeating the last one removes the tile. */
+  /** Takes this Adversary off the board but keeps it on the Slain list, unlike onRemove, which forgets it entirely. */
+  onKill: () => void;
+  /** Minions only: add (+1) or defeat (-1) one of the stack. Defeating the last one takes the tile off the board. */
   onCountChange: (delta: number) => void;
-  /** Minions only: a drag began on one pip ('one') or on the count badge ('all') — see CombatPanel, which owns the drop side. */
-  onMinionDragStart: (amount: MoveAmount) => void;
-  onMinionDragEnd: () => void;
+  /** Minions only: a drag began on one pip, to move just that Minion. (Dragging the tile itself is CombatPanel's own business.) */
+  onPipDragStart: () => void;
+  /** Pulls in one more of this Adversary, on a tile of its own. */
+  onAddAnother: () => void;
   onRoll: (label: string, total: number) => void;
 }
 
@@ -41,7 +42,10 @@ const MAX_PIPS = 20;
 // A live, mutable card for one Adversary pulled into a session — reads
 // entirely off the props it's given and reports changes upward, so
 // CombatPanel (the only thing that knows how to persist a change) is the
-// only piece that has to know sessionAdversariesApi exists.
+// only piece that has to know sessionAdversariesApi exists. Several
+// identical non-Minions stacked together are SessionAdversaryStackTile's
+// job instead; the two share AdversaryStatBody for everything below the
+// trackers.
 export default function SessionAdversaryTile({
   adversary,
   masterFeatures,
@@ -53,58 +57,16 @@ export default function SessionAdversaryTile({
   spotlighted,
   onChange,
   onRemove,
+  onKill,
   onCountChange,
-  onMinionDragStart,
-  onMinionDragEnd,
+  onPipDragStart,
+  onAddAnother,
   onRoll,
 }: SessionAdversaryTileProps) {
   const minion = isMinion(adversary);
-  const [roll, setRoll] = useState<{ notation: string; result: DamageRollResult } | null>(null);
-  const [attackRoll, setAttackRoll] = useState<{ notation: string; total: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const parsedDamage = parseDamageNotation(adversary.attackDescription);
-  const featureRows = featureRowsFor(masterFeatures);
   const isCustomLabel = adversary.label.trim() !== adversary.name.trim();
   const conditionDifficultyDelta = difficultyModifierFromConditions(adversary.conditions ?? []);
-  // electron/store.js's presentSessionAdversary always fills this in now,
-  // but the fallback stays cheap insurance against ever crashing the whole
-  // Combat panel over one tile's stale shape again.
-  const thresholdsModifier = adversary.thresholdsModifier ?? { major: null, severe: null };
-  const hasThresholdsModifier = thresholdsModifier.major != null || thresholdsModifier.severe != null;
-  const experiences = adversary.experiences ?? [];
-
-  function handleRollDamage() {
-    if (!parsedDamage) return;
-    const result = rollDamage(parsedDamage);
-    setRoll({ notation: damageNotationLabel(adversary.attackDescription, parsedDamage), result });
-    onRoll(`${adversary.label} damage`, result.total);
-  }
-
-  // The adversary's own to-hit roll (d20 + its book attack modifier, rolled
-  // against the target's Evasion) — separate from Roll Damage above, which
-  // only ever fires once a hit's already been decided at the table.
-  function handleRollAttack() {
-    if (adversary.attackModifier == null) return;
-    const d20 = rollDie(20);
-    const total = d20 + adversary.attackModifier;
-    const modifierLabel = adversary.attackModifier > 0 ? `+${adversary.attackModifier}` : adversary.attackModifier < 0 ? `${adversary.attackModifier}` : '';
-    setAttackRoll({ notation: `d20${modifierLabel} (rolled ${d20})`, total });
-    onRoll(`${adversary.label} attack`, total);
-  }
-
-  // Absolute value in, absolute value stored as a modifier (consistent with
-  // ModifierMetaField's Difficulty field just above it — see its comment).
-  function handleThresholdChange(field: 'major' | 'severe', bookValue: number | null, typed: string) {
-    if (typed === '') {
-      handleThresholdsModifierChange(field, null);
-      return;
-    }
-    handleThresholdsModifierChange(field, Number(typed) - (bookValue ?? 0));
-  }
-
-  function handleThresholdsModifierChange(field: 'major' | 'severe', value: number | null) {
-    onChange({ thresholdsModifier: { ...thresholdsModifier, [field]: value } });
-  }
 
   // A sidebar click targeting this tile should bring it into view even if
   // the Combat grid has scrolled it off-screen — the highlight alone does
@@ -129,6 +91,11 @@ export default function SessionAdversaryTile({
           >
             {bodyOpen ? '▾' : '▸'}
           </button>
+          {!minion && (
+            <button type="button" className="session-tile__add" onClick={onAddAnother} aria-label={`Add another ${adversary.name}`} title={`Add another ${adversary.name}`}>
+              +
+            </button>
+          )}
           <input
             type="text"
             className="session-tile__name-input"
@@ -138,19 +105,13 @@ export default function SessionAdversaryTile({
           />
           {!isCustomLabel && duplicateSuffix != null && <span className="session-tile__name-suffix">#{duplicateSuffix}</span>}
           {isCustomLabel && <span className="session-tile__name-original">{adversary.name}</span>}
-          {minion && (
-            <span
-              className="session-tile__count"
-              draggable
-              onDragStart={() => onMinionDragStart('all')}
-              onDragEnd={onMinionDragEnd}
-              title="Drag to move this whole stack onto another Minion"
-            >
-              ×{adversary.count}
-            </span>
-          )}
+          {minion && <span className="session-tile__count">×{adversary.count}</span>}
         </h3>
       }
+      // ContentCard's two action slots, relabelled: neither is an "edit"
+      // or a "delete" here.
+      onEdit={onKill}
+      editLabel="Kill"
       onDelete={onRemove}
       deleteLabel="Remove"
       meta={
@@ -167,29 +128,7 @@ export default function SessionAdversaryTile({
             extra={conditionDifficultyDelta}
             onChange={(difficultyModifier) => onChange({ difficultyModifier })}
           />
-          <span className="content-card__chip content-card__chip--editable content-card__chip--modifier">
-            <span>
-              Thresholds:{' '}
-              <NumberInput
-                value={thresholdsModifier.major != null ? (adversary.thresholds.major ?? 0) + thresholdsModifier.major : ''}
-                placeholder={String(adversary.thresholds.major ?? '')}
-                onChange={(raw) => handleThresholdChange('major', adversary.thresholds.major, raw)}
-                aria-label="Major Threshold"
-              />{' '}
-              /{' '}
-              <NumberInput
-                value={thresholdsModifier.severe != null ? (adversary.thresholds.severe ?? 0) + thresholdsModifier.severe : ''}
-                placeholder={String(adversary.thresholds.severe ?? '')}
-                onChange={(raw) => handleThresholdChange('severe', adversary.thresholds.severe, raw)}
-                aria-label="Severe Threshold"
-              />
-            </span>
-            {hasThresholdsModifier && (
-              <span className="content-card__chip-note">
-                Book: {adversary.thresholds.major ?? 0} / {adversary.thresholds.severe ?? 0}
-              </span>
-            )}
-          </span>
+          <ThresholdsModifierChip adversary={adversary} onChange={onChange} />
         </>
       }
     >
@@ -206,8 +145,11 @@ export default function SessionAdversaryTile({
                     key={i}
                     className="session-tile__pip"
                     draggable
-                    onDragStart={() => onMinionDragStart('one')}
-                    onDragEnd={onMinionDragEnd}
+                    onDragStart={(e) => {
+                      // Its own drag, not the tile's: just this one Minion.
+                      e.stopPropagation();
+                      onPipDragStart();
+                    }}
                     title="Drag one Minion out, or onto another Minion"
                   />
                 ))}
@@ -242,58 +184,16 @@ export default function SessionAdversaryTile({
           )}
         </div>
       )}
-      {(adversary.attackDescription || adversary.attackModifier != null) && (
-        <p className="session-tile__attack">
-          {bodyOpen && adversary.attackDescription}
-          {adversary.attackModifier != null && (
-            <button type="button" className="session-tile__roll-attack" onClick={handleRollAttack}>
-              Roll Attack
-            </button>
-          )}
-          {parsedDamage && (
-            <button type="button" className="session-tile__roll-damage" onClick={handleRollDamage}>
-              Roll Damage
-            </button>
-          )}
-        </p>
-      )}
-      {bodyOpen && attackRoll && (
-        <p className="session-tile__roll-result">
-          {attackRoll.notation} = <strong>{attackRoll.total}</strong>
-        </p>
-      )}
-      {bodyOpen && roll && (
-        <p className="session-tile__roll-result">
-          {roll.notation} = <strong>{roll.result.total}</strong>
-        </p>
-      )}
-      {bodyOpen && experiences.length > 0 && (
-        <p className="session-tile__experiences">
-          <strong>Experience:</strong>{' '}
-          {experiences.map((e, i) => (
-            <span key={i}>
-              {i > 0 && ', '}
-              {e.name} {e.modifier >= 0 ? `+${e.modifier}` : e.modifier}
-            </span>
-          ))}
-        </p>
-      )}
-      {bodyOpen && (
-        <ConditionsEditor values={adversary.conditions ?? []} onChange={(conditions) => onChange({ conditions })} />
-      )}
-      {bodyOpen && featureRows.length > 0 && (
-        <div className="session-tile__features">
-          <button
-            type="button"
-            className="session-tile__features-toggle"
-            onClick={onToggleFeatures}
-            aria-expanded={featuresOpen}
-          >
-            {featuresOpen ? '▾' : '▸'} Features
-          </button>
-          {featuresOpen && <FeatureRowLines label={null} rows={featureRows} />}
-        </div>
-      )}
+      <AdversaryStatBody
+        adversary={adversary}
+        masterFeatures={masterFeatures}
+        rollLabel={adversary.label}
+        bodyOpen={bodyOpen}
+        featuresOpen={featuresOpen}
+        onToggleFeatures={onToggleFeatures}
+        onRoll={onRoll}
+        beforeFeatures={<ConditionsEditor values={adversary.conditions ?? []} onChange={(conditions) => onChange({ conditions })} />}
+      />
     </ContentCard>
   );
 }

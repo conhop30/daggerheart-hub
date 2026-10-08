@@ -28,6 +28,8 @@ export interface Subclass {
   foundationFeatures: FoundationFeature[];
   specializationFeatures: Feature[];
   masteryFeatures: Feature[];
+  /** A themed background, as a data: URL, shown behind any Party member of this Subclass — see PartyRoster. */
+  backdropImage: string | null;
   gameSetId: string;
 }
 
@@ -39,6 +41,7 @@ export interface CreateSubclassRequest {
   foundationFeatures?: FoundationFeature[];
   specializationFeatures?: Feature[];
   masteryFeatures?: Feature[];
+  backdropImage?: string | null;
   gameSetId: string;
 }
 
@@ -52,6 +55,7 @@ export interface UpdateSubclassRequest {
   foundationFeatures?: FoundationFeature[];
   specializationFeatures?: Feature[];
   masteryFeatures?: Feature[];
+  backdropImage?: string | null;
   gameSetId?: string;
 }
 

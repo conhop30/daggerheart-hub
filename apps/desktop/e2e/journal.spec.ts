@@ -183,37 +183,21 @@ test.describe('Journal bubble', () => {
     await expect(win.locator('.journal-bubble__badge')).toHaveCount(0);
   });
 
-  test('dragging the bubble snaps it to the nearest window edge, and the new position persists across reload', async () => {
-    const { width, height } = (await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })))!;
-
+  test('the bubble stays pinned to the bottom-left corner: dragging it only ever opens it', async () => {
+    const height = await win.evaluate(() => window.innerHeight);
     const startBox = await win.locator('.journal-bubble-wrap').boundingBox();
     if (!startBox) throw new Error('bubble not visible');
-    // Starts at the default bottom-left corner.
     expect(startBox.x).toBeLessThan(100);
     expect(startBox.y).toBeGreaterThan(height - 150);
 
-    // Drag it to the middle of the right edge.
     await win.mouse.move(startBox.x + startBox.width / 2, startBox.y + startBox.height / 2);
     await win.mouse.down();
-    await win.mouse.move(width - 5, height / 2, { steps: 15 });
+    await win.mouse.move(startBox.x + 400, startBox.y - 300, { steps: 15 });
     await win.mouse.up();
 
-    const droppedBox = await win.locator('.journal-bubble-wrap').boundingBox();
-    if (!droppedBox) throw new Error('bubble not visible after drag');
-    expect(droppedBox.x).toBeGreaterThan(width - 150);
-    expect(Math.abs(droppedBox.y + droppedBox.height / 2 - height / 2)).toBeLessThan(60);
-
-    // A plain click (no movement) still opens the panel, now anchored
-    // leftward from the bubble's new position on the right edge.
-    await win.mouse.click(droppedBox.x + droppedBox.width / 2, droppedBox.y + droppedBox.height / 2);
-    await expect(win.locator('.journal-panel')).toBeVisible();
-    await win.mouse.click(droppedBox.x + droppedBox.width / 2, droppedBox.y + droppedBox.height / 2);
-
-    await win.reload();
-    await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
-    const afterReloadBox = await win.locator('.journal-bubble-wrap').boundingBox();
-    if (!afterReloadBox) throw new Error('bubble not visible after reload');
-    expect(afterReloadBox.x).toBeGreaterThan(width - 150);
+    const afterBox = await win.locator('.journal-bubble').boundingBox();
+    expect(afterBox?.x).toBe(startBox.x);
+    expect(afterBox?.y).toBe(startBox.y);
   });
 
   test('dragging an entry out of the list detaches it into its own floating note, and Reattach puts it back', async () => {
@@ -272,42 +256,5 @@ test.describe('Journal bubble', () => {
     await expect(win.locator('.journal-detail')).toBeVisible();
     // The label mirrors the Session's own name and isn't a free-text field.
     await expect(win.locator('.journal-detail__label--readonly')).toHaveText('Session 1');
-  });
-
-  test('closing and reopening the Journal refetches, picking up an edit made elsewhere while it was closed', async () => {
-    // The entries fetch used to only run once per Campaign selection — an
-    // edit made from SessionNotesPanel (a completely different surface)
-    // while the panel was closed stayed invisible on reopen, since
-    // selectedCampaignId never changed to re-trigger it.
-    await win.click('.app-shell__nav-link:has-text("Campaigns")');
-    await win.click('.campaign-row--hollow');
-    await win.fill('.create-form input[type="text"]', 'Refetch Test');
-    await win.click('button:has-text("Create Campaign")');
-    await win.locator('.campaign-row', { hasText: 'Refetch Test' }).click();
-    await win.click('.session-list__add');
-    await win.fill('.create-form input[type="text"]', 'Session 1');
-    await win.click('button:has-text("Start Session")');
-    await win.locator('.content-card', { hasText: 'Session 1' }).getByRole('button', { name: 'Open' }).click();
-
-    await win.fill('.session-notes-panel__notes', 'First pass.');
-    await win.click('.session-view__title');
-    await win.waitForTimeout(100);
-
-    await win.click('.journal-bubble');
-    await win.click('.journal-campaign-row__name:has-text("Refetch Test")');
-    await win.click('.journal-panel__scope-btn:has-text("Session")');
-    await win.click('.journal-session-row:has-text("Session 1")');
-    await expect(win.locator('.journal-detail__notes')).toHaveValue('First pass.');
-    await win.click('.journal-detail__close');
-    await win.click('.journal-bubble'); // close the whole panel — selectedCampaignId stays set
-
-    await win.fill('.session-notes-panel__notes', 'Second pass.');
-    await win.click('.session-view__title');
-    await win.waitForTimeout(100);
-
-    await win.click('.journal-bubble'); // reopen on the same, already-selected Campaign
-    await win.click('.journal-panel__scope-btn:has-text("Session")');
-    await win.click('.journal-session-row:has-text("Session 1")');
-    await expect(win.locator('.journal-detail__notes')).toHaveValue('Second pass.');
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { adversariesApi } from '../api/adversaries';
 import { environmentsApi } from '../api/environments';
 import type { SessionAdversary, UpdateSessionAdversaryRequest } from '../api/sessionAdversaries';
@@ -7,8 +7,15 @@ import { useApiList } from '../lib/useApiList';
 import { isMinion, toBoardCells, type MoveAmount, type MoveTarget } from '../lib/minionGroups';
 import ItemPicker from './ItemPicker';
 import SessionAdversaryTile from './SessionAdversaryTile';
+import SessionAdversaryStackTile from './SessionAdversaryStackTile';
 import SessionEnvironmentTile from './SessionEnvironmentTile';
 import './CombatPanel.css';
+
+// A drag shows CombatPanel's own outlined card instead of the browser's
+// snapshot of the tile, so the snapshot is swapped for nothing: one
+// transparent pixel, made once so it has loaded long before any drag.
+const NO_DRAG_IMAGE = new Image();
+NO_DRAG_IMAGE.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 /** No natural game-data upper bound on "how many to add at once" — just a sane ceiling for the stepper. */
 const MAX_ADD_QUANTITY = 20;
@@ -42,8 +49,10 @@ interface CombatPanelProps {
   onAdversaryRemove: (adversary: SessionAdversary) => void;
   /** Add or defeat Minions in a stack — see SessionView.handleMinionCount. */
   onMinionCount: (adversary: SessionAdversary, delta: number) => void;
-  /** A Minion (or a whole stack) was dragged somewhere — see lib/minionGroups.planMinionMove. */
+  /** One of a stack (or a whole stack) was dragged and dropped somewhere — see lib/minionGroups.planMinionMove. */
   onMinionMove: (sourceId: string, amount: MoveAmount, target: MoveTarget) => void;
+  /** A tile being dragged touched an identical one, which joins its stack on the spot — see lib/minionGroups.planPickUp. */
+  onPickUp: (sourceId: string, targetId: string) => void;
   onRoll: (label: string, total: number) => void;
 }
 
@@ -90,14 +99,92 @@ export default function CombatPanel({
   onAdversaryRemove,
   onMinionCount,
   onMinionMove,
+  onPickUp,
   onRoll,
 }: CombatPanelProps) {
-  // What's being dragged right now, if anything: one Minion (by its pip) or
-  // a whole stack (by its count badge). Plain state rather than
-  // dataTransfer, which can't be read during dragover — and dragover is
-  // where a tile has to decide whether it's a valid drop target.
+  // What's being dragged right now, if anything: a whole tile (grabbed
+  // anywhere on it), or one Minion out of a stack (by its pip). Plain state rather than dataTransfer,
+  // which can't be read during dragover — and dragover is where a tile has
+  // to decide whether it's a valid drop target.
   const [minionDrag, setMinionDrag] = useState<{ id: string; amount: MoveAmount } | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  // Where the mouse went down. dragstart only ever reports the draggable
+  // element itself, never what inside it was grabbed.
+  const pressedOn = useRef<EventTarget | null>(null);
+
+  // The outlined card that follows the pointer during a drag. Moved by
+  // writing its transform directly, not through state: dragover fires
+  // many times a second, and none of it is worth a re-render of the board.
+  const ghostRef = useRef<HTMLDivElement | null>(null);
+  const ghostAt = useRef({ x: 0, y: 0 });
+  function placeGhost(x: number, y: number) {
+    ghostAt.current = { x, y };
+    if (ghostRef.current) ghostRef.current.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+  }
+
+  // What that card says: whose it is, and how many are in hand.
+  function dragGhost(): { name: string; count: number } | null {
+    const dragged = sessionAdversaries.find((a) => a.id === minionDrag?.id);
+    if (!minionDrag || !dragged) return null;
+    if (minionDrag.amount === 'one') return { name: isMinion(dragged) ? dragged.name : dragged.label, count: 1 };
+    const stackedWith = sessionAdversaries.filter((a) => a.id !== dragged.id && a.groupId != null && a.groupId === dragged.groupId);
+    return { name: dragged.name, count: isMinion(dragged) ? dragged.count : 1 + stackedWith.length };
+  }
+
+  // Deferred a tick: re-rendering (the drop zone appearing) inside
+  // dragstart itself makes Chromium cancel the drag.
+  function startDrag(id: string, amount: MoveAmount) {
+    setTimeout(() => setMinionDrag({ id, amount }), 0);
+  }
+
+  function endDrag() {
+    setMinionDrag(null);
+    setDropTarget(null);
+  }
+
+  // A drag that starts in a text or number field is the GM selecting what's
+  // typed there, not moving anything.
+  function startedInField(e: DragEvent): boolean {
+    const pressed = pressedOn.current;
+    if (!(pressed instanceof Element) || !pressed.closest('input, textarea, select')) return false;
+    e.preventDefault();
+    return true;
+  }
+
+  // What the strip under the board offers, which depends on what's in hand.
+  function dropZoneLabel(): string {
+    const dragged = sessionAdversaries.find((a) => a.id === minionDrag?.id);
+    if (!dragged || isMinion(dragged)) return 'Drop here to split off into its own stack';
+    const stacked = sessionAdversaries.some((a) => a.id !== dragged.id && a.groupId != null && a.groupId === dragged.groupId);
+    if (!stacked) return 'Drag across identical stat blocks to stack them';
+    return minionDrag?.amount === 'one' ? `Drop here to unstack ${dragged.label}` : 'Drop here to unstack them all';
+  }
+
+  // The dragged tile's own dragend isn't enough to end a drag: stacking can
+  // unmount that very tile mid-drag (it becomes a row of another), and a
+  // dragend fired on a node that's left the page never reaches React. The
+  // browser sends no mouse events at all while a native drag is running, so
+  // the first one to arrive means the drag is over, however it ended.
+  const dragging = minionDrag != null;
+  useEffect(() => {
+    if (!dragging) return;
+    const done = () => endDrag();
+    // dragover is the only thing that reports where the pointer is while a
+    // native drag runs. (0, 0) is what the browser reports as it lets go.
+    const follow = (e: globalThis.DragEvent) => {
+      if (e.clientX !== 0 || e.clientY !== 0) placeGhost(e.clientX, e.clientY);
+    };
+    document.addEventListener('dragover', follow);
+    document.addEventListener('dragend', done);
+    document.addEventListener('mousemove', done);
+    document.addEventListener('mousedown', done);
+    return () => {
+      document.removeEventListener('dragover', follow);
+      document.removeEventListener('dragend', done);
+      document.removeEventListener('mousemove', done);
+      document.removeEventListener('mousedown', done);
+    };
+  }, [dragging]);
 
   function dropProps(key: string, target: MoveTarget) {
     if (!minionDrag) return {};
@@ -110,10 +197,65 @@ export default function CombatPanel({
       onDrop: (e: DragEvent) => {
         e.preventDefault();
         onMinionMove(minionDrag.id, minionDrag.amount, target);
-        setMinionDrag(null);
-        setDropTarget(null);
+        endDrag();
       },
     };
+  }
+
+  // One tile's slot on the board: the wrapper that makes the whole stat
+  // block draggable, and decides what a drag passing over it does.
+  // `members` is the one Adversary a single tile shows, or every member of
+  // a stack.
+  function boardCell(members: SessionAdversary[], tile: ReactNode) {
+    const first = members[0];
+    const dragged = minionDrag ? sessionAdversaries.find((a) => a.id === minionDrag.id) : undefined;
+    const other = dragged != null && !members.some((m) => m.id === dragged.id);
+    const identical = other && dragged.adversaryId === first.adversaryId;
+    // A whole tile dragged across its duplicate picks that duplicate up
+    // the moment the pointer touches it — no drop needed, so one sweep can
+    // gather several.
+    const pickUp = identical && minionDrag!.amount === 'all';
+    // Otherwise a tile is somewhere to drop: one of a stack onto its
+    // duplicate, or a Minion onto a different Minion (a mixed group, which
+    // only Minions form).
+    const droppable = other && !pickUp && (identical || (isMinion(dragged) && isMinion(first)));
+    const passProps = pickUp
+      ? {
+          onDragEnter: () => onPickUp(dragged.id, first.id),
+          // Still has to accept the drag, or the cursor shows "not allowed" over it.
+          onDragOver: (e: DragEvent) => e.preventDefault(),
+        }
+      : droppable
+        ? dropProps(first.id, { stackId: first.id })
+        : {};
+    return (
+      <div
+        key={first.id}
+        className={`combat-panel__cell${members.length > 1 ? ' combat-panel__cell--stack' : ''}${
+          dropTarget === first.id ? ' combat-panel__cell--over' : ''
+        }`}
+        // The whole stat block is the handle. A button inside it still
+        // works as a button — a click only fires on a press that's released
+        // in place, and a press that turns into a drag never clicks.
+        draggable
+        onMouseDown={(e) => {
+          pressedOn.current = e.target;
+          // Where the outline will first appear, whichever part of the
+          // tile (or pip, or row) the drag turns out to start from.
+          ghostAt.current = { x: e.clientX, y: e.clientY };
+        }}
+        onDragStart={(e) => {
+          if (startedInField(e)) return;
+          // dataTransfer is missing from a synthetic dragstart (the e2e suite's).
+          e.dataTransfer?.setDragImage(NO_DRAG_IMAGE, 0, 0);
+          startDrag(first.id, 'all');
+        }}
+        onDragEnd={endDrag}
+        {...passProps}
+      >
+        {tile}
+      </div>
+    );
   }
 
   const [sessionEnvironments, setSessionEnvironments] = useState<SessionEnvironment[]>([]);
@@ -156,7 +298,12 @@ export default function CombatPanel({
     const { id } = spotlightSignal;
     setTileFeaturesOpen(() => {
       const next: Record<string, boolean> = {};
-      for (const a of sessionAdversariesRef.current) next[a.id] = a.id === id;
+      // A stack's Features are keyed by its first member, so clicking any
+      // member of it has to open the stack's.
+      const target = sessionAdversariesRef.current.find((a) => a.id === id);
+      for (const a of sessionAdversariesRef.current) {
+        next[a.id] = a.id === id || (target?.groupId != null && a.groupId === target.groupId);
+      }
       return next;
     });
     setHighlightedId(null);
@@ -248,6 +395,7 @@ export default function CombatPanel({
   }
 
   const duplicateSuffixes = computeDuplicateSuffixes(sessionAdversaries);
+  const ghost = dragGhost();
   const visibleEnvironments = sessionEnvironments.filter((e) => e.combatId === activeCombatId);
 
   return (
@@ -296,45 +444,64 @@ export default function CombatPanel({
 
       <div className="combat-panel__grid">
         {toBoardCells(sessionAdversaries).map((cell) => {
-          const tiles = cell.stacks.map((adversary) => {
-            const minion = isMinion(adversary);
-            // Only another Minion stack is somewhere a dragged Minion can land.
-            const droppable = minion && minionDrag != null && minionDrag.id !== adversary.id;
-            return (
-              <div
-                key={adversary.id}
-                className={`combat-panel__cell${dropTarget === adversary.id ? ' combat-panel__cell--over' : ''}`}
-                {...(droppable ? dropProps(adversary.id, { stackId: adversary.id }) : {})}
-              >
-                <SessionAdversaryTile
-                  adversary={adversary}
-                  // Features aren't part of the session snapshot (nothing about them
-                  // is live-tracked state), so they're looked up live from the master
-                  // record instead of duplicating them into every pull-in — undefined
-                  // just means the master was deleted since, and the section hides.
-                  masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
-                  duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
-                  featuresOpen={tileFeaturesOpen[adversary.id] ?? true}
-                  onToggleFeatures={() => toggleFeatures(adversary.id)}
-                  bodyOpen={tileBodyOpen[adversary.id] ?? true}
-                  onToggleBody={() => toggleBody(adversary.id)}
-                  spotlighted={highlightedId === adversary.id}
-                  onChange={(patch) => onAdversaryChange(adversary, patch)}
-                  onRemove={() => onAdversaryRemove(adversary)}
-                  onCountChange={(delta) => onMinionCount(adversary, delta)}
-                  // Deferred a tick: re-rendering (the drop zone appearing)
-                  // inside dragstart itself makes Chromium cancel the drag.
-                  onMinionDragStart={(amount) => setTimeout(() => setMinionDrag({ id: adversary.id, amount }), 0)}
-                  onMinionDragEnd={() => {
-                    setMinionDrag(null);
-                    setDropTarget(null);
-                  }}
-                  onRoll={onRoll}
-                />
-              </div>
+          if (cell.kind === 'stack') {
+            const first = cell.stacks[0];
+            return boardCell(
+              cell.stacks,
+              <SessionAdversaryStackTile
+                members={cell.stacks}
+                masterFeatures={adversaries.items.find((a) => a.id === first.adversaryId)?.features}
+                duplicateSuffixes={duplicateSuffixes}
+                featuresOpen={tileFeaturesOpen[first.id] ?? true}
+                onToggleFeatures={() => toggleFeatures(first.id)}
+                bodyOpen={tileBodyOpen[first.id] ?? true}
+                onToggleBody={() => toggleBody(first.id)}
+                spotlightedId={highlightedId}
+                onChange={onAdversaryChange}
+                onRemove={onAdversaryRemove}
+                onKill={(member) => onAdversaryChange(member, { slain: true })}
+                onUnstack={(member) => onAdversaryChange(member, { groupId: null })}
+                onMemberDragStart={(member, e) => {
+                  // Its own drag, not the stat block's: just this one member.
+                  e.stopPropagation();
+                  if (startedInField(e)) return;
+                  e.dataTransfer?.setDragImage(NO_DRAG_IMAGE, 0, 0);
+                  startDrag(member.id, 'one');
+                }}
+                onAddAnother={() => onPullInAdversary(first.adversaryId, 1, activeCombatId, false)}
+                onRoll={onRoll}
+              />
             );
-          });
-          if (!cell.groupId) return tiles;
+          }
+          const tiles = cell.stacks.map((adversary) =>
+            boardCell(
+              [adversary],
+              <SessionAdversaryTile
+                adversary={adversary}
+                // Features aren't part of the session snapshot (nothing about them
+                // is live-tracked state), so they're looked up live from the master
+                // record instead of duplicating them into every pull-in — undefined
+                // just means the master was deleted since, and the section hides.
+                masterFeatures={adversaries.items.find((a) => a.id === adversary.adversaryId)?.features}
+                duplicateSuffix={duplicateSuffixes.get(adversary.id) ?? null}
+                featuresOpen={tileFeaturesOpen[adversary.id] ?? true}
+                onToggleFeatures={() => toggleFeatures(adversary.id)}
+                bodyOpen={tileBodyOpen[adversary.id] ?? true}
+                onToggleBody={() => toggleBody(adversary.id)}
+                spotlighted={highlightedId === adversary.id}
+                onChange={(patch) => onAdversaryChange(adversary, patch)}
+                onRemove={() => onAdversaryRemove(adversary)}
+                onKill={() => onAdversaryChange(adversary, { slain: true })}
+                onCountChange={(delta) => onMinionCount(adversary, delta)}
+                onPipDragStart={() => startDrag(adversary.id, 'one')}
+                onAddAnother={() => onPullInAdversary(adversary.adversaryId, 1, activeCombatId, false)}
+                onRoll={onRoll}
+              />
+            )
+          );
+          // Returned bare, not as a one-item array, so a tile that turns
+          // into a stack mid-drag keeps the same wrapper element.
+          if (cell.kind === 'single') return tiles[0];
           return (
             <div className="combat-panel__group" key={cell.groupId}>
               <p className="combat-panel__group-label">
@@ -355,12 +522,30 @@ export default function CombatPanel({
         ))}
       </div>
 
+      {ghost && (
+        <div
+          className={`combat-panel__ghost${ghost.count > 1 ? ' combat-panel__ghost--pile' : ''}`}
+          ref={(el) => {
+            ghostRef.current = el;
+            if (el) placeGhost(ghostAt.current.x, ghostAt.current.y);
+          }}
+          aria-hidden="true"
+        >
+          <span className="combat-panel__ghost-name">{ghost.name}</span>
+          {ghost.count > 1 && (
+            <span className="combat-panel__ghost-count" key={ghost.count}>
+              ×{ghost.count}
+            </span>
+          )}
+        </div>
+      )}
+
       {minionDrag && (
         <div
           className={`combat-panel__new-group${dropTarget === 'newGroup' ? ' combat-panel__new-group--over' : ''}`}
           {...dropProps('newGroup', 'newGroup')}
         >
-          Drop here to start a new group
+          {dropZoneLabel()}
         </div>
       )}
     </div>

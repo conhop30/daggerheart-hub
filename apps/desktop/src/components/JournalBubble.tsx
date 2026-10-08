@@ -4,8 +4,6 @@ import { campaignsApi, type Campaign } from '../api/campaigns';
 import { journalApi, type JournalEntry, type JournalEntryKind } from '../api/journal';
 import { sessionsApi, type Session } from '../api/sessions';
 import { useDragReorder } from '../lib/useDragReorder';
-import { usePointerDrag } from '../lib/usePointerDrag';
-import { clampOffset, loadBubblePosition, saveBubblePosition, snapToNearestEdge, type BubblePosition } from '../lib/bubblePosition';
 import { findNonOverlappingSpot, type Point } from '../lib/floatingLayout';
 import { KIND_DEFS, kindLabelOf } from '../lib/journalKinds';
 import { JournalEntryFields } from './JournalEntryFields';
@@ -13,7 +11,6 @@ import JournalFloatingNote from './JournalFloatingNote';
 import './JournalBubble.css';
 
 const NOTE_SIZE = { width: 260, height: 320 };
-const BUBBLE_HALF = 26;
 
 interface JournalBubbleProps {
   /** The campaign row's "Open →" action — navigates the whole app there. See App.tsx. */
@@ -29,39 +26,11 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  // Where the bubble is snapped on the window's edge — null until the user
-  // actually drags it, meaning "use the default bottom-left corner" (see
-  // wrapStyle below). Persisted; a resting layout preference, not data.
-  const [bubblePosition, setBubblePosition] = useState<BubblePosition | null>(loadBubblePosition());
   // Entries dragged out of the list into their own floating note — a
   // transient "what I'm working on right now" arrangement, reset every
   // launch (same category as selectedCampaignId below), never persisted.
   const [detached, setDetached] = useState<Record<string, Point>>({});
 
-  const bubbleDrag = usePointerDrag({
-    onDragStart() {
-      // Mirrors a mobile chat-head bubble: you can't drag while its panel
-      // is open, so the panel's anchor only ever needs computing once, when
-      // it next opens (bubble stationary) — never live mid-drag.
-      setOpen(false);
-    },
-    onDrag(x, y) {
-      const wrap = wrapRef.current;
-      if (!wrap) return;
-      // Direct DOM mutation for 1:1 tracking during the drag itself —
-      // cheaper than funneling every pointermove through React state.
-      // React takes back over once onDragEnd commits the snapped position.
-      wrap.style.left = `${x - BUBBLE_HALF}px`;
-      wrap.style.top = `${y - BUBBLE_HALF}px`;
-      wrap.style.right = 'auto';
-      wrap.style.bottom = 'auto';
-    },
-    onDragEnd(x, y) {
-      const snapped = snapToNearestEdge(x, y);
-      setBubblePosition(snapped);
-      saveBubblePosition(snapped);
-    },
-  });
   // Which Campaign the Journal is currently showing — a quick "what am I
   // working on right now" pick, not data: resets to the global list on
   // every launch, entirely decoupled from app navigation/current page.
@@ -116,8 +85,11 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
 
+  // Refetched each time the panel opens, same as the entries below: a
+  // Session renamed while the Journal was closed would otherwise keep its
+  // old name here.
   useEffect(() => {
-    if (!selectedCampaignId || notesScope !== 'SESSION') return;
+    if (!open || !selectedCampaignId || notesScope !== 'SESSION') return;
     let cancelled = false;
     setSessionsLoading(true);
     setSessionsError(null);
@@ -135,7 +107,7 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     return () => {
       cancelled = true;
     };
-  }, [selectedCampaignId, notesScope]);
+  }, [open, selectedCampaignId, notesScope]);
 
   // Refetches every time the panel becomes visible (not just when the
   // selected Campaign changes) — a Session's notes can now be edited from
@@ -323,39 +295,9 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
   const detailEntry = detailEntryId != null ? entries.find((e) => e.id === detailEntryId) ?? null : null;
   const detailOpen = Boolean(open && detailEntry);
 
-  // Anchors the panel/detail stack toward the middle of the screen rather
-  // than off it — which side depends on which edge the bubble is snapped to
-  // (direct for the edge it's pinned against) and, along that edge, which
-  // half of the screen it currently sits in (for the perpendicular axis).
-  const anchor = (() => {
-    if (!bubblePosition) return { horizontal: 'left' as const, vertical: 'bottom' as const };
-    const { edge, offset } = bubblePosition;
-    if (edge === 'left') return { horizontal: 'left' as const, vertical: offset < window.innerHeight / 2 ? ('top' as const) : ('bottom' as const) };
-    if (edge === 'right') return { horizontal: 'right' as const, vertical: offset < window.innerHeight / 2 ? ('top' as const) : ('bottom' as const) };
-    if (edge === 'top') return { horizontal: offset < window.innerWidth / 2 ? ('left' as const) : ('right' as const), vertical: 'top' as const };
-    return { horizontal: offset < window.innerWidth / 2 ? ('left' as const) : ('right' as const), vertical: 'bottom' as const };
-  })();
-  const stackClassName = `journal-stack${anchor.horizontal === 'right' ? ' journal-stack--anchor-right' : ''}${anchor.vertical === 'top' ? ' journal-stack--anchor-top' : ''}`;
-
-  const wrapStyle = (() => {
-    if (!bubblePosition) return undefined;
-    const offset = clampOffset(bubblePosition.edge, bubblePosition.offset);
-    switch (bubblePosition.edge) {
-      case 'left':
-        return { left: 'var(--space-3)', right: 'auto', top: offset, bottom: 'auto' };
-      case 'right':
-        return { right: 'var(--space-3)', left: 'auto', top: offset, bottom: 'auto' };
-      case 'top':
-        return { top: 'var(--space-3)', bottom: 'auto', left: offset, right: 'auto' };
-      case 'bottom':
-      default:
-        return { bottom: 'var(--space-3)', top: 'auto', left: offset, right: 'auto' };
-    }
-  })();
-
   return (
-    <div className="journal-bubble-wrap" ref={wrapRef} style={wrapStyle}>
-      <div className={stackClassName}>
+    <div className="journal-bubble-wrap" ref={wrapRef}>
+      <div className="journal-stack">
         {open && (
           <div className={`journal-panel${detailOpen ? ' journal-panel--attached' : ''}`}>
             {selectedCampaign ? (
@@ -508,15 +450,7 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
       <button
         type="button"
         className="journal-bubble"
-        onClick={() => {
-          // A real drag shouldn't also register as a click — see
-          // usePointerDrag's wasDragged comment.
-          if (bubbleDrag.wasDragged()) return;
-          toggleOpen();
-        }}
-        onPointerDown={bubbleDrag.onPointerDown}
-        onPointerMove={bubbleDrag.onPointerMove}
-        onPointerUp={bubbleDrag.onPointerUp}
+        onClick={toggleOpen}
         aria-label={open ? 'Close Journal' : 'Open Journal'}
         title="Journal"
       >

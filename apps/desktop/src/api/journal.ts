@@ -9,7 +9,7 @@ export type JournalEntryKind =
   | 'WEAPONS'
   | 'WORLDBUILDING'
   | 'OTHER'
-  /** Auto-created from a live Session's Notes panel, never from the "+" menu — see SessionNotesPanel. */
+  /** One per Session, opened from the Journal's own Campaign/Session toggle, never from the "+" menu. */
   | 'SESSION';
 
 export interface JournalEntry {

@@ -106,3 +106,53 @@
   padding-left: 8px;
   border-radius: 0 6px 6px 0;
 }
+
+/* ---- Slain ---- */
+.session-combat-sidebar__slain {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-2);
+}
+
+.session-combat-sidebar__slain-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 2px 0;
+}
+
+.session-combat-sidebar__slain-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  color: var(--muted);
+  text-decoration: line-through;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-combat-sidebar__restore,
+.session-combat-sidebar__slain-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.session-combat-sidebar__restore {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.session-combat-sidebar__restore:hover {
+  color: var(--hope);
+}
+
+.session-combat-sidebar__slain-remove:hover {
+  color: var(--fear-on-dark);
+}

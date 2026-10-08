@@ -1,6 +1,6 @@
-export type SessionSectionId = 'PARTY' | 'ADVERSARIES' | 'NOTES';
+export type SessionSectionId = 'ADVERSARIES' | 'NOTES';
 
-const DEFAULT_ORDER: SessionSectionId[] = ['PARTY', 'ADVERSARIES', 'NOTES'];
+const DEFAULT_ORDER: SessionSectionId[] = ['ADVERSARIES', 'NOTES'];
 const ORDER_KEY = 'daggerheart-session-section-order';
 
 // A GM's personal layout habit, not campaign data — global across every
@@ -16,7 +16,8 @@ export function loadSectionOrder(): SessionSectionId[] {
     const valid = parsed.filter((id): id is SessionSectionId => DEFAULT_ORDER.includes(id));
     // Guards against a corrupt/partial stored value silently dropping a
     // section off the page — fall back whole rather than render fewer than
-    // all three.
+    // all of them. (An order saved while the Party section still existed
+    // filters down to exactly the two that remain, so it survives.)
     if (valid.length !== DEFAULT_ORDER.length) return DEFAULT_ORDER;
     return valid;
   } catch {

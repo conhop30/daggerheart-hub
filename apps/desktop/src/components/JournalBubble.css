@@ -1,3 +1,6 @@
+/* Pinned to the bottom-left corner for good. It used to be draggable to
+   any window edge, but the left edge now belongs to a Session's Fear rail
+   (see FearTrack.css), which is laid out to stop short of this corner. */
 .journal-bubble-wrap {
   position: fixed;
   left: var(--space-3);
@@ -17,7 +20,6 @@
   justify-content: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   transition: border-color 160ms var(--ease);
-  cursor: grab;
   touch-action: none;
 }
 
@@ -41,22 +43,6 @@
   bottom: 64px;
   display: flex;
   align-items: stretch;
-}
-
-/* The bubble can now sit on any window edge (see usePointerDrag in
-   JournalBubble.tsx) — these keep the panel/detail stack growing toward
-   the middle of the screen instead of off it. Anchoring only moves the
-   whole stack; panel and detail pane keep the same left-to-right order
-   either way, so journal-panel--attached's corner-radius rule below needs
-   no mirrored variant. */
-.journal-stack--anchor-right {
-  left: auto;
-  right: 0;
-}
-
-.journal-stack--anchor-top {
-  bottom: auto;
-  top: 64px;
 }
 
 .journal-panel {

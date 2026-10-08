@@ -99,7 +99,7 @@ test.describe('Campaigns & Party', () => {
     await expect(win.locator('.campaign-row', { hasText: 'E2E Campaign Renamed' })).toHaveCount(0);
   });
 
-  test('open a Campaign, add a Party member with a trackable, adjust it, then edit and delete the member', async () => {
+  test('open a Campaign, add a multiclassed Party member, then edit and delete the member', async () => {
     await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
@@ -108,21 +108,35 @@ test.describe('Campaigns & Party', () => {
 
     await win.click('.party-roster__add');
     await win.fill('.create-form input[type="text"]', 'Fenn');
-    await win.click('.trackable-editor__chip:has-text("HP")');
+    // No HP/Stress trackers on a Party member anymore: who they are, not what they've marked.
+    await expect(win.locator('.create-form .trackable-editor')).toHaveCount(0);
+    // Every choice is a labelled chip, not a dropdown.
+    await expect(win.locator('.create-form select')).toHaveCount(0);
+    await expect(win.locator('.chip-select__label')).toHaveText(['Class', 'Subclass', 'Ancestry', 'Community']);
+    const classChips = win.getByRole('group', { name: 'Class', exact: true }).locator('.chip-select__chip');
+    await expect(win.getByRole('group', { name: 'Subclass', exact: true })).toContainText('Choose a Class first.');
+    const className = (await classChips.first().innerText()).trim();
+    await classChips.first().click();
+    await expect(classChips.first()).toHaveAttribute('aria-pressed', 'true');
+
+    // Multiclassing adds a second Class and Subclass.
+    await win.click('.create-form__link:has-text("+ Multiclass")');
+    const secondChips = win.getByRole('group', { name: 'Second Class', exact: true }).locator('.chip-select__chip');
+    const secondName = (await secondChips.nth(1).innerText()).trim();
+    await secondChips.nth(1).click();
     await win.click('button:has-text("Add Party Member")');
 
     const card = win.locator('.content-card', { hasText: 'Fenn' });
     await expect(card).toBeVisible();
-    await expect(card.locator('.stat-stepper__value')).toHaveText('6 / 6');
+    await expect(card.locator('.party-roster__class')).toHaveText([className, secondName]);
+    await expect(card.locator('.stat-stepper')).toHaveCount(0);
 
-    await card.getByRole('button', { name: 'Decrease HP' }).click();
-    await expect(card.locator('.stat-stepper__value')).toHaveText('5 / 6');
-    // Reload to confirm the optimistic update actually persisted, not just local state.
+    // Reload to confirm it persisted, not just local state.
     await win.reload();
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
     await win.locator('.campaign-row', { hasText: 'The Wildwood' }).click();
-    await expect(win.locator('.content-card', { hasText: 'Fenn' }).locator('.stat-stepper__value')).toHaveText('5 / 6');
+    await expect(win.locator('.content-card', { hasText: 'Fenn' }).locator('.party-roster__class')).toHaveText([className, secondName]);
 
     const reloadedCard = win.locator('.content-card', { hasText: 'Fenn' });
     await reloadedCard.getByRole('button', { name: 'Edit' }).click();

@@ -20,6 +20,8 @@ export interface SessionAdversary {
   count: number;
   /** Shared by stacks of different Minions dragged into one mixed group; null when this stack stands alone. */
   groupId: string | null;
+  /** Killed: off the board and the compact list, kept on the Slain list as a record of the fight. */
+  slain: boolean;
   tier: number | null;
   /** The book's own Difficulty/Thresholds — no longer edited directly once pulled in; see difficultyModifier/thresholdsModifier. */
   difficulty: number | null;
@@ -50,6 +52,7 @@ export interface CreateSessionAdversaryRequest {
   label?: string;
   count?: number;
   groupId?: string | null;
+  slain?: boolean;
 }
 
 export interface UpdateSessionAdversaryRequest {
@@ -57,6 +60,7 @@ export interface UpdateSessionAdversaryRequest {
   combatId?: string;
   count?: number;
   groupId?: string | null;
+  slain?: boolean;
   label?: string;
   hpMarked?: number;
   stressMarked?: number;

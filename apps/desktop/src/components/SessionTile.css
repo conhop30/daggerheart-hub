@@ -37,7 +37,10 @@
   font-weight: 600;
   padding: 0 0 1px;
   min-width: 4rem;
-  flex: 1 1 auto;
+  /* Grows into the room there is, from a small base: an input's own
+     default width would push it onto a second line in a narrow tile. */
+  width: 4rem;
+  flex: 1 1 4rem;
   transition: border-color 160ms var(--ease);
 }
 
@@ -178,8 +181,33 @@
   color: var(--hope);
 }
 
+/* "+", left of the name: one more of this same Adversary. */
+.session-tile__add {
+  flex-shrink: 0;
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  color: var(--hope);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0;
+  transition: border-color 160ms var(--ease);
+}
+
+.session-tile__add:hover {
+  border-color: var(--hope);
+}
+
 /* ---- Minion stacks ---- */
-/* The "x5" badge doubles as the handle for dragging the whole stack. */
+/* How many a counted stack (or a stat-block stack) holds. */
 .session-tile__count {
   font-family: var(--font-mono);
   font-size: 0.85rem;
@@ -188,8 +216,6 @@
   border: 1px solid var(--hope-dim);
   border-radius: 999px;
   padding: 0 0.45rem;
-  cursor: grab;
-  user-select: none;
   white-space: nowrap;
 }
 
@@ -223,4 +249,151 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+/* ---- A stack of identical Adversaries: one stat block, a row each ---- */
+.session-stack__name {
+  font-family: var(--font-display);
+}
+
+.session-stack__rows {
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--space-1);
+}
+
+.session-stack__row {
+  cursor: grab;
+  padding: 3px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.session-stack__row:first-child {
+  border-top: none;
+}
+
+.session-stack__row--spotlight {
+  background: rgba(228, 179, 65, 0.12);
+}
+
+/* A member's name line: the name, then (once asked for) what can be done
+   to it, then the toggle that asks. */
+.session-stack__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+.session-stack__who {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 1 1 5rem;
+  min-width: 0;
+}
+
+.session-stack__who .session-tile__name-input {
+  min-width: 0;
+  max-width: 100%;
+  flex: none;
+  font-size: 0.92rem;
+}
+
+.session-stack__menu-toggle {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 160ms var(--ease);
+}
+
+.session-stack__menu-toggle:hover,
+.session-stack__menu-toggle[aria-expanded='true'] {
+  color: var(--hope);
+}
+
+/* HP and Stress side by side, under the name. */
+.session-stack__line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+.session-stack__line .stat-stepper {
+  padding: 0;
+  gap: 4px;
+  flex: none;
+}
+
+.session-stack__line .stat-stepper + .stat-stepper {
+  border-left: 1px solid var(--hairline);
+  padding-left: 6px;
+}
+
+.session-stack__line .stat-stepper__label {
+  font-size: 0.66rem;
+}
+
+.session-stack__line .stat-stepper__controls {
+  gap: 4px;
+}
+
+.session-stack__line .stat-stepper__button {
+  width: 18px;
+  height: 18px;
+}
+
+.session-stack__line .stat-stepper__value {
+  font-size: 0.78rem;
+  min-width: 2.4rem;
+}
+
+.session-stack__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.session-stack__action {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.64rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 4px;
+}
+
+.session-stack__action:hover,
+.session-stack__action[aria-expanded='true'] {
+  color: var(--hope);
+}
+
+.session-stack__action--danger:hover {
+  color: var(--fear-on-dark);
+}
+
+/* What this one copy has that the others don't. */
+.session-stack__diffs {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fear-on-dark);
+  margin: 0 0 2px;
+}
+
+.session-stack__modify {
+  padding: 4px 0 6px var(--space-2);
+  border-left: 2px solid var(--hope-dim);
+  margin: 2px 0 4px;
+}
+
+.session-stack__shared {
+  margin-bottom: var(--space-1);
 }

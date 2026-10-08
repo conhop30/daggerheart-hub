@@ -202,3 +202,20 @@
   border-color: var(--fear-on-dark);
   color: var(--fear-on-dark);
 }
+
+/* A quiet inline action inside a form — "+ Multiclass" and the like. */
+.create-form__link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: var(--space-2);
+  color: var(--hope);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.create-form__link:hover {
+  text-decoration: underline;
+}

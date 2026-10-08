@@ -136,6 +136,7 @@ const LIST = {
   sessionAdversaries: store.listSessionAdversaries,
   sessionEnvironments: store.listSessionEnvironments,
   combats: store.listCombats,
+  noteTabs: store.listNoteTabs,
   musicRegions: store.listMusicRegions,
   musicTracks: store.listMusicTracks,
   journalEntries: store.listJournalEntries,
@@ -163,6 +164,7 @@ const CREATE = {
   sessionAdversaries: store.createSessionAdversary,
   sessionEnvironments: store.createSessionEnvironment,
   combats: store.createCombat,
+  noteTabs: store.createNoteTab,
   // musicTracks is deliberately absent: a track is only ever created by the
   // audio import flow below, which has to copy the file in first.
   musicRegions: store.createMusicRegion,
@@ -191,6 +193,7 @@ const UPDATE = {
   sessionAdversaries: store.updateSessionAdversary,
   sessionEnvironments: store.updateSessionEnvironment,
   combats: store.updateCombat,
+  noteTabs: store.updateNoteTab,
   musicRegions: store.updateMusicRegion,
   musicTracks: store.updateMusicTrack,
   journalEntries: store.updateJournalEntry,
@@ -228,6 +231,7 @@ const REMOVE = {
   // Combat delete cascades to its own SessionAdversaries/SessionEnvironments
   // inside store.js, same reasoning as Session -> SessionAdversaries.
   combats: store.removeCombat,
+  noteTabs: store.removeNoteTab,
   musicRegions: store.removeMusicRegion,
   // Removing a track also deletes the audio file copied in for it.
   musicTracks: async (id) => {
@@ -263,6 +267,7 @@ ipcMain.handle('store:listSessionAdversariesBySession', (_event, sessionId) =>
   store.listSessionAdversariesBySession(sessionId)
 );
 ipcMain.handle('store:listCombatsBySession', (_event, sessionId) => store.listCombatsBySession(sessionId));
+ipcMain.handle('store:listNoteTabsBySession', (_event, sessionId) => store.listNoteTabsBySession(sessionId));
 ipcMain.handle('store:listSessionEnvironmentsBySession', (_event, sessionId) =>
   store.listSessionEnvironmentsBySession(sessionId)
 );
@@ -423,8 +428,10 @@ protocol.registerSchemesAsPrivileged([
 // an <audio loop> needs to seek back to the start, which fails on a source
 // that can't answer Range requests.
 function serveMedia(request) {
-  const fileName = decodeURIComponent(new URL(request.url).pathname.slice(1));
+  const url = new URL(request.url);
+  const fileName = decodeURIComponent(url.pathname.slice(1));
   if (!/^[A-Za-z0-9-]+\.[a-z0-9]+$/.test(fileName)) return new Response('Bad request', { status: 400 });
+  if (url.hostname === 'backdrop') return serveBackdrop(fileName);
   const type = AUDIO_TYPES[path.extname(fileName).toLowerCase()];
   const filePath = path.join(musicDir(), fileName);
   if (!type || !fs.existsSync(filePath)) return new Response('Not found', { status: 404 });
@@ -449,6 +456,35 @@ function serveMedia(request) {
   if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
   return new Response(body, { status: range ? 206 : 200, headers });
 }
+
+// ---- Subclass backgrounds ----
+// Pictures shown behind a Party member of a given Subclass (see
+// PartyRoster). They are NOT shipped with the app or kept in the repo —
+// the art a GM is likely to want here is somebody else's — so each install
+// has its own folder, <store dir>/subclass-backdrops, that its owner drops
+// files into, named after the Subclass ("call-of-the-brave.jpg"). An
+// install without the folder just shows Domain colours instead.
+const IMAGE_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+
+function backdropDir() {
+  return path.join(store.getStoreDir(), 'subclass-backdrops');
+}
+
+// dhmedia://backdrop/<file name>, already checked by serveMedia to be a
+// bare file name.
+function serveBackdrop(fileName) {
+  const type = IMAGE_TYPES[path.extname(fileName).toLowerCase()];
+  const filePath = path.join(backdropDir(), fileName);
+  if (!type || !fs.existsSync(filePath)) return new Response('Not found', { status: 404 });
+  return new Response(fs.readFileSync(filePath), { headers: { 'Content-Type': type } });
+}
+
+ipcMain.handle('backdrops:list', () => {
+  if (!fs.existsSync(backdropDir())) return [];
+  return fs
+    .readdirSync(backdropDir())
+    .filter((name) => /^[A-Za-z0-9-]+\.[a-z0-9]+$/.test(name) && IMAGE_TYPES[path.extname(name).toLowerCase()]);
+});
 
 // Shared by the dialog-based picker (below) and the drag-and-drop IPC
 // channel — both end up with a plain list of source file paths, the only

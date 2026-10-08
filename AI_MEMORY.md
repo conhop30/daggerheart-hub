@@ -194,6 +194,27 @@ the result out. Adversary type is now required on the form (not in
 being run** (Connor's call) — see `TODO.md`'s entry, and run it before
 building further on Session-page code.
 
+A playtest round on 2026-10-07 reshaped the Session page (uncommitted
+and untested as of this writing — see `TODO.md`'s "Playtest round"
+entry): the Party section is gone from it (the roster lives on the
+Campaign page only), Fear is a rail fixed to the window's left edge, the
+Journal bubble is pinned bottom-left and no longer draggable, Adversaries
+can be Killed onto a Slain list (`SessionAdversary.slain`), and Notes has
+tabs. `TabBar.tsx` is the one tab-bar component for both Combat and Notes
+tabs. Notes tabs are their own versioned collection (`noteTabs`), carried
+forward exactly like Combat tabs; the older per-Session Journal note is a
+separate thing that only seeds a Campaign's first tab. A Party member is
+now name + Class + Subclass + Heritage (two Classes when multiclassed)
+with no HP/Stress at all, and a Subclass carries a `backdropImage` used
+automatically behind its members' tiles. Duplicate Adversaries can be
+stacked by dragging one stat block across the others
+(`lib/minionGroups.ts`): Minions merge into one counted record, anything
+else keeps a record each under a shared `groupId` and is drawn as one
+stat block with a row per member (`SessionAdversaryStackTile`). The whole
+stat block is the drag handle; see `CombatPanel.boardCell` for the two
+non-obvious parts (cancelling a drag that starts in an input, and ending a
+drag whose `dragend` never arrives).
+
 See `TODO.md` for the live backlog. (`QUESTIONS.md` — logged blockers
 from unattended work — gets created on demand and deleted once empty; if
 it's not present, there's nothing currently blocked on Connor's input.)

@@ -156,8 +156,8 @@
   align-items: baseline;
   gap: 8px;
   min-height: 20px;
-  padding-top: 10px;
-  border-top: 1px solid var(--hairline);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hairline);
   font-family: var(--font-mono);
   font-size: 0.82rem;
   color: var(--ink-dim);

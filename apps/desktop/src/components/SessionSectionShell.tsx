@@ -7,12 +7,11 @@ interface SessionSectionShellProps {
   children: ReactNode;
 }
 
-// A thin drag-affordance strip above a Session-page section (Party/
-// Adversaries/Notes), so the three can be reordered the same way Journal
-// entries already are — see useDragReorder, which this wraps at section
-// rather than row granularity. Deliberately doesn't replace a section's own
-// internal header (Party already has one); this just adds the one thing
-// none of them has today, a handle to grab.
+// A thin drag-affordance strip above a Session-page section (Adversaries/
+// Notes), so they can be reordered the same way Journal entries already
+// are — see useDragReorder, which this wraps at section rather than row
+// granularity. Adds the one thing neither section has of its own: a handle
+// to grab.
 export default function SessionSectionShell({ title, dragHandleProps, children }: SessionSectionShellProps) {
   return (
     <div className="session-section-shell">

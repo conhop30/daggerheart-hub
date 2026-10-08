@@ -4,7 +4,10 @@ import StatStepper from './StatStepper';
 import './SessionCombatSidebar.css';
 
 interface SessionCombatSidebarProps {
+  /** Still in the fight. */
   sessionAdversaries: SessionAdversary[];
+  /** Killed this fight — listed by name only, below the live ones, as a record of what's been dealt with. */
+  slain: SessionAdversary[];
   onChange: (adversary: SessionAdversary, patch: UpdateSessionAdversaryRequest) => void;
   /** Clicking a row here targets that Adversary's full tile in CombatPanel below — see SessionView, which owns the resulting spotlight signal. */
   onSelect: (adversaryId: string) => void;
@@ -22,16 +25,17 @@ interface SessionCombatSidebarProps {
 // views of the same Session never disagree.
 export default function SessionCombatSidebar({
   sessionAdversaries,
+  slain,
   onChange,
   onSelect,
   onRemove,
   onMinionCount,
 }: SessionCombatSidebarProps) {
-  if (sessionAdversaries.length === 0) return null;
+  if (sessionAdversaries.length === 0 && slain.length === 0) return null;
 
   return (
     <div className="session-combat-sidebar">
-      <p className="session-combat-sidebar__label">Adversaries</p>
+      {sessionAdversaries.length > 0 && <p className="session-combat-sidebar__label">Adversaries</p>}
       {toBoardCells(sessionAdversaries).flatMap((cell) => cell.stacks.map((adversary) => (
         <div
           // Stacks of one mixed group read as a bracketed run, same order
@@ -117,6 +121,36 @@ export default function SessionCombatSidebar({
           )}
         </div>
       )))}
+      {slain.length > 0 && (
+        <div className="session-combat-sidebar__slain">
+          <p className="session-combat-sidebar__label">Slain</p>
+          {slain.map((adversary) => (
+            <div className="session-combat-sidebar__slain-row" key={adversary.id}>
+              <span className="session-combat-sidebar__slain-name">
+                {adversary.label}
+                {adversary.count > 1 && ` ×${adversary.count}`}
+              </span>
+              <button
+                type="button"
+                className="session-combat-sidebar__restore"
+                onClick={() => onChange(adversary, { slain: false })}
+                aria-label={`Restore ${adversary.label}`}
+                title="Put back on the board"
+              >
+                Restore
+              </button>
+              <button
+                type="button"
+                className="session-combat-sidebar__slain-remove"
+                onClick={() => onRemove(adversary)}
+                aria-label={`Remove ${adversary.label} from Slain`}
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

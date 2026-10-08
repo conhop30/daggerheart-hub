@@ -3,6 +3,8 @@
      the last bit of real content (a Feature list, notes, whatever happens
      to be at the end of the page). */
   padding-bottom: 88px;
+  /* Room for the Fear rail fixed to the window's left edge (FearTrack.css). */
+  padding-left: 3.4rem;
   animation: fadeInUp 280ms var(--ease);
 }
 

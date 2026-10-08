@@ -45,12 +45,103 @@
    without ContentCard needing to know drag-and-drop exists. */
 .combat-panel__cell {
   min-width: 0;
+  /* The whole stat block can be picked up and dragged. */
+  cursor: grab;
   border-radius: var(--radius-card);
   transition: box-shadow 160ms var(--ease);
 }
 
+/* Each stat block is its own bordered card, so where one ends and the next
+   begins is never in doubt. (The card's own bottom hairline, which does
+   that job in a plain list, would only double the border here.) */
+.combat-panel__cell,
+.combat-panel__grid > .content-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  padding: 0 var(--space-2);
+}
+
+.combat-panel__cell > .content-card,
+.combat-panel__grid > .content-card {
+  border-bottom: none;
+}
+
+/* A stack looks like one: the edges of two more cards showing behind it. */
+.combat-panel__cell--stack {
+  border-color: var(--hope-dim);
+  margin: 0 8px 8px 0;
+  box-shadow:
+    4px 4px 0 -1px var(--panel),
+    4px 4px 0 0 var(--hope-dim),
+    8px 8px 0 -1px var(--panel),
+    8px 8px 0 0 var(--hope-dim);
+}
+
 .combat-panel__cell--over {
   box-shadow: 0 0 0 2px var(--hope);
+}
+
+/* What's in hand during a drag: an outlined card that follows the pointer
+   (positioned from CombatPanel, see placeGhost), in place of the browser's
+   own faded snapshot of the tile. */
+.combat-panel__ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 50;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 9rem;
+  max-width: 16rem;
+  padding: var(--space-2) var(--space-3);
+  border: 2px dashed var(--hope);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  box-shadow: 0 6px 18px rgba(20, 18, 27, 0.25);
+}
+
+/* Holding more than one: the same pile-of-cards edges as a stack. */
+.combat-panel__ghost--pile {
+  border-style: solid;
+  box-shadow:
+    5px 5px 0 -2px var(--panel),
+    5px 5px 0 0 var(--hope),
+    0 6px 18px rgba(20, 18, 27, 0.25);
+}
+
+.combat-panel__ghost-name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Re-mounted each time the number changes (keyed on it), so every card
+   picked up gives a visible bump. */
+.combat-panel__ghost-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--void);
+  background: var(--hope);
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  animation: combat-ghost-bump 260ms var(--ease);
+}
+
+@keyframes combat-ghost-bump {
+  from {
+    transform: scale(1.7);
+  }
+  to {
+    transform: scale(1);
+  }
 }
 
 /* Stacks of different Minions dragged together: one bordered block
@@ -92,4 +183,14 @@
 .combat-panel__new-group--over {
   border-color: var(--hope);
   color: var(--hope);
+}
+
+/* Buttons and fields inside a draggable tile keep their own cursors. */
+.combat-panel__cell button {
+  cursor: pointer;
+}
+
+.combat-panel__cell input,
+.combat-panel__cell textarea {
+  cursor: text;
 }
