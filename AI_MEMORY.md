@@ -194,9 +194,16 @@ the result out. Adversary type is now required on the form (not in
 being run** (Connor's call) — see `TODO.md`'s entry, and run it before
 building further on Session-page code.
 
-A playtest round on 2026-10-07 reshaped the Session page (uncommitted
-and untested as of this writing — see `TODO.md`'s "Playtest round"
-entry): the Party section is gone from it (the roster lives on the
+A playtest round on 2026-10-07 reshaped the Session page and shipped as
+v1.8.0 with both full suites green (295 Vitest, 99 Playwright; see
+`TODO.md`'s "Playtest round" entry). Also in v1.8.0: every delete asks
+through `lib/confirm` + `ConfirmHost`, not `window.confirm` (the e2e
+specs agree to it with `addLocatorHandler`); the Campaign page is two
+columns (Sessions, capped at seven rows and scrolling, beside the Party);
+the Slain list pools identical Adversaries; and Subclass pictures are
+read from `<store dir>/subclass-backdrops` and are NOT in the repo or the
+installer (Connor's own copies are official art he chose to keep
+private). The round itself: the Party section is gone from it (the roster lives on the
 Campaign page only), Fear is a rail fixed to the window's left edge, the
 Journal bubble is pinned bottom-left and no longer draggable, Adversaries
 can be Killed onto a Slain list (`SessionAdversary.slain`), and Notes has

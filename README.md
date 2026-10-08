@@ -184,10 +184,16 @@ content above, as opposed to authoring it. Delivered in three phases:
 
 - **Phase 1 — Campaigns & Party (done).** A Campaign gallery (same
   banner-grid pattern as Domains) holding a standing Party roster per
-  Campaign. Party members are deliberately lightweight — name and notes —
-  plus a fully freeform list of "trackables" (`{label, current, max}`,
-  rendered as a −/+ stepper), so a GM can track HP/Stress/Hope/Armor Slots
-  or anything homebrew without a fixed schema. Deleting a Campaign cascades
+  Campaign. A Party member is a name, a Class and Subclass (two of each
+  when multiclassed) and a Heritage (Ancestry + Community), all picked from
+  the app's own content as labelled chips. (They began as a name plus
+  freeform HP/Stress "trackables"; a real session showed the GM never
+  tracks player HP, so v1.8.0 removed them.) A member's tile is backed by
+  their Subclass: an image uploaded on the Subclass, else a picture named
+  after it in the install's own `subclass-backdrops` folder (never shipped
+  with the app), else a gradient of the Class's two Domain colours. The
+  Campaign page puts Sessions and the Party in two columns under bold ruled
+  headings; the Sessions list shows seven and scrolls. Deleting a Campaign cascades
   to delete its Party — the one deliberate exception to the rest of the
   app's no-cascade-delete rule (see [Engineering Challenges](#engineering-challenges--how-they-were-solved)).
 - **Phase 2 — Loot & Consumable Tables (done).** Reusable, rollable tables
@@ -207,8 +213,8 @@ content above, as opposed to authoring it. Delivered in three phases:
   track), pulling Adversaries/Environments into a session as independent
   snapshot copies — not references, so editing or even deleting the master
   content later can't corrupt an in-progress session — with HP/Stress
-  tracked as *marked boxes* (Daggerheart's actual mechanic) via the same
-  stepper UI as Party trackables. One page, not a tab switch: the
+  tracked as *marked boxes* (Daggerheart's actual mechanic) on a −/+
+  stepper. One page, not a tab switch: the
   combatant grid is always on screen, with a Loot Roller (wired directly
   to Phase 2's tables, appending every roll to a reverse-chronological
   session log) alongside the Music panel and a condensed Adversary
@@ -221,7 +227,15 @@ content above, as opposed to authoring it. Delivered in three phases:
   roster costs by Adversary type, with the rulebook's adjustments), and
   Minions are tracked as **stacks**: one tile with a count, where defeating
   one just lowers the count, and single Minions or whole stacks can be
-  dragged to split, merge or mix them into groups. Both are pure functions
+  dragged to split, merge or mix them into groups. Any other identical
+  Adversaries **stack into one stat block** by dragging one across the
+  others: each keeps its own record (so its own HP, Stress and Conditions)
+  on a row of its own, with the attack and Features printed once. The whole
+  stat block is the drag handle, and a drag shows an outlined card at the
+  pointer with a running count. **Kill** moves an Adversary to a pooled
+  Slain tally instead of forgetting it. **Notes** have renamable tabs that
+  follow the Combat tab of the same name and carry forward. Fear is a rail
+  fixed to the window's left edge. The planning is pure functions
   (`lib/battlePoints`, `lib/minionGroups`) with the UI only laying the
   result out. Built as independent, self-contained panels on
   purpose — `SessionView` itself is a thin shell that owns no combat
@@ -235,8 +249,8 @@ content above, as opposed to authoring it. Delivered in three phases:
 **Follow-ups after the three phases:**
 
 - **A Campaign carries forward across sessions.** Nearly everything follows
-  the Campaign into its later sessions: the Party (names, notes, marked HP/
-  Stress/Hope), pulled-in Adversaries and Environments with what's marked on
+  the Campaign into its later sessions: the Party (names, Class, Subclass,
+  Heritage, notes), Combat and Notes tabs, pulled-in Adversaries and Environments with what's marked on
   them, Fear, the music region, and the loot log. Only a session's name
   belongs to that one session. An edit made in session N applies to N and
   the sessions after it and **never rewrites an earlier one**. A delete acts
@@ -467,7 +481,7 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
 - [x] Real installer builds (Windows NSIS; macOS/Linux targets configured)
 - [x] Unit (Vitest) + end-to-end (Playwright) automated test coverage
 - [x] **Session Builder Phase 1** — Campaigns gallery + standing Party
-      roster with freeform trackables
+      roster (Class, Subclass and Heritage since v1.8.0)
 - [x] **Session Builder Phase 2** — reusable Loot/Consumable Tables on the
       Equipment page, and the pure-function d12-pool roll mechanic
       (`rollD12Pool`/`sumPool`/`resolveTableRoll`) driving the in-session
@@ -499,6 +513,11 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
 - [x] Battle Points: the corebook's encounter budget, scored live per
       Combat tab from the roster's Adversary types, the Party's size and the
       Campaign's level, with the rulebook's adjustments
+- [x] **v1.8.0 playtest round** — stackable Adversaries with a row per
+      member, a Kill button and Slain tally, renamable Notes tabs that
+      carry forward, a Fear rail, a two-column Campaign page, Party members
+      as Class/Subclass/Heritage with Domain-coloured tiles, and the app's
+      own confirm dialog and scrollbars
 - [x] Minion stacks: a Minion pulls in as one counted tile; drag single
       Minions or whole stacks to split them, merge them, or mix different
       Minions into one group

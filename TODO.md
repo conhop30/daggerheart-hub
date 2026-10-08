@@ -721,8 +721,9 @@ scratch list for planning the next pass of work.
         required-type form change touches every spec that creates an
         Adversary (`sessions`, `carryForward`, `featureSections`), so run
         the full suite before building on this.
-- [ ] **Playtest round** (2026-10-07), six changes from running a real
-      session. Implemented and typechecked; **no tests have been run**.
+- [x] **Playtest round** (2026-10-07, shipped as v1.8.0), six changes from
+      running a real session, plus several review passes the same day.
+      Both full suites were run and green before release.
       - Second pass the same day, from Connor's review of the first: Notes
         tabs carry forward, the Party roster was reworked rather than left
         as it was, any duplicate Adversary can be stacked, the Fear rail is
