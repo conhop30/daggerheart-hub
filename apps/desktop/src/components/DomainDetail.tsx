@@ -8,6 +8,7 @@ import DomainCardTile from './DomainCardTile';
 import DomainIcon from './DomainIcon';
 import { upsertById } from '../lib/upsert';
 import './DomainDetail.css';
+import { confirmDialog } from '../lib/confirm';
 
 interface DomainDetailProps {
   domain: Domain;
@@ -60,7 +61,7 @@ export default function DomainDetail({ domain, onBack, onDomainSaved, onDomainDe
   }
 
   async function handleDeleteCard(card: Card) {
-    if (!window.confirm(`Delete "${card.name}"? This can't be undone.`)) return;
+    if (!(await confirmDialog(`Delete "${card.name}"? This can't be undone.`))) return;
     try {
       await cardsApi.remove(card.id);
       applyCards(cards.filter((c) => c.id !== card.id));
@@ -70,7 +71,7 @@ export default function DomainDetail({ domain, onBack, onDomainSaved, onDomainDe
   }
 
   async function handleDeleteDomain() {
-    if (!window.confirm(`Delete "${domain.name}"? This can't be undone.`)) return;
+    if (!(await confirmDialog(`Delete "${domain.name}"? This can't be undone.`))) return;
     try {
       await domainsApi.remove(domain.id);
       onDomainDeleted(domain.id);

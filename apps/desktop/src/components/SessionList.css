@@ -62,3 +62,16 @@
 .session-list__status--error {
   color: var(--fear-on-dark);
 }
+
+.session-list__number {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+/* Capped at seven Sessions' height (set from SessionList, which measures
+   them); the rest scroll. */
+.session-list__scroll {
+  overflow-y: auto;
+}

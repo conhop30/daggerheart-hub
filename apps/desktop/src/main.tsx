@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import ConfirmHost from './components/ConfirmHost';
 import { ThemeProvider } from './context/ThemeContext';
 import { TextSizeProvider } from './context/TextSizeContext';
 import { PaletteProvider } from './context/PaletteContext';
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <PaletteProvider>
         <TextSizeProvider>
           <App />
+          <ConfirmHost />
         </TextSizeProvider>
       </PaletteProvider>
     </ThemeProvider>

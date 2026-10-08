@@ -4,6 +4,7 @@ import { noteTabsApi, type NoteTab } from '../api/noteTabs';
 import type { Session } from '../api/sessions';
 import TabBar, { type Tab } from './TabBar';
 import './SessionNotesPanel.css';
+import { confirmDialog } from '../lib/confirm';
 
 /** SessionView sets this when a Combat tab is clicked — `key` changes on every click, so re-clicking the same tab still counts. */
 export interface NotesTabSignal {
@@ -157,7 +158,7 @@ export default function SessionNotesPanel({ campaignId, session, tabSignal }: Se
   async function remove(tab: NotesTab) {
     // Nothing saved, nothing to delete.
     if (!tab.saved) return;
-    if (!window.confirm(`Delete "${tab.name}"? Its notes can't be recovered.`)) return;
+    if (!(await confirmDialog(`Delete "${tab.name}"? Its notes can't be recovered.`))) return;
     try {
       await noteTabsApi.remove(tab.saved.id, ctx);
       const next = saved.filter((t) => t.id !== tab.saved!.id);

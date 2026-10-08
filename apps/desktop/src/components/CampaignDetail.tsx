@@ -7,6 +7,7 @@ import PartyRoster from './PartyRoster';
 import SessionList from './SessionList';
 import { gradientForColor } from '../lib/color';
 import './CampaignDetail.css';
+import { confirmDialog } from '../lib/confirm';
 
 interface CampaignDetailProps {
   campaign: Campaign;
@@ -41,7 +42,7 @@ export default function CampaignDetail({
   }, [campaign.id]);
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`))
+    if (!(await confirmDialog(`Delete "${campaign.name}"? This removes its whole Party and Sessions too, and can't be undone.`)))
       return;
     try {
       await campaignsApi.remove(campaign.id);
@@ -99,8 +100,8 @@ export default function CampaignDetail({
 
       <div className="campaign-detail__layout">
         <div className="campaign-detail__main">
-          <PartyRoster campaignId={campaign.id} layout="grid" />
           <SessionList campaignId={campaign.id} onOpenSession={onOpenSession} />
+          <PartyRoster campaignId={campaign.id} layout="grid" />
         </div>
         <aside className="campaign-detail__sidebar">
           <CampaignMusicSidebar campaignId={campaign.id} session={mostRecentSession} />

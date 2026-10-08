@@ -12,6 +12,7 @@ import { communitiesApi } from '../api/communities';
 import { useApiList } from '../lib/useApiList';
 import { upsertById } from '../lib/upsert';
 import './PartyRoster.css';
+import { confirmDialog } from '../lib/confirm';
 
 interface PartyRosterProps {
   campaignId: string;
@@ -39,7 +40,6 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [open, setOpen] = useState(true);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -75,7 +75,7 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
   }
 
   async function handleDelete(member: PartyMember) {
-    if (!window.confirm(`Remove "${member.name}" from the Party? This can't be undone.`)) return;
+    if (!(await confirmDialog(`Remove "${member.name}" from the Party? This can't be undone.`))) return;
     try {
       await partyMembersApi.remove(member.id, { sessionId });
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
@@ -113,17 +113,7 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
   return (
     <div className="party-roster">
       <div className="party-roster__header">
-        <button
-          type="button"
-          className={`party-roster__toggle${open ? ' party-roster__toggle--open' : ''}`}
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-        >
-          <span className="party-roster__chevron" aria-hidden="true">
-            &#9656;
-          </span>
-          <h2 className="party-roster__title">Party</h2>
-        </button>
+        <h2 className="party-roster__title">Party</h2>
         {!creating && (
           <button type="button" className="party-roster__add" onClick={() => setCreating(true)}>
             + Add Party Member
@@ -131,7 +121,7 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
         )}
       </div>
 
-      {open && (
+      {
         <>
           {creating && (
             <div className="party-roster__form">
@@ -144,12 +134,6 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
               />
             </div>
           )}
-
-          <p className="party-roster__hint">
-            {sessionId
-              ? 'Changes here apply from this session onward; earlier sessions keep what they had.'
-              : 'Shown as of your most recent session. Changes apply from that session onward.'}
-          </p>
 
           {loading && <p className="party-roster__status">Loading the Party&hellip;</p>}
           {error && <p className="party-roster__status party-roster__status--error">{error}</p>}
@@ -227,7 +211,7 @@ export default function PartyRoster({ campaignId, sessionId, onChange, layout = 
             />
           )}
         </>
-      )}
+      }
     </div>
   );
 }

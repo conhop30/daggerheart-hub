@@ -163,9 +163,54 @@
   }
 }
 
-/* Party sits directly above Sessions with no extra breathing room — with
-   the grid layout doing the actual compaction, this just removes the
-   leftover vertical gap between the two sections. */
-.campaign-detail__main .party-roster {
-  margin-bottom: var(--space-3);
+/* Sessions on the left, the Party on the right: the two are looked for
+   separately, so each gets a column of its own and its own place on the
+   page, instead of one pushing the other down it. They stack again once a
+   column would be too narrow to hold a tile. */
+.campaign-detail__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+@media (max-width: 1180px) {
+  .campaign-detail__main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.campaign-detail__main .session-list {
+  margin-top: 0;
+}
+
+/* The two section headings are what the eye navigates this page by: heavy,
+   and ruled off from what's under them. Each heading has a line to itself
+   and carries the rule, with its buttons on the line below — so the two
+   rules always sit level across the columns, whatever buttons each has. */
+.campaign-detail__main .session-list__header,
+.campaign-detail__main .party-roster__header {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.campaign-detail__main .session-list__title,
+.campaign-detail__main .party-roster__title {
+  flex: 1 0 100%;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: var(--space-1);
+}
+
+.campaign-detail__main .session-list__add,
+.campaign-detail__main .session-list__clone,
+.campaign-detail__main .party-roster__add {
+  white-space: nowrap;
 }

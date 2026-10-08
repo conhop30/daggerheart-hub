@@ -6,6 +6,7 @@ import SimpleNameDescriptionForm from './SimpleNameDescriptionForm';
 import ItemPicker from './ItemPicker';
 import NumberInput from './NumberInput';
 import './TableDetail.css';
+import { confirmDialog } from '../lib/confirm';
 
 interface PickableItem {
   id: string;
@@ -103,7 +104,7 @@ export default function TableDetail<E extends { position: number }>({
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${table.name}"? This can't be undone.`)) return;
+    if (!(await confirmDialog(`Delete "${table.name}"? This can't be undone.`))) return;
     try {
       await remove(table.id);
       onDeleted(table.id);

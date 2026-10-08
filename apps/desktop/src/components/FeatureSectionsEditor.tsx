@@ -2,6 +2,7 @@ import { useState } from 'react';
 import FeatureListEditor from './FeatureListEditor';
 import { isRegisteredKind, keyForCustomSection, kindsFor, type FeatureSections } from '../lib/featureKinds';
 import './FeatureSectionsEditor.css';
+import { confirmDialog } from '../lib/confirm';
 
 interface FeatureSectionsEditorProps {
   value: FeatureSections;
@@ -56,9 +57,9 @@ export default function FeatureSectionsEditor({ value, onChange }: FeatureSectio
             <button
               type="button"
               className="feature-sections__remove"
-              onClick={() => {
+              onClick={async () => {
                 const count = (value[kind.key] ?? []).length;
-                if (count > 0 && !window.confirm(`Remove the "${kind.plural}" section and its ${count} feature(s)?`)) return;
+                if (count > 0 && !(await confirmDialog(`Remove the "${kind.plural}" section and its ${count} feature(s)?`))) return;
                 removeSection(kind.key);
               }}
             >

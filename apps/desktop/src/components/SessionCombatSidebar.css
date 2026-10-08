@@ -121,7 +121,7 @@
 }
 
 .session-combat-sidebar__slain-name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   font-family: var(--font-display);
   font-size: 0.86rem;
@@ -130,6 +130,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Not struck through like the name: it's a count, and has to stay readable. */
+.session-combat-sidebar__slain-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .session-combat-sidebar__restore,
@@ -142,6 +151,8 @@
 }
 
 .session-combat-sidebar__restore {
+  /* Pushes the two buttons to the row's right edge. */
+  margin-left: auto;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.66rem;

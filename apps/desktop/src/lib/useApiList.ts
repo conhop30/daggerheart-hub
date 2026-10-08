@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { upsertById } from './upsert';
+import { confirmDialog } from './confirm';
 
 // Every browse page below needs one to four of these — same loading/error/
 // unmount-guard boilerplate each time, so it's a hook instead of copy-paste.
@@ -65,7 +66,7 @@ export function useEntityActions<T extends { id: string; name: string }>(
   const handleDelete = useCallback(
     async (id: string) => {
       const item = list.items.find((x) => x.id === id);
-      if (!item || !window.confirm(`Delete "${item.name}"? This can't be undone.`)) return;
+      if (!item || !(await confirmDialog(`Delete "${item.name}"? This can't be undone.`))) return;
       try {
         await remove(id);
         list.remove(id);

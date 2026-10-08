@@ -18,6 +18,10 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
+    // The app's own "are you sure?" (ConfirmHost) is agreed to wherever it appears.
+    await win.addLocatorHandler(win.locator('.confirm-dialog'), async () => {
+      await win.locator('.confirm-dialog__confirm').click();
+    });
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   });
 
@@ -1053,20 +1057,39 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
       for (let i = 1; i < quantity; i++) await win.click('.quantity-stepper__button[aria-label="Increase quantity"]');
       await win.click(`.item-picker__option:has-text("${name}")`);
     };
-    await pullIn('Goblin', 2);
+    await pullIn('Goblin', 3);
 
     const tiles = win.locator('.combat-panel .content-card');
     const live = win.locator('.session-combat-sidebar__combatant');
     const slain = win.locator('.session-combat-sidebar__slain-row');
-    await expect(tiles).toHaveCount(2);
+    const slainCount = win.locator('.session-combat-sidebar__slain-count');
+    await expect(tiles).toHaveCount(3);
     await expect(slain).toHaveCount(0);
 
     // Killed: gone from the board and the compact list, kept under Slain.
     await tiles.first().getByRole('button', { name: 'Kill' }).click();
-    await expect(tiles).toHaveCount(1);
-    await expect(live).toHaveCount(1);
+    await expect(tiles).toHaveCount(2);
+    await expect(live).toHaveCount(2);
     await expect(slain).toHaveCount(1);
     await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText('Goblin');
+    await expect(slainCount).toHaveCount(0);
+
+    // A second identical one joins the same line rather than adding another.
+    await tiles.first().getByRole('button', { name: 'Kill' }).click();
+    await expect(tiles).toHaveCount(1);
+    await expect(slain).toHaveCount(1);
+    await expect(slainCount).toHaveText('×2');
+    // Restore takes one back off the pile; a renamed one is never pooled.
+    await slain.getByRole('button', { name: 'Restore Goblin' }).click();
+    await expect(tiles).toHaveCount(2);
+    await expect(slain).toHaveCount(1);
+    await expect(slainCount).toHaveCount(0);
+    await tiles.first().getByLabel('Name').fill('Grak');
+    await tiles.first().getByRole('button', { name: 'Kill' }).click();
+    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Goblin', 'Grak']);
+    await slain.getByRole('button', { name: 'Remove Grak from Slain' }).click();
+    await expect(slain).toHaveCount(1);
+    await expect(tiles).toHaveCount(1);
     // Still part of the encounter as built: 2 Standards cost 4.
     await expect(win.locator('.battle-points__spent')).toHaveText('4');
 
@@ -1095,10 +1118,11 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await expect(win.locator('.combat-panel .session-tile__count')).toHaveText(['×2']);
     await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat']);
     await tiles.first().getByRole('button', { name: 'Defeat one Minion' }).click();
-    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat ×2']);
+    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat']);
+    await expect(slainCount).toHaveText(['×2']);
     await tiles.first().getByRole('button', { name: 'Defeat one Minion' }).click();
     await expect(tiles).toHaveCount(0);
-    await expect(slain.locator('.session-combat-sidebar__slain-name')).toHaveText(['Rat ×3']);
+    await expect(slainCount).toHaveText(['×3']);
   });
 
   test('Notes have renamable tabs, each with its own text, that follow the Combat tab of the same name and carry forward', async () => {

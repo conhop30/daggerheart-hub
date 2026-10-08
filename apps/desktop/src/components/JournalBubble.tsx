@@ -9,6 +9,7 @@ import { KIND_DEFS, kindLabelOf } from '../lib/journalKinds';
 import { JournalEntryFields } from './JournalEntryFields';
 import JournalFloatingNote from './JournalFloatingNote';
 import './JournalBubble.css';
+import { confirmDialog } from '../lib/confirm';
 
 const NOTE_SIZE = { width: 260, height: 320 };
 
@@ -228,7 +229,7 @@ export default function JournalBubble({ onOpenCampaign }: JournalBubbleProps) {
     if (!entry) return;
     const label = entry.label.trim();
     const prompt = label ? `Delete "${label}"? This can't be undone.` : "Delete this entry? This can't be undone.";
-    if (!window.confirm(prompt)) return;
+    if (!(await confirmDialog(prompt))) return;
     try {
       await journalApi.remove(id);
       setEntries((prev) => prev.filter((e) => e.id !== id));

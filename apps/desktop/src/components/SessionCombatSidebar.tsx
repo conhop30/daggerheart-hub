@@ -17,6 +17,36 @@ interface SessionCombatSidebarProps {
   onMinionCount: (adversary: SessionAdversary, delta: number) => void;
 }
 
+interface SlainRow {
+  name: string;
+  /** How many this row stands for (a slain Minion record can itself be several). */
+  total: number;
+  /** The records behind the row, oldest first. */
+  members: SessionAdversary[];
+}
+
+// The Slain list is a tally, not a roster: five dead Goblins are one line,
+// "Goblin x5", not five. Only ones still under their book name are gathered
+// this way — one the GM bothered to rename ("Grak the Bold") was somebody,
+// and keeps a line of its own.
+function slainRows(slain: SessionAdversary[]): SlainRow[] {
+  const rows: SlainRow[] = [];
+  const byAdversary = new Map<string, SlainRow>();
+  for (const adversary of slain) {
+    const renamed = adversary.label.trim() !== adversary.name.trim();
+    const existing = renamed ? undefined : byAdversary.get(adversary.adversaryId);
+    if (existing) {
+      existing.total += adversary.count;
+      existing.members.push(adversary);
+      continue;
+    }
+    const row = { name: adversary.label, total: adversary.count, members: [adversary] };
+    rows.push(row);
+    if (!renamed) byAdversary.set(adversary.adversaryId, row);
+  }
+  return rows;
+}
+
 // A very condensed, glanceable readout of the Adversaries currently pulled
 // into this Session — name, HP/Stress, and any Conditions — so running the
 // full CombatPanel tiles below doesn't mean scrolling back up mid-fight to
@@ -124,31 +154,35 @@ export default function SessionCombatSidebar({
       {slain.length > 0 && (
         <div className="session-combat-sidebar__slain">
           <p className="session-combat-sidebar__label">Slain</p>
-          {slain.map((adversary) => (
-            <div className="session-combat-sidebar__slain-row" key={adversary.id}>
-              <span className="session-combat-sidebar__slain-name">
-                {adversary.label}
-                {adversary.count > 1 && ` ×${adversary.count}`}
-              </span>
-              <button
-                type="button"
-                className="session-combat-sidebar__restore"
-                onClick={() => onChange(adversary, { slain: false })}
-                aria-label={`Restore ${adversary.label}`}
-                title="Put back on the board"
-              >
-                Restore
-              </button>
-              <button
-                type="button"
-                className="session-combat-sidebar__slain-remove"
-                onClick={() => onRemove(adversary)}
-                aria-label={`Remove ${adversary.label} from Slain`}
-              >
-                &times;
-              </button>
-            </div>
-          ))}
+          {slainRows(slain).map((row) => {
+            // Restore and remove take one off the pile at a time: the most
+            // recently slain, which is the one a GM is likeliest to be
+            // correcting.
+            const latest = row.members[row.members.length - 1];
+            return (
+              <div className="session-combat-sidebar__slain-row" key={row.members[0].id}>
+                <span className="session-combat-sidebar__slain-name">{row.name}</span>
+                {row.total > 1 && <span className="session-combat-sidebar__slain-count">×{row.total}</span>}
+                <button
+                  type="button"
+                  className="session-combat-sidebar__restore"
+                  onClick={() => onChange(latest, { slain: false })}
+                  aria-label={`Restore ${row.name}`}
+                  title={row.members.length > 1 ? 'Put one back on the board' : 'Put back on the board'}
+                >
+                  Restore
+                </button>
+                <button
+                  type="button"
+                  className="session-combat-sidebar__slain-remove"
+                  onClick={() => onRemove(latest)}
+                  aria-label={`Remove ${row.name} from Slain`}
+                >
+                  &times;
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

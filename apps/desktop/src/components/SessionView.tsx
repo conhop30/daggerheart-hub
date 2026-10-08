@@ -21,6 +21,7 @@ import { useMusicContext } from '../context/MusicContext';
 import { useDragReorder } from '../lib/useDragReorder';
 import { loadSectionOrder, saveSectionOrder, type SessionSectionId } from '../lib/sessionSectionOrder';
 import './SessionView.css';
+import { confirmDialog } from '../lib/confirm';
 
 const SECTION_TITLES: Record<SessionSectionId, string> = {
   ADVERSARIES: 'Adversaries',
@@ -391,7 +392,7 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
   // remaining tab, the floor-guard effect above fires on the next render
   // and recreates "Combat" with no extra call needed here.
   async function handleCombatDelete(combat: Combat) {
-    if (!window.confirm(`Delete "${combat.name}"? Its Adversaries and Environments can't be recovered.`)) return;
+    if (!(await confirmDialog(`Delete "${combat.name}"? Its Adversaries and Environments can't be recovered.`))) return;
     try {
       await combatsApi.remove(combat.id, { sessionId: session.id });
       setSessionAdversaries((prev) => prev.filter((a) => a.combatId !== combat.id));
@@ -466,7 +467,7 @@ export default function SessionView({ session, campaignId, campaignLevel, onBack
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${session.name}"? This can't be undone.`)) return;
+    if (!(await confirmDialog(`Delete "${session.name}"? This can't be undone.`))) return;
     try {
       await sessionsApi.remove(session.id);
       clearIfSession(session.id);

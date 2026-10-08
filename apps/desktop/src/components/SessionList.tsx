@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { sessionsApi, type Session } from '../api/sessions';
 import { ContentCard, ContentCardList, MetaChip } from './ContentCard';
 import SessionForm from './SessionForm';
 import { upsertById } from '../lib/upsert';
 import './SessionList.css';
+import { confirmDialog } from '../lib/confirm';
+
+/** How many Sessions show before the list scrolls — about the height of a full Party of six beside it. */
+const MAX_VISIBLE = 7;
 
 interface SessionListProps {
   campaignId: string;
@@ -52,6 +56,23 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
   // creation-order array above (and `mostRecent`) stays untouched.
   const orderedSessions = [...sessions].reverse();
 
+  // The list is as tall as its first MAX_VISIBLE Sessions and scrolls from
+  // there, so a long Campaign doesn't grow the page without end. Measured,
+  // not a fixed height: a Session whose name wraps is a taller row.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    function measure() {
+      const rows = scrollRef.current?.querySelectorAll<HTMLElement>(':scope > .content-card-list > *');
+      if (!rows || rows.length <= MAX_VISIBLE) return setMaxHeight(undefined);
+      const list = rows[0].parentElement!.getBoundingClientRect();
+      setMaxHeight(rows[MAX_VISIBLE - 1].getBoundingClientRect().bottom - list.top);
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [sessions, loading]);
+
   // A fresh Session starts blank; "Session N" is just a starting suggestion for the name.
   const suggestedName = `Session ${sessions.length + 1}`;
 
@@ -70,7 +91,7 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
   }
 
   async function handleDelete(session: Session) {
-    if (!window.confirm(`Delete "${session.name}"? This can't be undone.`)) return;
+    if (!(await confirmDialog(`Delete "${session.name}"? This can't be undone.`))) return;
     try {
       await sessionsApi.remove(session.id);
       setSessions((prev) => prev.filter((s) => s.id !== session.id));
@@ -125,6 +146,7 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
       {error && <p className="session-list__status session-list__status--error">{error}</p>}
 
       {!loading && !error && (
+        <div className="session-list__scroll" ref={scrollRef} style={{ maxHeight }}>
         <ContentCardList
           items={orderedSessions}
           emptyMessage="No sessions yet."
@@ -141,9 +163,16 @@ export default function SessionList({ campaignId, onOpenSession }: SessionListPr
                   <MetaChip label="Fear" value={`${session.fear} / 12`} />
                 </>
               }
-            />
+            >
+              {/* Which Session of the Campaign this is, counted from the
+                  first one played — a small detail, not a heading. */}
+              <p className="session-list__number" title={`Session ${sessions.indexOf(session) + 1} of ${sessions.length}`}>
+                #{sessions.indexOf(session) + 1}
+              </p>
+            </ContentCard>
           )}
         />
+        </div>
       )}
     </div>
   );

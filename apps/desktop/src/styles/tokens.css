@@ -287,3 +287,34 @@ button {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Every scrolling thing in the app (the page itself, the Sessions list,
+   pickers, the Journal) gets the app's own scrollbar instead of the
+   operating system's grey channel: a slim rounded thumb in the theme's
+   colours that warms to gold under the pointer. -webkit-* is all Electron
+   needs. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 999px;
+  /* A transparent border, clipped away, leaves the thumb slimmer than the
+     track it can be grabbed in. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--hope);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

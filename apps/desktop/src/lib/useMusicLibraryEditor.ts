@@ -3,6 +3,7 @@ import { EVERYWHERE_REGION_ID, musicApi, type MusicRegion, type MusicTrack } fro
 import { useMusicContext } from '../context/MusicContext';
 import { defaultCandidates } from './music';
 import { loadVolume, saveVolume } from './musicVolume';
+import { confirmDialog } from './confirm';
 
 interface UseMusicLibraryEditorOptions {
   /** Called after every successful mutation — lets an embedding context (MusicContext, when this runs inside a live Session) pick up the change immediately instead of waiting for its own next refetch. */
@@ -149,7 +150,7 @@ export function useMusicLibraryEditor({ onLibraryChanged, scopeCampaignId = null
   async function deleteRegion(region: MusicRegion) {
     const count = tracks.filter((t) => t.regionId === region.id).length;
     const note = count > 0 ? ` Its ${count} track${count === 1 ? '' : 's'} will move to Global.` : '';
-    if (!window.confirm(`Delete the region "${region.name}"?${note}`)) return;
+    if (!(await confirmDialog(`Delete the region "${region.name}"?${note}`))) return;
     try {
       await musicApi.removeRegion(region.id);
       setRegions((prev) => prev.filter((r) => r.id !== region.id));
@@ -258,7 +259,7 @@ export function useMusicLibraryEditor({ onLibraryChanged, scopeCampaignId = null
   }
 
   async function deleteTrack(track: MusicTrack) {
-    if (!window.confirm(`Remove "${track.name}" from the library? The copy the app keeps is deleted; your original file is untouched.`)) return;
+    if (!(await confirmDialog(`Remove "${track.name}" from the library? The copy the app keeps is deleted; your original file is untouched.`))) return;
     try {
       if (previewId === track.id) setPreviewId(null);
       await musicApi.removeTrack(track.id);

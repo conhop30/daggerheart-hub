@@ -65,6 +65,10 @@ test.describe('Campaigns & Party', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
+    // The app's own "are you sure?" (ConfirmHost) is agreed to wherever it appears.
+    await win.addLocatorHandler(win.locator('.confirm-dialog'), async () => {
+      await win.locator('.confirm-dialog__confirm').click();
+    });
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Campaigns")');
   });
@@ -163,7 +167,7 @@ test.describe('Campaigns & Party', () => {
     await expect(win.locator('.campaign-row', { hasText: 'Doomed Campaign' })).toHaveCount(0);
   });
 
-  test('the Party section collapses and expands, hiding and restoring the roster', async () => {
+  test('the Party is always shown, with no collapse toggle or hint, and each Session carries its number', async () => {
     await win.click('.campaign-row--hollow');
     await win.fill('.create-form input[type="text"]', 'The Wildwood');
     await win.click('button:has-text("Create Campaign")');
@@ -175,17 +179,40 @@ test.describe('Campaigns & Party', () => {
     const card = win.locator('.content-card', { hasText: 'Fenn' });
     await expect(card).toBeVisible();
 
-    // Open by default — collapsing unmounts the roster entirely (not just
-    // hides it), but the header (title, toggle, "+ Add Party Member") stays.
-    await expect(win.locator('.party-roster__toggle--open')).toBeVisible();
-    await win.click('.party-roster__toggle');
-    await expect(win.locator('.party-roster__toggle--open')).toHaveCount(0);
-    await expect(card).toHaveCount(0);
-    await expect(win.locator('.party-roster__add')).toBeVisible();
+    // Always shown: the Party has its own column, and nothing to collapse.
+    await expect(win.locator('.party-roster__toggle')).toHaveCount(0);
+    await expect(win.locator('.party-roster__title')).toHaveText('Party');
+    await expect(win.locator('.party-roster__hint')).toHaveCount(0);
 
-    await win.click('.party-roster__toggle');
-    await expect(win.locator('.party-roster__toggle--open')).toBeVisible();
-    await expect(win.locator('.content-card', { hasText: 'Fenn' })).toBeVisible();
+    // Sessions list newest first, each with its place in the Campaign.
+    for (const name of ['Session 1', 'Session 2']) {
+      await win.click('.session-list__add');
+      await win.fill('.create-form input[type="text"]', name);
+      await win.click('button:has-text("Start Session")');
+    }
+    await expect(win.locator('.session-list__number')).toHaveText(['#2', '#1']);
+
+    // The two headings' rules sit level, each with its buttons underneath.
+    const sessionsTitle = (await win.locator('.session-list__title').boundingBox())!;
+    const partyTitle = (await win.locator('.party-roster__title').boundingBox())!;
+    expect(Math.abs(sessionsTitle.y + sessionsTitle.height - (partyTitle.y + partyTitle.height))).toBeLessThan(1);
+    expect((await win.locator('.party-roster__add').boundingBox())!.y).toBeGreaterThan(partyTitle.y + partyTitle.height - 1);
+
+    // Seven Sessions fit; from the eighth on, the list scrolls instead of growing.
+    const scroller = win.locator('.session-list__scroll');
+    const overflows = () => scroller.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    for (let n = 3; n <= 7; n++) {
+      await win.click('.session-list__add');
+      await win.fill('.create-form input[type="text"]', `Session ${n}`);
+      await win.click('button:has-text("Start Session")');
+    }
+    await expect(win.locator('.session-list__number')).toHaveCount(7);
+    expect(await overflows()).toBe(false);
+    await win.click('.session-list__add');
+    await win.fill('.create-form input[type="text"]', 'Session 8');
+    await win.click('button:has-text("Start Session")');
+    await expect(win.locator('.session-list__number')).toHaveCount(8);
+    await expect.poll(overflows).toBe(true);
   });
 
   test('a Campaign cover image round-trips through create, reload, and Remove', async () => {

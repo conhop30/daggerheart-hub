@@ -43,6 +43,10 @@ test.describe('Music library and session playback', () => {
     app = await electron.launch({ args: [path.resolve('.')], env });
     win = await app.firstWindow();
     win.on('dialog', (dialog) => dialog.accept());
+    // The app's own "are you sure?" (ConfirmHost) is agreed to wherever it appears.
+    await win.addLocatorHandler(win.locator('.confirm-dialog'), async () => {
+      await win.locator('.confirm-dialog__confirm').click();
+    });
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
   });
 
