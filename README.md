@@ -116,8 +116,8 @@ validation. Highlights:
 - **Adversaries & Environments render as a condensed stat-block gallery**
   with four viewing modes instead of one fixed layout: **Table** (the
   default — a full-width reference table like Equipment's, with Tier,
-  Difficulty, HP, Stress, Type and Experiences for Adversaries and Tier and
-  Type for Environments, where clicking a row opens its stat block in
+  Difficulty, HP, Stress, Type and Experiences for Adversaries and Tier,
+  Difficulty and Type for Environments, where clicking a row opens its stat block in
   place, with Recently Viewed as a strip of chips above it), **Standard**
   (compact tiles + a spotlight column showing the full stat block for
   whichever tile was last clicked, without reflowing the grid),

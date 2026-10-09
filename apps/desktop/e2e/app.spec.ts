@@ -327,7 +327,7 @@ test.describe('Electron app', () => {
     await expect(win.locator('.stat-gallery').first().locator('.stat-gallery__table')).toBeVisible();
   });
 
-  test('Environments open as a table of Name, Tier and Type', async () => {
+  test('Environments open as a table of Name, Tier, Difficulty and Type', async () => {
     await win.click('.app-shell__nav-link:has-text("Adversaries")');
     await win.click('button:has-text("+ New Environment")');
     await win.fill('.create-form .text-field:has-text("Name") input', 'Raging River');
@@ -337,7 +337,7 @@ test.describe('Electron app', () => {
 
     const gallery = win.locator('.stat-gallery').first();
     await expect(gallery.locator('.stat-gallery__mode-option--active')).toHaveText('Table');
-    await expect(gallery.locator('.stat-gallery__table-cell--head')).toHaveText(['Name', 'Tier', 'Type']);
+    await expect(gallery.locator('.stat-gallery__table-cell--head')).toHaveText(['Name', 'Tier', 'Difficulty', 'Type']);
     await expect(gallery.locator('.stat-gallery__table-row--item')).toContainText('Traversal');
     await gallery.locator('.stat-gallery__table-name').click();
     await expect(gallery.locator('.stat-gallery__table-detail .stat-sheet__name')).toHaveText('Raging River');

@@ -185,6 +185,7 @@ const ADVERSARY_COLUMNS: StatGalleryColumn<Adversary>[] = [
 
 const ENVIRONMENT_COLUMNS: StatGalleryColumn<Environment>[] = [
   { key: 'tier', label: 'Tier', width: '64px', align: 'center', render: (e) => dash(e.tier) },
+  { key: 'difficulty', label: 'Difficulty', width: '96px', align: 'center', render: (e) => dash(e.difficulty) },
   { key: 'type', label: 'Type', render: (e) => (e.category ? titleCaseEnum(e.category) : '—') },
 ];
 
