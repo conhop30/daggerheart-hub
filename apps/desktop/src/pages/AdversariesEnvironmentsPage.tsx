@@ -185,9 +185,7 @@ const ADVERSARY_COLUMNS: StatGalleryColumn<Adversary>[] = [
 
 const ENVIRONMENT_COLUMNS: StatGalleryColumn<Environment>[] = [
   { key: 'tier', label: 'Tier', width: '64px', align: 'center', render: (e) => dash(e.tier) },
-  { key: 'difficulty', label: 'Difficulty', width: '96px', align: 'center', render: (e) => dash(e.difficulty) },
-  { key: 'type', label: 'Type', width: '110px', render: (e) => (e.category ? titleCaseEnum(e.category) : '—') },
-  { key: 'impulses', label: 'Impulses', width: '2fr', render: (e) => (e.impulses.length > 0 ? e.impulses.join(', ') : '—') },
+  { key: 'type', label: 'Type', render: (e) => (e.category ? titleCaseEnum(e.category) : '—') },
 ];
 
 export default function AdversariesEnvironmentsPage() {

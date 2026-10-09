@@ -194,6 +194,15 @@ the result out. Adversary type is now required on the form (not in
 being run** (Connor's call) — see `TODO.md`'s entry, and run it before
 building further on Session-page code.
 
+v1.8.1 (2026-10-08, full suites green: 295 Vitest, 105 Playwright) added
+a Table mode to `StatGallery`, the default wherever `tableColumns` is
+passed (Adversaries and Environments); the chosen mode is kept in
+`localStorage` per item label, so an e2e test that needs tiles must pick
+Standard itself and put Table back. Heritage and Optional Mechanics are
+both built from `EntrySection` + `SetFilter`. CombatPanel has Collapse
+All, and a collapsed tile shows roll results inline
+(`.session-tile__roll-inline`) instead of on new lines.
+
 A playtest round on 2026-10-07 reshaped the Session page and shipped as
 v1.8.0 with both full suites green (295 Vitest, 99 Playwright; see
 `TODO.md`'s "Playtest round" entry). Also in v1.8.0: every delete asks

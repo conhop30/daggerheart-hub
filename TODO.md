@@ -40,20 +40,12 @@ as of commit `d1a8669`.
       under the same dark tint that keeps white text readable over a
       photo. Flagged to Connor, no answer yet on whether to brighten it.
 
-## Loose ends from the 2026-10-08 feedback round (unreleased)
+## Loose ends from the 2026-10-08 feedback round (v1.8.1)
 
-- [ ] **Not released.** Collapse All, roll results on a collapsed tile's
-      own line, the Minion "+", the Heritage / Optional Mechanics rework,
-      Equipment's "Table" label and the Adversaries & Environments Table
-      view are committed but not pushed or versioned.
-- [ ] **Table view is an option, not the default.** Standard still opens
-      first; the chosen mode is remembered per machine, separately for
-      Adversaries and Environments. Connor floated the table as a possible
-      "radical" replacement, so ask whether it should become the default
-      (or whether Condense/Standard should go) once he has used it.
-- [ ] **Environment table columns were a guess.** Connor listed columns for
-      Adversaries only; Environments show Tier, Difficulty, Type and
-      Impulses.
+- [ ] **Condense / Standard / Expand are still there.** Table is the
+      default for Adversaries and Environments (Connor's call), and the
+      other three modes remain as options. Ask whether any should go once
+      he has used the table for a while.
 - [ ] **A collapsed stack still lists every member's row.** Collapse All
       hides HP/Stress on single tiles, but a stack's rows are its trackers
       and stay. Not asked for; noted in case it reads as inconsistent.

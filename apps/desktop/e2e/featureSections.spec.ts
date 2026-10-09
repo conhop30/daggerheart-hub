@@ -63,6 +63,8 @@ test.describe('Feature sections (Evolution + homebrew sections)', () => {
     await win.click('.app-shell__nav-link:has-text("Adversaries")');
     await win.locator('.stat-gallery__tile', { hasText: 'Shapeshifter' }).click();
     await expect(win.locator('.stat-sheet')).toContainText('Tremor');
+    // The view is remembered per machine: leave it on the default.
+    await win.locator('.stat-gallery__mode-option', { hasText: 'Table' }).first().click();
   });
 
   test('a custom section can be removed again', async () => {

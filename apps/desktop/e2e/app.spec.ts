@@ -269,8 +269,9 @@ test.describe('Electron app', () => {
       await win.click('button:has-text("Create Adversary")');
       await expect(win.locator('.create-form')).toHaveCount(0);
     }
+    // Table is what opens first, with no mode picked.
     const gallery = win.locator('.stat-gallery').first();
-    await gallery.locator('.stat-gallery__mode-option', { hasText: 'Table' }).click();
+    await expect(gallery.locator('.stat-gallery__mode-option--active')).toHaveText('Table');
     await expect(gallery.locator('.stat-gallery__table-row--item').first()).toContainText('Bruiser');
 
     await expect(gallery.locator('.stat-gallery__table-cell--head')).toHaveText([
@@ -316,12 +317,30 @@ test.describe('Electron app', () => {
     await expect(detail.locator('.stat-sheet__name')).toHaveText(firstName);
     await expect(gallery.locator('.stat-gallery__search')).toHaveValue('');
 
-    // The choice of view is remembered; put it back for whoever runs next.
+    // Another view is remembered across a reload; put Table back for whoever runs next.
+    await gallery.locator('.stat-gallery__mode-option', { hasText: 'Standard' }).click();
+    await expect(gallery.locator('.stat-gallery__spotlight')).toBeVisible();
     await win.reload();
     await win.click('.app-shell__nav-link:has-text("Adversaries")');
-    await expect(win.locator('.stat-gallery').first().locator('.stat-gallery__table')).toBeVisible();
-    await win.locator('.stat-gallery').first().locator('.stat-gallery__mode-option', { hasText: 'Standard' }).click();
     await expect(win.locator('.stat-gallery').first().locator('.stat-gallery__spotlight')).toBeVisible();
+    await win.locator('.stat-gallery').first().locator('.stat-gallery__mode-option', { hasText: 'Table' }).click();
+    await expect(win.locator('.stat-gallery').first().locator('.stat-gallery__table')).toBeVisible();
+  });
+
+  test('Environments open as a table of Name, Tier and Type', async () => {
+    await win.click('.app-shell__nav-link:has-text("Adversaries")');
+    await win.click('button:has-text("+ New Environment")');
+    await win.fill('.create-form .text-field:has-text("Name") input', 'Raging River');
+    await win.locator('.create-form select').first().selectOption('TRAVERSAL');
+    await win.click('button:has-text("Create Environment")');
+    await expect(win.locator('.create-form')).toHaveCount(0);
+
+    const gallery = win.locator('.stat-gallery').first();
+    await expect(gallery.locator('.stat-gallery__mode-option--active')).toHaveText('Table');
+    await expect(gallery.locator('.stat-gallery__table-cell--head')).toHaveText(['Name', 'Tier', 'Type']);
+    await expect(gallery.locator('.stat-gallery__table-row--item')).toContainText('Traversal');
+    await gallery.locator('.stat-gallery__table-name').click();
+    await expect(gallery.locator('.stat-gallery__table-detail .stat-sheet__name')).toHaveText('Raging River');
   });
 
   test('export produces a valid snapshot with every collection present', async () => {

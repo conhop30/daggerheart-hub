@@ -114,12 +114,13 @@ validation. Highlights:
   live) and window-size presets, persisted to `localStorage` since it's a
   per-machine UI preference, not game content.
 - **Adversaries & Environments render as a condensed stat-block gallery**
-  with four viewing modes instead of one fixed layout: **Table** (a
-  full-width reference table like Equipment's — Tier, Difficulty, HP,
-  Stress, Type, Experiences — where clicking a row opens its stat block in
+  with four viewing modes instead of one fixed layout: **Table** (the
+  default — a full-width reference table like Equipment's, with Tier,
+  Difficulty, HP, Stress, Type and Experiences for Adversaries and Tier and
+  Type for Environments, where clicking a row opens its stat block in
   place, with Recently Viewed as a strip of chips above it), **Standard**
-  (the default — compact tiles + a spotlight column showing the full stat
-  block for whichever tile was last clicked, without reflowing the grid),
+  (compact tiles + a spotlight column showing the full stat block for
+  whichever tile was last clicked, without reflowing the grid),
   **Condense** (name/tier/type only, maximizing how many entries fit on
   screen at once), and **Expand** (every matching entry renders as its own
   full stat sheet inline, opting into more screen space on purpose instead
@@ -546,9 +547,9 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       Environments gallery, a wider page layout, and a "Recently Viewed"
       history pinned above the spotlight's scroll region instead of
       requiring a scroll to reach it
-- [x] A Table viewing mode for Adversaries & Environments (rows open in
-      place), a wider spotlight column, and the chosen mode remembered per
-      machine
+- [x] A Table viewing mode for Adversaries & Environments, now the default
+      (rows open in place), a wider spotlight column, and the chosen mode
+      remembered per machine
 - [x] Heritage and Optional Mechanics share one layout (`EntrySection`):
       alphabetical cards with full-width features and a filter by Set
 - [x] Renamed the app to **Daggerheart Brewery** and gave it a real,

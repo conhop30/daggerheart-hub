@@ -44,7 +44,7 @@ function loadView(itemLabel: string, hasTable: boolean): ViewMode {
   } catch {
     // localStorage can be unavailable; the default is fine.
   }
-  return 'standard';
+  return hasTable ? 'table' : 'standard';
 }
 
 function saveView(itemLabel: string, mode: ViewMode): void {
@@ -87,9 +87,10 @@ interface StatGalleryProps<T> {
 //
 // Four view modes, since "how much do I want to see at once" turned out
 // to need more than one answer: Table (a reference table like Equipment's,
-// the full width of the page, a row opening in place to its stat block),
-// Condensed (name/tier/type only, maximum items on screen), Standard (the
-// default — compact stat tiles + a spotlight column), and Expanded (every
+// the full width of the page, a row opening in place to its stat block,
+// which is the default wherever a gallery has columns to show), Condensed
+// (name/tier/type only, maximum items on screen), Standard (compact stat
+// tiles + a spotlight column), and Expanded (every
 // match renders as its own full stat sheet inline, opting into the extra
 // screen space on purpose).
 export function StatGallery<T>({
