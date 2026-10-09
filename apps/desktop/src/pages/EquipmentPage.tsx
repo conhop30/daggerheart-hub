@@ -20,7 +20,7 @@ import './BrowsePage.css';
 // keeps the state that's genuinely shared across sections: the Loot/
 // Consumable lists a Table's rollable-entry picker needs, the LootTable/
 // ConsumableTable actions a drill-in open needs to check, and the page-wide
-// Cards/Condensed view toggle.
+// Cards/Table view toggle.
 export default function EquipmentPage() {
   const loot = useApiList(lootApi.list);
   const consumables = useApiList(consumablesApi.list);
@@ -102,7 +102,7 @@ export default function EquipmentPage() {
             className={`mode-toggle__option${view === 'table' ? ' mode-toggle__option--active' : ''}`}
             onClick={() => changeView('table')}
           >
-            Condensed
+            Table
           </button>
         </div>
       </div>

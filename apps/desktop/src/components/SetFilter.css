@@ -1,0 +1,16 @@
+/* Same field treatment as StatGallery's Tier and Type filters. */
+.set-filter {
+  background: var(--void);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  padding: 0.45rem 0.65rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: border-color 200ms var(--ease);
+}
+
+.set-filter:focus-visible {
+  border-color: var(--hope);
+}

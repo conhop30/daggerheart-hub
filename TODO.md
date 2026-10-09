@@ -39,9 +39,24 @@ as of commit `d1a8669`.
 - [ ] **Party tile colours may read dark.** The Domain-colour fallback sits
       under the same dark tint that keeps white text readable over a
       photo. Flagged to Connor, no answer yet on whether to brighten it.
-- [ ] **Minions have no "+" beside the name.** Single tiles and stacks do;
-      Minions rely on their count stepper. Flagged to Connor, no answer
-      yet on whether to add it for consistency.
+
+## Loose ends from the 2026-10-08 feedback round (unreleased)
+
+- [ ] **Not released.** Collapse All, roll results on a collapsed tile's
+      own line, the Minion "+", the Heritage / Optional Mechanics rework,
+      Equipment's "Table" label and the Adversaries & Environments Table
+      view are committed but not pushed or versioned.
+- [ ] **Table view is an option, not the default.** Standard still opens
+      first; the chosen mode is remembered per machine, separately for
+      Adversaries and Environments. Connor floated the table as a possible
+      "radical" replacement, so ask whether it should become the default
+      (or whether Condense/Standard should go) once he has used it.
+- [ ] **Environment table columns were a guess.** Connor listed columns for
+      Adversaries only; Environments show Tier, Difficulty, Type and
+      Impulses.
+- [ ] **A collapsed stack still lists every member's row.** Collapse All
+      hides HP/Stress on single tiles, but a stack's rows are its trackers
+      and stay. Not asked for; noted in case it reads as inconsistent.
 
 ## Carried over (also on the README roadmap)
 
@@ -49,8 +64,10 @@ as of commit `d1a8669`.
       Ancestries, Communities and the rest still use the plain
       `ContentCard` list; only Adversaries & Environments got the gallery /
       spotlight / `StatRail` treatment.
-- [ ] **Designed pages for Heritage and Optional Mechanics.** Still plain
-      list views.
+- [ ] **Designed pages for Heritage and Optional Mechanics.** Both are now
+      the same card grid (`EntrySection`: alphabetical, Set filter,
+      full-width features), fixed up after Connor's 2026-10-08 feedback,
+      but not the gallery treatment the roadmap means.
 - [ ] **A code-signing certificate** for the installer. It is self-signed,
       so SmartScreen shows the "unknown publisher" warning.
 - [ ] **Corebook Loot/Consumables and Hope & Fear Consumables.** The source

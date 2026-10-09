@@ -5,7 +5,7 @@ import { useApiList, useEntityActions } from '../lib/useApiList';
 import { titleCaseEnum } from '../lib/format';
 import { exportNodeAsImage } from '../lib/exportImage';
 import { StatRail } from '../components/StatRail';
-import { StatGallery } from '../components/StatGallery';
+import { StatGallery, type StatGalleryColumn } from '../components/StatGallery';
 import AdversaryForm from '../components/AdversaryForm';
 import EnvironmentForm from '../components/EnvironmentForm';
 import AdversarySheet from '../components/AdversarySheet';
@@ -162,6 +162,34 @@ const EnvironmentSpotlight = memo(function EnvironmentSpotlight({
   );
 });
 
+const dash = (value: number | null) => value ?? '—';
+
+// Table mode's columns, after Name. What's left out (description, attack,
+// Features) is what opening the row is for.
+const ADVERSARY_COLUMNS: StatGalleryColumn<Adversary>[] = [
+  { key: 'tier', label: 'Tier', width: '64px', align: 'center', render: (a) => dash(a.tier) },
+  { key: 'difficulty', label: 'Difficulty', width: '96px', align: 'center', render: (a) => dash(a.difficulty) },
+  { key: 'hp', label: 'HP', width: '60px', align: 'center', render: (a) => dash(a.hp) },
+  { key: 'stress', label: 'Stress', width: '72px', align: 'center', render: (a) => dash(a.stress) },
+  { key: 'type', label: 'Type', width: '110px', render: (a) => (a.type ? titleCaseEnum(a.type) : '—') },
+  {
+    key: 'experiences',
+    label: 'Experiences',
+    width: '2fr',
+    render: (a) =>
+      a.experiences.length > 0
+        ? a.experiences.map((e) => `${e.name} ${e.modifier >= 0 ? `+${e.modifier}` : e.modifier}`).join(', ')
+        : '—',
+  },
+];
+
+const ENVIRONMENT_COLUMNS: StatGalleryColumn<Environment>[] = [
+  { key: 'tier', label: 'Tier', width: '64px', align: 'center', render: (e) => dash(e.tier) },
+  { key: 'difficulty', label: 'Difficulty', width: '96px', align: 'center', render: (e) => dash(e.difficulty) },
+  { key: 'type', label: 'Type', width: '110px', render: (e) => (e.category ? titleCaseEnum(e.category) : '—') },
+  { key: 'impulses', label: 'Impulses', width: '2fr', render: (e) => (e.impulses.length > 0 ? e.impulses.join(', ') : '—') },
+];
+
 export default function AdversariesEnvironmentsPage() {
   const adversaries = useApiList(adversariesApi.list);
   const environments = useApiList(environmentsApi.list);
@@ -208,6 +236,7 @@ export default function AdversariesEnvironmentsPage() {
             itemLabel="Adversary"
             renderTile={(a) => <AdversaryTile a={a} />}
             renderTileCondensed={(a) => <AdversaryTileCondensed a={a} />}
+            tableColumns={ADVERSARY_COLUMNS}
             renderSpotlight={(a) =>
               adversaryActions.editingId === a.id ? (
                 <AdversaryForm
@@ -260,6 +289,7 @@ export default function AdversariesEnvironmentsPage() {
             itemLabel="Environment"
             renderTile={(e) => <EnvironmentTile e={e} />}
             renderTileCondensed={(e) => <EnvironmentTileCondensed e={e} />}
+            tableColumns={ENVIRONMENT_COLUMNS}
             renderSpotlight={(e) =>
               environmentActions.editingId === e.id ? (
                 <EnvironmentForm

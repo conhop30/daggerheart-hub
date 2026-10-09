@@ -31,7 +31,7 @@ interface SessionAdversaryTileProps {
   onCountChange: (delta: number) => void;
   /** Minions only: a drag began on one pip, to move just that Minion. (Dragging the tile itself is CombatPanel's own business.) */
   onPipDragStart: () => void;
-  /** Pulls in one more of this Adversary, on a tile of its own. */
+  /** Pulls in one more of this Adversary, on a tile of its own (for a Minion, a new stack of one). */
   onAddAnother: () => void;
   onRoll: (label: string, total: number) => void;
 }
@@ -91,11 +91,9 @@ export default function SessionAdversaryTile({
           >
             {bodyOpen ? '▾' : '▸'}
           </button>
-          {!minion && (
-            <button type="button" className="session-tile__add" onClick={onAddAnother} aria-label={`Add another ${adversary.name}`} title={`Add another ${adversary.name}`}>
-              +
-            </button>
-          )}
+          <button type="button" className="session-tile__add" onClick={onAddAnother} aria-label={`Add another ${adversary.name}`} title={`Add another ${adversary.name}`}>
+            +
+          </button>
           <input
             type="text"
             className="session-tile__name-input"

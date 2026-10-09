@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import './StatGallery.css';
 
 interface HistoryEntry {
@@ -8,9 +8,52 @@ interface HistoryEntry {
   subtitle: string | null;
 }
 
-type ViewMode = 'condensed' | 'standard' | 'expanded';
+type ViewMode = 'table' | 'condensed' | 'standard' | 'expanded';
+
+const VIEW_MODES: { mode: ViewMode; label: string }[] = [
+  { mode: 'table', label: 'Table' },
+  { mode: 'condensed', label: 'Condense' },
+  { mode: 'standard', label: 'Standard' },
+  { mode: 'expanded', label: 'Expand' },
+];
 
 const HISTORY_LIMIT = 8;
+
+/** One column of Table mode, after the Name column every table starts with. */
+export interface StatGalleryColumn<T> {
+  key: string;
+  label: string;
+  render: (item: T) => ReactNode;
+  /** A CSS grid track, e.g. "70px" or "2fr". Defaults to 1fr. */
+  width?: string;
+  align?: 'left' | 'center';
+}
+
+// Which mode a gallery was last left in, remembered per kind of thing it
+// lists. A per-machine UI choice like Equipment's Cards/Table switch, not
+// game content.
+function viewKey(itemLabel: string): string {
+  return `daggerheart-stat-gallery-view-${itemLabel.toLowerCase()}`;
+}
+
+function loadView(itemLabel: string, hasTable: boolean): ViewMode {
+  try {
+    const stored = window.localStorage.getItem(viewKey(itemLabel));
+    const known = VIEW_MODES.some((v) => v.mode === stored) && (stored !== 'table' || hasTable);
+    if (known) return stored as ViewMode;
+  } catch {
+    // localStorage can be unavailable; the default is fine.
+  }
+  return 'standard';
+}
+
+function saveView(itemLabel: string, mode: ViewMode): void {
+  try {
+    window.localStorage.setItem(viewKey(itemLabel), mode);
+  } catch {
+    // Not persisting the choice is harmless.
+  }
+}
 
 interface StatGalleryProps<T> {
   items: T[];
@@ -28,6 +71,8 @@ interface StatGalleryProps<T> {
   renderTileCondensed?: (item: T) => ReactNode;
   /** Full content shown in the spotlight column (Standard/Condensed) or inline per-tile (Expanded), including its own edit/delete chrome. */
   renderSpotlight: (item: T) => ReactNode;
+  /** Turns on Table mode: one row per item under these columns, a row opening in place to its full stat block. */
+  tableColumns?: StatGalleryColumn<T>[];
   emptyMessage: string;
   /** Singular, lowercase-friendly label used in placeholder copy, e.g. "Adversary". */
   itemLabel: string;
@@ -40,11 +85,13 @@ interface StatGalleryProps<T> {
 // (no page navigation) and not an in-grid accordion (the grid never
 // reflows when a tile is selected).
 //
-// Three view modes, since "how much do I want to see at once" turned out
-// to need more than one answer: Condensed (name/tier/type only, maximum
-// items on screen), Standard (the default — compact stat tiles + a
-// spotlight column), and Expanded (every match renders as its own full
-// stat sheet inline, opting into the extra screen space on purpose).
+// Four view modes, since "how much do I want to see at once" turned out
+// to need more than one answer: Table (a reference table like Equipment's,
+// the full width of the page, a row opening in place to its stat block),
+// Condensed (name/tier/type only, maximum items on screen), Standard (the
+// default — compact stat tiles + a spotlight column), and Expanded (every
+// match renders as its own full stat sheet inline, opting into the extra
+// screen space on purpose).
 export function StatGallery<T>({
   items,
   getKey,
@@ -56,6 +103,7 @@ export function StatGallery<T>({
   renderTile,
   renderTileCondensed,
   renderSpotlight,
+  tableColumns,
   emptyMessage,
   itemLabel,
 }: StatGalleryProps<T>) {
@@ -64,7 +112,19 @@ export function StatGallery<T>({
   const [typeFilter, setTypeFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [mode, setMode] = useState<ViewMode>('standard');
+  const [mode, setMode] = useState<ViewMode>(() => loadView(itemLabel, tableColumns != null));
+  const openRowRef = useRef<HTMLDivElement>(null);
+
+  function changeMode(next: ViewMode) {
+    setMode(next);
+    saveView(itemLabel, next);
+  }
+
+  // In Table mode the open stat block sits wherever its row does, which
+  // can be well off screen when it was picked from Recently Viewed.
+  useEffect(() => {
+    if (mode === 'table' && selectedId != null) openRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [mode, selectedId]);
 
   const tiers = Array.from(new Set(items.map((i) => getTier(i)).filter((t): t is number => t != null))).sort(
     (a, b) => a - b,
@@ -87,34 +147,46 @@ export function StatGallery<T>({
     .filter((h) => items.some((i) => getKey(i) === h.id))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // The list with whatever's being left added to the front of it. Stored
+  // newest-first — that's what decides which 8 survive once the cap is hit
+  // ("recently viewed" has to mean recency for *eviction* purposes).
+  // Display order is a separate concern, see visibleHistory above, which
+  // re-sorts alphabetically for the list a GM actually scans, so it reads
+  // as a stable A-Z lookup instead of reshuffling on every click.
+  function withSelectedRemembered(prev: HistoryEntry[]): HistoryEntry[] {
+    if (selectedId == null || !selected) return prev;
+    const entry: HistoryEntry = {
+      id: selectedId,
+      name: getName(selected),
+      tier: getTier(selected),
+      subtitle: getSubtitle ? getSubtitle(selected) : null,
+    };
+    return [entry, ...prev.filter((h) => h.id !== entry.id)];
+  }
+
   function selectItem(item: T) {
     const key = getKey(item);
     if (key === selectedId) return;
-    setHistory((prev) => {
-      let next = prev;
-      if (selectedId != null && selected) {
-        const entry: HistoryEntry = {
-          id: selectedId,
-          name: getName(selected),
-          tier: getTier(selected),
-          subtitle: getSubtitle ? getSubtitle(selected) : null,
-        };
-        // Stored newest-first still — that's what decides which 8 survive
-        // once the cap is hit ("recently viewed" has to mean recency for
-        // *eviction* purposes). Display order is a separate concern, see
-        // visibleHistory below, which re-sorts alphabetically for the list
-        // a GM actually scans, so it reads as a stable A-Z lookup instead
-        // of reshuffling on every click.
-        next = [entry, ...prev.filter((h) => h.id !== entry.id)];
-      }
-      return next.filter((h) => h.id !== key).slice(0, HISTORY_LIMIT);
-    });
+    setHistory((prev) => withSelectedRemembered(prev).filter((h) => h.id !== key).slice(0, HISTORY_LIMIT));
     setSelectedId(key);
+  }
+
+  // Table mode only: clicking the open row again shuts it.
+  function closeSelected() {
+    setHistory((prev) => withSelectedRemembered(prev).slice(0, HISTORY_LIMIT));
+    setSelectedId(null);
   }
 
   function selectFromHistory(id: string) {
     const item = items.find((i) => getKey(i) === id);
-    if (item) selectItem(item);
+    if (!item) return;
+    // A table row that the search or filters are hiding has nowhere to open.
+    if (mode === 'table' && !filtered.includes(item)) {
+      setQuery('');
+      setTierFilter('all');
+      setTypeFilter('all');
+    }
+    selectItem(item);
   }
 
   if (items.length === 0) {
@@ -122,6 +194,7 @@ export function StatGallery<T>({
   }
 
   const article = /^[aeiou]/i.test(itemLabel) ? 'an' : 'a';
+  const plural = itemLabel.endsWith('y') ? `${itemLabel.slice(0, -1)}ies` : `${itemLabel}s`;
   const renderCondensedTile = renderTileCondensed ?? renderTile;
 
   return (
@@ -130,7 +203,7 @@ export function StatGallery<T>({
         <input
           type="search"
           className="stat-gallery__search"
-          placeholder={`Search ${itemLabel}s by name or description…`}
+          placeholder={`Search ${plural} by name or description…`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -165,32 +238,86 @@ export function StatGallery<T>({
           </select>
         )}
         <div className="stat-gallery__mode-toggle" role="group" aria-label="Viewing mode">
-          <button
-            type="button"
-            className={`stat-gallery__mode-option${mode === 'condensed' ? ' stat-gallery__mode-option--active' : ''}`}
-            onClick={() => setMode('condensed')}
-          >
-            Condense
-          </button>
-          <button
-            type="button"
-            className={`stat-gallery__mode-option${mode === 'standard' ? ' stat-gallery__mode-option--active' : ''}`}
-            onClick={() => setMode('standard')}
-          >
-            Standard
-          </button>
-          <button
-            type="button"
-            className={`stat-gallery__mode-option${mode === 'expanded' ? ' stat-gallery__mode-option--active' : ''}`}
-            onClick={() => setMode('expanded')}
-          >
-            Expand
-          </button>
+          {VIEW_MODES.filter((v) => v.mode !== 'table' || tableColumns).map((v) => (
+            <button
+              type="button"
+              key={v.mode}
+              className={`stat-gallery__mode-option${mode === v.mode ? ' stat-gallery__mode-option--active' : ''}`}
+              onClick={() => changeMode(v.mode)}
+              aria-pressed={mode === v.mode}
+            >
+              {v.label}
+            </button>
+          ))}
         </div>
       </div>
 
+      {mode === 'table' && visibleHistory.length > 0 && (
+        <div className="stat-gallery__history-strip">
+          <span className="stat-gallery__history-title">Recently Viewed</span>
+          {visibleHistory.map((h) => (
+            <button type="button" key={h.id} className="stat-gallery__history-chip" onClick={() => selectFromHistory(h.id)}>
+              {h.name}
+              {h.tier != null && <span className="stat-gallery__history-tier">T{h.tier}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        <p className="content-card-list__empty">No {itemLabel}s match your search.</p>
+        <p className="content-card-list__empty">No {plural} match your search.</p>
+      ) : mode === 'table' && tableColumns ? (
+        <div className="stat-gallery__table-scroll">
+          <div
+            className="stat-gallery__table"
+            role="table"
+            style={{ gridTemplateColumns: ['minmax(150px, 1.5fr)', ...tableColumns.map((c) => c.width ?? '1fr')].join(' ') }}
+          >
+            <div className="stat-gallery__table-row" role="row">
+              <span className="stat-gallery__table-cell stat-gallery__table-cell--head" role="columnheader">
+                Name
+              </span>
+              {tableColumns.map((col) => (
+                <span
+                  key={col.key}
+                  role="columnheader"
+                  className={`stat-gallery__table-cell stat-gallery__table-cell--head stat-gallery__table-cell--${col.align ?? 'left'}`}
+                >
+                  {col.label}
+                </span>
+              ))}
+            </div>
+            {filtered.map((item, index) => {
+              const key = getKey(item);
+              const open = key === selectedId;
+              return (
+                // A fragment-like pair: the row, then (when open) its stat
+                // block on a line of its own under it. The row is `display:
+                // contents`, so a click anywhere on it bubbles up to here.
+                <div className="stat-gallery__table-entry" key={key}>
+                  <div
+                    className={`stat-gallery__table-row stat-gallery__table-row--item${index % 2 === 1 ? ' stat-gallery__table-row--alt' : ''}${open ? ' stat-gallery__table-row--open' : ''}`}
+                    role="row"
+                    ref={open ? openRowRef : undefined}
+                    onClick={() => (open ? closeSelected() : selectItem(item))}
+                  >
+                    <span className="stat-gallery__table-cell stat-gallery__table-cell--name" role="cell">
+                      <button type="button" className="stat-gallery__table-name" aria-expanded={open}>
+                        {getName(item)}
+                      </button>
+                    </span>
+                    {tableColumns.map((col) => (
+                      <span key={col.key} role="cell" className={`stat-gallery__table-cell stat-gallery__table-cell--${col.align ?? 'left'}`}>
+                        {col.render(item)}
+                      </span>
+                    ))}
+                  </div>
+                  {open && <div className="stat-gallery__table-detail">{renderSpotlight(item)}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       ) : mode === 'expanded' ? (
         <div className="stat-gallery__expanded-grid">
           {filtered.map((item) => (

@@ -286,6 +286,14 @@ export default function CombatPanel({
     setTileBodyOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
   }
 
+  // One button for the whole board: collapses every stat block, or, once
+  // they all are, opens them again. Every Adversary gets an entry, not just
+  // the one a stack is keyed by, so unstacking later doesn't reopen any.
+  const anyBodyOpen = sessionAdversaries.some((a) => tileBodyOpen[a.id] ?? true);
+  function setAllBodies(open: boolean) {
+    setTileBodyOpen(Object.fromEntries(sessionAdversaries.map((a) => [a.id, open])));
+  }
+
   // Closes every other pulled-in Adversary's Features and opens just the
   // targeted one, plus a brief fading highlight so it's obvious which tile
   // just moved. A one-time nudge, not a lock: toggleFeatures above is
@@ -415,6 +423,11 @@ export default function CombatPanel({
         >
           + Add Environment
         </button>
+        {sessionAdversaries.length > 0 && (
+          <button type="button" className="combat-panel__collapse-all" onClick={() => setAllBodies(!anyBodyOpen)}>
+            {anyBodyOpen ? 'Collapse All' : 'Expand All'}
+          </button>
+        )}
       </div>
 
       {pickerOpen === 'adversary' && (

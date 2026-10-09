@@ -51,6 +51,7 @@ test.describe('Feature sections (Evolution + homebrew sections)', () => {
 
     await win.locator('.create-form select').first().selectOption('STANDARD');
     await win.click('button:has-text("Create Adversary")');
+    await win.locator('.stat-gallery__mode-option', { hasText: 'Standard' }).first().click();
     await win.locator('.stat-gallery__tile', { hasText: 'Shapeshifter' }).click();
 
     const sheet = win.locator('.stat-sheet');

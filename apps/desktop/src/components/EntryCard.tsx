@@ -20,7 +20,7 @@ interface EntryCardProps {
 
 // Splits a free-text Description into its first sentence — the book's own
 // italic one-liner, always shown — and everything after it, which collapses
-// behind the "Read entry" toggle alongside the feature list. Presentation
+// behind the "Expand" toggle. Presentation
 // only: the record still has one Description field, not a separate tagline.
 function splitTagline(description: string): { tagline: string; rest: string } {
   const match = description.match(/^(.+?[.!?])(\s+([\s\S]*))?$/);
@@ -56,7 +56,7 @@ export default function EntryCard({ item, onEdit, onDelete }: EntryCardProps) {
               onClick={() => setExpanded((e) => !e)}
               aria-expanded={expanded}
             >
-              {expanded ? '▾ Collapse' : '▸ Read entry'}
+              {expanded ? 'Collapse' : 'Expand'}
             </button>
           )}
           <div className="entry-card__actions">
@@ -72,13 +72,10 @@ export default function EntryCard({ item, onEdit, onDelete }: EntryCardProps) {
         {item.features.length > 0 && (
           <div className="entry-card__features">
             {item.features.map((f, i) => (
-              <div className="entry-card__feature-row" key={i}>
-                <span className="entry-card__feature-label">Feature</span>
-                <span className="entry-card__feature-value">
-                  <strong>{f.name}</strong>
-                  {f.description ? ` — ${f.description}` : ''}
-                </span>
-              </div>
+              <p className="entry-card__feature" key={i}>
+                <strong>{f.name}</strong>
+                {f.description ? ` — ${f.description}` : ''}
+              </p>
             ))}
           </div>
         )}

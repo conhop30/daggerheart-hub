@@ -77,15 +77,30 @@ export default function AdversaryStatBody({
               Roll Damage
             </button>
           )}
+          {/* A collapsed tile exists to stay small, so its results go in the
+              room to the right of the buttons, not on lines of their own. */}
+          {!bodyOpen && (attackRoll || roll) && (
+            <span className="session-tile__roll-inline">
+              {attackRoll && (
+                <span title={`${attackRoll.notation} = ${attackRoll.total}`}>
+                  Atk <strong>{attackRoll.total}</strong>
+                </span>
+              )}
+              {roll && (
+                <span title={`${roll.notation} = ${roll.result.total}`}>
+                  Dmg <strong>{roll.result.total}</strong>
+                </span>
+              )}
+            </span>
+          )}
         </p>
       )}
-      {/* Shown even on a collapsed tile: a roll you can't see is no roll. */}
-      {attackRoll && (
+      {bodyOpen && attackRoll && (
         <p className="session-tile__roll-result">
           {attackRoll.notation} = <strong>{attackRoll.total}</strong>
         </p>
       )}
-      {roll && (
+      {bodyOpen && roll && (
         <p className="session-tile__roll-result">
           {roll.notation} = <strong>{roll.result.total}</strong>
         </p>

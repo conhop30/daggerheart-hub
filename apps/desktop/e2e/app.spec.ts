@@ -192,6 +192,138 @@ test.describe('Electron app', () => {
     await expect(nameInputs.nth(1)).toHaveValue('First');
   });
 
+  test('Heritage is alphabetical, full-width, and filters by Set', async () => {
+    await win.click('.app-shell__nav-link:has-text("Heritage")');
+    const communities = win.locator('.browse-page__section').nth(0);
+    const ancestries = win.locator('.browse-page__section').nth(1);
+    const addEntry = async (label: string, name: string, newSet?: string) => {
+      await win.click(`button:has-text("+ New ${label}")`);
+      await win.fill('.create-form .text-field:has-text("Name") input', name);
+      await win.fill('.create-form label:has-text("Description") textarea', 'A short tagline. And the longer story behind it.');
+      await win.click('.create-form .feature-editor__add');
+      await win.fill('.create-form .feature-editor__row input[placeholder="Name"]', 'Well Read');
+      await win.fill('.create-form .feature-editor__row textarea', 'You have advantage on rolls that involve the history of a place.');
+      if (newSet) {
+        await win.selectOption('.create-form select', '__new__');
+        await win.fill('.game-set-select__new-row input', newSet);
+        await win.click('.game-set-select__new-row button:has-text("Add")');
+      }
+      await win.click(`button:has-text("Create ${label}")`);
+      await expect(win.locator('.create-form')).toHaveCount(0);
+    };
+    await addEntry('Community', 'Wanderborne');
+    await addEntry('Community', 'Highborne');
+    await addEntry('Ancestry', 'Elf');
+    await addEntry('Ancestry', 'Dwarf');
+
+    // One Set so far: nothing to filter by.
+    await expect(win.locator('.set-filter')).toHaveCount(0);
+
+    // The toggle is a plain word now, not an arrow that reads as "play".
+    const toggle = communities.locator('.entry-card__toggle').first();
+    await expect(toggle).toHaveText('Expand');
+    await toggle.click();
+    await expect(toggle).toHaveText('Collapse');
+
+    // A feature runs the width of its card instead of sharing it with a label column.
+    const card = await communities.locator('.entry-card__body').first().boundingBox();
+    const feature = await communities.locator('.entry-card__feature').first().boundingBox();
+    if (!card || !feature) throw new Error('entry card not visible');
+    expect(feature.width).toBeGreaterThan(card.width * 0.95);
+
+    // Created last, in a Set of its own, and still listed first.
+    await addEntry('Community', 'Aardvark Folk', 'Homebrew');
+    await expect(communities.locator('.entry-card__title')).toHaveText(['Aardvark Folk', 'Highborne', 'Wanderborne']);
+    await expect(ancestries.locator('.entry-card__title')).toHaveText(['Dwarf', 'Elf']);
+
+    // One filter covers both sections.
+    await win.selectOption('.set-filter', { label: 'Homebrew' });
+    await expect(communities.locator('.entry-card__title')).toHaveText(['Aardvark Folk']);
+    await expect(ancestries).toContainText('No Ancestries in this Set.');
+    await win.selectOption('.set-filter', 'all');
+    await expect(communities.locator('.entry-card')).toHaveCount(3);
+
+    // Optional Mechanics is built from the same pieces.
+    await win.click('.app-shell__nav-link:has-text("Optional Mechanics")');
+    await expect(win.locator('.browse-page__section-title:visible')).toHaveText(['Transformations']);
+    await expect(win.locator('.content-card-list__empty:visible')).toContainText('No Transformations yet');
+    await expect(win.locator('.set-filter:visible')).toHaveCount(1);
+  });
+
+  test('Equipment offers Cards or Table', async () => {
+    await win.click('.app-shell__nav-link:has-text("Equipment")');
+    await expect(win.locator('.mode-toggle__option')).toHaveText(['Cards', 'Table']);
+    await win.click('.mode-toggle__option:has-text("Table")');
+    await expect(win.locator('.mode-toggle__option--active')).toHaveText('Table');
+    // Remembered between launches, so put it back for whoever runs next.
+    await win.click('.mode-toggle__option:has-text("Cards")');
+  });
+
+  test('Adversaries has a Table view whose rows open in place', async () => {
+    await win.click('.app-shell__nav-link:has-text("Adversaries")');
+    for (const name of ['Bear', 'Wolf']) {
+      await win.click('button:has-text("+ New Adversary")');
+      await win.fill('.create-form .text-field:has-text("Name") input', name);
+      await win.fill('.create-form .text-field:has-text("HP") input', '6');
+      await win.locator('.create-form select').first().selectOption('BRUISER');
+      await win.click('button:has-text("Create Adversary")');
+      await expect(win.locator('.create-form')).toHaveCount(0);
+    }
+    const gallery = win.locator('.stat-gallery').first();
+    await gallery.locator('.stat-gallery__mode-option', { hasText: 'Table' }).click();
+    await expect(gallery.locator('.stat-gallery__table-row--item').first()).toContainText('Bruiser');
+
+    await expect(gallery.locator('.stat-gallery__table-cell--head')).toHaveText([
+      'Name',
+      'Tier',
+      'Difficulty',
+      'HP',
+      'Stress',
+      'Type',
+      'Experiences',
+    ]);
+    // The spotlight column is gone: the table has the page's width.
+    await expect(gallery.locator('.stat-gallery__spotlight')).toHaveCount(0);
+
+    const rows = gallery.locator('.stat-gallery__table-name');
+    const firstName = await rows.nth(0).textContent();
+    const secondName = await rows.nth(1).textContent();
+    if (!firstName || !secondName) throw new Error('no Adversaries listed');
+
+    await rows.nth(0).click();
+    const detail = gallery.locator('.stat-gallery__table-detail');
+    await expect(detail).toHaveCount(1);
+    await expect(detail.locator('.stat-sheet__name')).toHaveText(firstName);
+    await expect(rows.nth(0)).toHaveAttribute('aria-expanded', 'true');
+
+    // Opening another shuts the first, which is remembered above the table.
+    await rows.nth(1).click();
+    await expect(detail).toHaveCount(1);
+    await expect(detail.locator('.stat-sheet__name')).toHaveText(secondName);
+    const chips = gallery.locator('.stat-gallery__history-chip');
+    await expect(chips).toHaveCount(1);
+    await expect(chips).toContainText(firstName);
+
+    // Clicking the open row shuts it.
+    await rows.nth(1).click();
+    await expect(detail).toHaveCount(0);
+    await expect(chips).toHaveCount(2);
+
+    // A chip reopens its row even when a search is hiding it.
+    await gallery.locator('.stat-gallery__search').fill('zzzz-no-such-adversary');
+    await expect(gallery.locator('.stat-gallery__table')).toHaveCount(0);
+    await chips.filter({ hasText: firstName }).first().click();
+    await expect(detail.locator('.stat-sheet__name')).toHaveText(firstName);
+    await expect(gallery.locator('.stat-gallery__search')).toHaveValue('');
+
+    // The choice of view is remembered; put it back for whoever runs next.
+    await win.reload();
+    await win.click('.app-shell__nav-link:has-text("Adversaries")');
+    await expect(win.locator('.stat-gallery').first().locator('.stat-gallery__table')).toBeVisible();
+    await win.locator('.stat-gallery').first().locator('.stat-gallery__mode-option', { hasText: 'Standard' }).click();
+    await expect(win.locator('.stat-gallery').first().locator('.stat-gallery__spotlight')).toBeVisible();
+  });
+
   test('export produces a valid snapshot with every collection present', async () => {
     const exportPath = path.join(tempDir, 'export.json');
     await app.evaluate(

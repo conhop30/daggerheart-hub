@@ -1044,8 +1044,59 @@ test.describe('Sessions (Fear, combat, loot rolling)', () => {
     await tile.getByRole('button', { name: 'Collapse details' }).click();
     await expect(tile.locator('.session-tile__stats')).toHaveCount(0);
 
+    // On the buttons' own line, to their right: rolling doesn't grow the tile.
+    const before = await tile.boundingBox();
     await tile.getByRole('button', { name: 'Roll Damage' }).click();
-    await expect(tile.locator('.session-tile__roll-result')).toBeVisible();
+    const inline = tile.locator('.session-tile__roll-inline');
+    await expect(inline).toContainText('Dmg');
+    await expect(tile.locator('.session-tile__roll-result')).toHaveCount(0);
+    const button = await tile.getByRole('button', { name: 'Roll Damage' }).boundingBox();
+    const result = await inline.boundingBox();
+    const after = await tile.boundingBox();
+    if (!before || !after || !button || !result) throw new Error('tile not visible');
+    expect(result.x).toBeGreaterThan(button.x + button.width);
+    expect(after.height).toBe(before.height);
+
+    // Opened again, it goes back to a full line under the attack.
+    await tile.getByRole('button', { name: 'Expand details' }).click();
+    await expect(tile.locator('.session-tile__roll-result')).toHaveCount(1);
+    await expect(inline).toHaveCount(0);
+  });
+
+  test('Collapse All shuts every stat block, then offers to open them again', async () => {
+    await createAdversary('Goblin', '4', '2');
+    await createAdversary('Rat', '1', '1', 'MINION');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    for (const name of ['Goblin', 'Goblin', 'Rat']) {
+      await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+      await win.click(`.item-picker__option:has-text("${name}")`);
+    }
+    const tiles = win.locator('.combat-panel .content-card');
+    await expect(tiles).toHaveCount(3);
+    await expect(win.locator('.session-tile__stats')).toHaveCount(3);
+
+    await win.getByRole('button', { name: 'Collapse All' }).click();
+    await expect(win.locator('.session-tile__stats')).toHaveCount(0);
+
+    // One opened by hand is enough for the button to offer collapsing again.
+    await tiles.first().getByRole('button', { name: 'Expand details' }).click();
+    await expect(win.getByRole('button', { name: 'Collapse All' })).toBeVisible();
+    await win.getByRole('button', { name: 'Collapse All' }).click();
+    await win.getByRole('button', { name: 'Expand All' }).click();
+    await expect(win.locator('.session-tile__stats')).toHaveCount(3);
+  });
+
+  test('a Minion has a "+" too, which adds a separate stack of one', async () => {
+    await createAdversary('Rat', '1', '1', 'MINION');
+    await createCampaignAndOpenSession('The Wildwood', 'Session 1');
+    await win.click('.combat-panel__pull-button:has-text("+ Add Adversary")');
+    await win.click('.item-picker__option:has-text("Rat")');
+    const tiles = win.locator('.combat-panel .content-card');
+    await expect(tiles).toHaveCount(1);
+
+    await tiles.first().getByRole('button', { name: 'Add another Rat' }).click();
+    await expect(tiles).toHaveCount(2);
+    await expect(tiles.locator('.session-tile__count')).toHaveText(['×1', '×1']);
   });
 
   test('Kill moves an Adversary off the board onto the Slain list; Remove still forgets it', async () => {

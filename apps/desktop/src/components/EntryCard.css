@@ -89,42 +89,29 @@
 }
 
 .entry-card__description {
-  margin: 14px 0 12px;
-  max-width: 62ch;
+  margin: 10px 0 4px;
   font-size: 0.9rem;
   line-height: 1.65;
   color: var(--ink-dim);
 }
 
+/* Each feature runs the card's full width. (They used to sit beside a
+   "Feature" label column, which in a three-across grid cost every line a
+   quarter of its room and made the cards that much taller.) */
 .entry-card__features {
-  display: grid;
-  grid-template-columns: 90px 1fr;
-  gap: 6px var(--space-2);
-  max-width: 62ch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
 }
 
-/* Each feature is a row of two grid items (label, value) — `display:
-   contents` lifts its two <span> children straight into the parent grid
-   instead of boxing them into a single 90px-wide cell of their own. */
-.entry-card__feature-row {
-  display: contents;
-}
-
-.entry-card__feature-label {
-  padding-top: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.entry-card__feature-value {
+.entry-card__feature {
+  margin: 0;
   font-size: 0.85rem;
-  line-height: 1.6;
+  line-height: 1.55;
   color: var(--ink-dim);
 }
 
-.entry-card__feature-value strong {
+.entry-card__feature strong {
   color: var(--ink);
 }

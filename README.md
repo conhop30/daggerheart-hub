@@ -114,9 +114,12 @@ validation. Highlights:
   live) and window-size presets, persisted to `localStorage` since it's a
   per-machine UI preference, not game content.
 - **Adversaries & Environments render as a condensed stat-block gallery**
-  with three viewing modes instead of one fixed layout: **Standard** (the
-  default — compact tiles + a spotlight column showing the full stat block
-  for whichever tile was last clicked, without reflowing the grid),
+  with four viewing modes instead of one fixed layout: **Table** (a
+  full-width reference table like Equipment's — Tier, Difficulty, HP,
+  Stress, Type, Experiences — where clicking a row opens its stat block in
+  place, with Recently Viewed as a strip of chips above it), **Standard**
+  (the default — compact tiles + a spotlight column showing the full stat
+  block for whichever tile was last clicked, without reflowing the grid),
   **Condense** (name/tier/type only, maximizing how many entries fit on
   screen at once), and **Expand** (every matching entry renders as its own
   full stat sheet inline, opting into more screen space on purpose instead
@@ -543,6 +546,11 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       Environments gallery, a wider page layout, and a "Recently Viewed"
       history pinned above the spotlight's scroll region instead of
       requiring a scroll to reach it
+- [x] A Table viewing mode for Adversaries & Environments (rows open in
+      place), a wider spotlight column, and the chosen mode remembered per
+      machine
+- [x] Heritage and Optional Mechanics share one layout (`EntrySection`):
+      alphabetical cards with full-width features and a filter by Set
 - [x] Renamed the app to **Daggerheart Brewery** and gave it a real,
       hand-drawn application icon (a tankard pouring mist, in the app's own
       Hope-gold/Fear-violet palette) in place of Electron's default one
@@ -580,8 +588,8 @@ session of this project), set `DAGGERHEART_DEV_PORT` to another port for
       `ContentCard`-based pages (Weapons, Armor, Loot, Ancestries,
       Communities, etc.) — this pass deliberately scoped to Adversaries &
       Environments first
-- [ ] Fully designed galleries for Heritage and Optional Mechanics (currently
-      plain list views — every other content type already got this treatment)
+- [ ] Fully designed galleries for Heritage and Optional Mechanics (a
+      shared card grid today, not yet the stat-gallery treatment)
 - [ ] A code-signing certificate for the packaged installer (still
       self-signed — SmartScreen shows the "unknown publisher" warning)
 - [ ] Corebook Loot/Consumables and Hope & Fear Consumables — the source

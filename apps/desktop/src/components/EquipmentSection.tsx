@@ -34,7 +34,7 @@ interface EquipmentSectionProps<T extends { id: string }> {
   getKey: (item: T) => string;
   renderCard: (item: T) => ReactNode;
   emptyMessage: string;
-  /** Present only for the sections with a Cards/Condensed toggle (Weapon/Armor/Loot/Consumable) — omit for the two Table types, which are cards-only. */
+  /** Present only for the sections with a Cards/Table toggle (Weapon/Armor/Loot/Consumable) — omit for the two Table types, which are cards-only. */
   table?: EquipmentSectionTableProps<T>;
   /** Present only for the sections with a filter bar (Weapon/Armor). */
   filterBar?: EquipmentSectionFilterProps;
@@ -42,7 +42,7 @@ interface EquipmentSectionProps<T extends { id: string }> {
 
 // The skeleton every Equipment section shares — header + add button(s),
 // an optional inline create/edit form, loading/error states, an optional
-// filter bar, and a Cards-vs-Condensed-table switch — factored out so each
+// filter bar, and a Cards-vs-Table switch — factored out so each
 // section in EquipmentPage becomes a thin call site instead of ~120 lines
 // of copy-pasted structure. What genuinely differs per section (the form,
 // the card, the table columns, whether filters/a table view even apply)

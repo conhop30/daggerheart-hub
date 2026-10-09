@@ -24,11 +24,11 @@ test.describe('Loot & Consumable Tables', () => {
     });
     await win.waitForSelector('text=Daggerheart Brewery', { timeout: 15000 });
     await win.click('.app-shell__nav-link:has-text("Equipment")');
-    // Weapons/Armor/Loot/Consumables have a Cards/Condensed view toggle
+    // Weapons/Armor/Loot/Consumables have a Cards/Table view toggle
     // (EquipmentPage.tsx) that persists to localStorage across runs, not
     // the per-test store dir — so it's whatever was last left on this
     // machine, not reliably "Cards". This suite's .content-card assertions
-    // only make sense in Cards view (Condensed renders the same items as
+    // only make sense in Cards view (Table renders the same items as
     // table rows instead), so pin it explicitly rather than leaving it to
     // ambient state.
     await win.getByRole('button', { name: 'Cards', exact: true }).click();

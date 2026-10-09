@@ -139,6 +139,29 @@
   color: var(--hope-on-dark);
 }
 
+/* The same results on a collapsed tile: pushed to the right end of the
+   buttons' own line, so rolling never makes the tile taller. */
+.session-tile__roll-inline {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* No bigger than the buttons beside it, or the line (and the tile) grows. */
+.session-tile__roll-inline strong {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--hope-on-dark);
+}
+
 .session-tile__experiences {
   font-size: 0.85rem;
   color: var(--ink-dim);
